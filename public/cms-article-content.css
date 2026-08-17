@@ -1,0 +1,193 @@
+/* Scoped for storefront (.cms-article-content) and TinyMCE editor/preview (body.mce-content-body) */
+.cms-article-content,
+body.mce-content-body {
+  color: #1f2937;
+  font-size: 16px;
+  line-height: 1.82;
+  word-break: break-word;
+}
+
+.cms-article-content h2,
+.cms-article-content h3,
+.cms-article-content h4,
+body.mce-content-body h2,
+body.mce-content-body h3,
+body.mce-content-body h4 {
+  color: #111827;
+  font-weight: 700;
+  line-height: 1.35;
+  margin: 1.6em 0 0.75em;
+}
+
+.cms-article-content h2,
+body.mce-content-body h2 { font-size: 1.5rem; }
+.cms-article-content h3,
+body.mce-content-body h3 { font-size: 1.25rem; }
+.cms-article-content h4,
+body.mce-content-body h4 { font-size: 1.1rem; }
+
+.cms-article-content p,
+body.mce-content-body p {
+  margin: 0 0 1em;
+}
+
+.cms-article-content ul,
+.cms-article-content ol,
+body.mce-content-body ul,
+body.mce-content-body ol {
+  margin: 0 0 1em 1.25em;
+  padding: 0;
+}
+
+.cms-article-content li,
+body.mce-content-body li {
+  margin: 0.35em 0;
+}
+
+.cms-article-content a,
+body.mce-content-body a {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+.cms-article-content img,
+.cms-article-content video,
+body.mce-content-body img,
+body.mce-content-body video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1.25em 0;
+  border-radius: 8px;
+}
+
+.cms-article-content blockquote,
+body.mce-content-body blockquote {
+  border-left: 4px solid #d1d5db;
+  color: #4b5563;
+  margin: 1.25em 0;
+  padding: 0.25em 0 0.25em 1em;
+}
+
+.cms-article-content pre,
+body.mce-content-body pre {
+  background: #111827;
+  border-radius: 8px;
+  color: #f9fafb;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.92em;
+  line-height: 1.6;
+  margin: 1.25em 0;
+  overflow-x: auto;
+  padding: 1em;
+}
+
+.cms-article-content code,
+body.mce-content-body code {
+  background: #f3f4f6;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.92em;
+  padding: 0.15em 0.35em;
+}
+
+.cms-article-content pre code,
+body.mce-content-body pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.cms-article-content table,
+body.mce-content-body table {
+  border-collapse: collapse;
+  margin: 1.25em 0;
+  width: 100%;
+}
+
+.cms-article-content th,
+.cms-article-content td,
+body.mce-content-body th,
+body.mce-content-body td {
+  border: 1px solid #e5e7eb;
+  padding: 0.65em 0.75em;
+  text-align: left;
+  vertical-align: top;
+}
+
+.cms-article-content th,
+body.mce-content-body th {
+  background: #f9fafb;
+  font-weight: 600;
+}
+
+/* Blog / FAQ structured blocks */
+.cms-article-content .blog-article-list,
+body.mce-content-body .blog-article-list {
+  margin: 0 0 1em;
+  padding-left: 20px;
+  display: grid;
+  gap: 10px;
+}
+
+.cms-article-content .blog-code-block,
+body.mce-content-body .blog-code-block {
+  margin: 1.25em 0;
+  padding: 18px;
+  border-radius: 16px;
+  background: #0f2137;
+  color: #eef4fb;
+  overflow-x: auto;
+}
+
+.cms-article-content .blog-code-block code,
+body.mce-content-body .blog-code-block code {
+  background: transparent;
+  border-radius: 0;
+  color: inherit;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  padding: 0;
+}
+
+.cms-article-content .blog-table-wrap,
+body.mce-content-body .blog-table-wrap {
+  display: grid;
+  gap: 10px;
+  margin: 1.25em 0;
+}
+
+.cms-article-content .blog-table-caption,
+body.mce-content-body .blog-table-caption {
+  color: #6b7280;
+  font-size: 0.85rem;
+  font-style: italic;
+  margin: 0;
+}
+
+.cms-article-content .blog-article-table,
+body.mce-content-body .blog-article-table {
+  border: 1px solid rgba(16, 41, 66, 0.1);
+  border-collapse: collapse;
+  border-radius: 16px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.cms-article-content .blog-article-table th,
+.cms-article-content .blog-article-table td,
+body.mce-content-body .blog-article-table th,
+body.mce-content-body .blog-article-table td {
+  border-bottom: 1px solid rgba(16, 41, 66, 0.07);
+  font-size: 0.9rem;
+  padding: 12px 14px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.cms-article-content .blog-article-table th,
+body.mce-content-body .blog-article-table th {
+  background: rgba(16, 41, 66, 0.05);
+  color: #153858;
+  font-weight: 700;
+}

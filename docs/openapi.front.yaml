@@ -1,0 +1,3945 @@
+openapi: 3.1.0
+info:
+  title: Lianchuan Storefront API
+  version: 0.1.0
+  summary: 前台电商网站接口契约
+  description: |
+    本文档定义前台商城所需的 REST API 契约，覆盖首页、分类、搜索、商品详情、购物车、结账、地址、订单、认证、会员资料、询价、收藏等能力。
+    该文档是前台与服务端联调的唯一接口真源。
+servers:
+  - url: http://localhost:5100
+    description: Local admin API (vexmotor-admin)
+  - url: https://example.com
+    description: Production placeholder
+tags:
+  - name: Home
+  - name: Navigation
+  - name: Categories
+  - name: Search
+  - name: Products
+  - name: Cart
+  - name: Checkout
+  - name: Orders
+  - name: Addresses
+  - name: Auth
+  - name: Profile
+  - name: Inquiries
+  - name: Wishlist
+  - name: Languages
+  - name: Compare
+  - name: Brands
+  - name: Content
+  - name: Meta
+  - name: Commerce
+  - name: Newsletter
+  - name: Sitemap
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >-
+        前台 JWT，由 POST /api/front/auth/login 或 POST /api/front/auth/register 返回的 token 字段；
+        后续请求放在 Header Authorization Bearer token。
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSizeParam:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    SearchKeywordParam:
+      name: keyword
+      in: query
+      schema:
+        type: string
+        minLength: 1
+    CategorySlugParam:
+      name: slug
+      in: path
+      required: true
+      schema:
+        type: string
+    ProductSlugParam:
+      name: slug
+      in: path
+      required: true
+      schema:
+        type: string
+    CartItemIdParam:
+      name: itemId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    OrderNumberParam:
+      name: orderNumber
+      in: path
+      required: true
+      schema:
+        type: string
+    InquiryIdParam:
+      name: id
+      in: path
+      required: true
+      description: 询盘 UUID 或 QT-* 报价编号
+      schema:
+        type: string
+    LegacySlugParam:
+      name: legacySlug
+      in: path
+      required: true
+      schema:
+        type: string
+    GuestOrderTokenQueryParam:
+      name: guestToken
+      in: query
+      description: 访客订单访问令牌（与 Header `x-guest-order-token` 二选一）
+      schema:
+        type: string
+    GuestOrderTokenHeader:
+      name: x-guest-order-token
+      in: header
+      description: 访客订单访问令牌
+      schema:
+        type: string
+    LocaleHeader:
+      name: x-vex-locale
+      in: header
+      description: 前台语言代码；与 site_languages 绑定，同时决定价格币种
+      schema:
+        type: string
+        example: en
+    LocaleQueryParam:
+      name: locale
+      in: query
+      description: 可选语言覆盖（优先级低于 x-vex-locale）
+      schema:
+        type: string
+        example: en
+    AddressTypeQueryParam:
+      name: type
+      in: query
+      description: 按地址类型筛选
+      schema:
+        type: string
+        enum: [shipping, billing]
+    ProductIdParam:
+      name: productId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    BoardKeyParam:
+      name: boardKey
+      in: path
+      required: true
+      schema:
+        type: string
+        description: 内容看板 key（如 blog、press、faq）
+    ProductBoardKeyParam:
+      name: boardKey
+      in: path
+      required: true
+      schema:
+        type: string
+        description: 产品看板 key（如 featured、newest、hot-sale）
+    ContentModuleParam:
+      name: module
+      in: query
+      description: 内容模块类型；默认 editorial（博客类内容）
+      schema:
+        type: string
+        enum: [editorial, faq]
+        default: editorial
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type:
+            - array
+            - 'null'
+          items:
+            type: object
+            additionalProperties: true
+      required: [code, message]
+      additionalProperties: false
+    PaginationMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+      required: [page, pageSize, total, totalPages]
+      additionalProperties: false
+    Money:
+      type: object
+      properties:
+        currency:
+          type: string
+          example: USD
+        amount:
+          type: number
+        formatted:
+          type: string
+      required: [currency, amount, formatted]
+      additionalProperties: false
+    ImageAsset:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        url:
+          type: string
+          format: uri
+        alt:
+          type: string
+        width:
+          type: integer
+        height:
+          type: integer
+      required: [id, url, alt]
+      additionalProperties: false
+    Brand:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        logo:
+          $ref: '#/components/schemas/ImageAsset'
+      required: [id, name, slug]
+      additionalProperties: false
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        image:
+          $ref: '#/components/schemas/ImageAsset'
+        parentId:
+          type:
+            - string
+            - 'null'
+          format: uuid
+      required: [id, name, slug]
+      additionalProperties: false
+    ProductCard:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        spu:
+          type: string
+        shortDescription:
+          type: string
+        coverImage:
+          $ref: '#/components/schemas/ImageAsset'
+        price:
+          $ref: '#/components/schemas/Money'
+        compareAtPrice:
+          oneOf:
+            - $ref: '#/components/schemas/Money'
+            - type: 'null'
+        purchaseMode:
+          type: string
+          enum: [buy, inquiry]
+        inStock:
+          type: boolean
+        brand:
+          oneOf:
+            - $ref: '#/components/schemas/Brand'
+            - type: 'null'
+      required: [id, name, slug, spu, purchaseMode, inStock]
+      additionalProperties: false
+    ProductVariantOption:
+      type: object
+      properties:
+        group:
+          type: string
+        value:
+          type: string
+      required: [group, value]
+      additionalProperties: false
+    Attachment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        url:
+          type: string
+          format: uri
+        mimeType:
+          type: string
+      required: [id, name, url]
+      additionalProperties: false
+    ProductDetail:
+      allOf:
+        - $ref: '#/components/schemas/ProductCard'
+        - type: object
+          properties:
+            description:
+              type: string
+            gallery:
+              type: array
+              items:
+                $ref: '#/components/schemas/ImageAsset'
+            categories:
+              type: array
+              items:
+                $ref: '#/components/schemas/Category'
+            attributes:
+              type: array
+              items:
+                $ref: '#/components/schemas/ProductVariantOption'
+            attachments:
+              type: array
+              items:
+                $ref: '#/components/schemas/Attachment'
+            relatedProducts:
+              type: array
+              items:
+                $ref: '#/components/schemas/ProductCard'
+            stockQuantity:
+              type: integer
+            seoTitle:
+              type: string
+            seoDescription:
+              type: string
+            configurableFeatures:
+              type: array
+              items:
+                type: object
+                additionalProperties: true
+            features:
+              type: array
+              items:
+                type: object
+                additionalProperties: true
+            manufacturing:
+              type: object
+              additionalProperties: true
+            seo:
+              type: object
+              additionalProperties: true
+            paidSampleEnabled:
+              type: boolean
+            allowBackorder:
+              type: boolean
+          required: [description, gallery, categories, attributes, attachments, relatedProducts]
+          additionalProperties: true
+    BrandListItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        logo:
+          type:
+            - object
+            - 'null'
+          properties:
+            url:
+              type: string
+            alt:
+              type: string
+        websiteUrl:
+          type:
+            - string
+            - 'null'
+      required: [id, name, slug]
+      additionalProperties: false
+    FaqListItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        body:
+          type: string
+          description: FAQ 正文 HTML
+      required: [id, title, body]
+      additionalProperties: false
+    FaqListResponse:
+      type: object
+      properties:
+        locale:
+          type: string
+        boardKey:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/FaqListItem'
+      required: [locale, boardKey, items]
+      additionalProperties: false
+    BlogAuthor:
+      type: object
+      properties:
+        name:
+          type:
+            - string
+            - 'null'
+        title:
+          type:
+            - string
+            - 'null'
+        bio:
+          type:
+            - string
+            - 'null'
+      required: [name, title, bio]
+      additionalProperties: false
+    BlogCategoryItem:
+      type: object
+      properties:
+        label:
+          type: string
+          description: 分类显示名（英文内置分类）
+        slug:
+          type: string
+          description: 唯一 URL slug，用于 ?category=application-note 等筛选链接
+      required: [label, slug]
+      additionalProperties: false
+    BlogCategoriesResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BlogCategoryItem'
+      required: [items]
+      additionalProperties: false
+    BlogListItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        summary:
+          type:
+            - string
+            - 'null'
+        slug:
+          type: string
+          description: 文章 slug，前台详情页路径为 /blog/{slug}
+        category:
+          type:
+            - string
+            - 'null'
+          description: 分类显示名
+        categorySlug:
+          type:
+            - string
+            - 'null'
+          description: 内置分类对应的 URL slug；自定义分类为 null
+        coverStyle:
+          type:
+            - integer
+            - 'null'
+          minimum: 1
+          maximum: 10
+          description: 封面样式编号（非图片 URL）
+        author:
+          $ref: '#/components/schemas/BlogAuthor'
+        tags:
+          type: array
+          items:
+            type: string
+        publishedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+      required: [id, title, summary, slug, category, categorySlug, coverStyle, author, tags, publishedAt]
+      additionalProperties: false
+    BlogListResponse:
+      type: object
+      properties:
+        locale:
+          type: string
+        boardKey:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BlogListItem'
+      required: [locale, boardKey, items]
+      additionalProperties: false
+    ContentListItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        module:
+          type: string
+          enum: [editorial, faq]
+        summary:
+          type:
+            - string
+            - 'null'
+        slug:
+          type:
+            - string
+            - 'null'
+          description: 博客 slug；module=editorial 时有值
+        body:
+          type:
+            - string
+            - 'null'
+          description: FAQ 正文 HTML；module=faq 时有值
+        category:
+          type:
+            - string
+            - 'null'
+        categorySlug:
+          type:
+            - string
+            - 'null'
+        coverStyle:
+          type:
+            - integer
+            - 'null'
+          minimum: 1
+          maximum: 10
+        author:
+          oneOf:
+            - $ref: '#/components/schemas/BlogAuthor'
+            - type: 'null'
+        tags:
+          type: array
+          items:
+            type: string
+        publishedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+      required: [id, title, module, summary, slug, body, category, categorySlug, coverStyle, author, tags, publishedAt]
+      additionalProperties: false
+    ContentListResponse:
+      type: object
+      properties:
+        locale:
+          type: string
+        boardKey:
+          type: string
+        module:
+          type: string
+          enum: [editorial, faq]
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ContentListItem'
+      required: [locale, boardKey, module, items]
+      additionalProperties: false
+    ProductBoardProductListResponse:
+      type: object
+      properties:
+        locale:
+          type: string
+        boardKey:
+          type: string
+        boardTitle:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductCard'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+        facets:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+      required: [locale, boardKey, boardTitle, items, meta, facets]
+      additionalProperties: false
+    BlogDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        summary:
+          type:
+            - string
+            - 'null'
+        body:
+          type: string
+          description: 博客正文 HTML
+        slug:
+          type: string
+          description: 文章 slug；接口路径 GET /api/front/blog/{slug} 与前台 /blog/{slug} 一致
+        category:
+          type:
+            - string
+            - 'null'
+        categorySlug:
+          type:
+            - string
+            - 'null'
+        coverStyle:
+          type:
+            - integer
+            - 'null'
+          minimum: 1
+          maximum: 10
+          description: 封面样式编号（非图片 URL）
+        seo:
+          type: object
+          properties:
+            title:
+              type:
+                - string
+                - 'null'
+            description:
+              type:
+                - string
+                - 'null'
+          required: [title, description]
+        publishedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        boardKeys:
+          type: array
+          items:
+            type: string
+        tags:
+          type: array
+          items:
+            type: string
+        relatedProductSlugs:
+          type: array
+          items:
+            type: string
+        author:
+          $ref: '#/components/schemas/BlogAuthor'
+      required: [id, title, summary, body, slug, category, categorySlug, coverStyle, author, seo, publishedAt, boardKeys, tags, relatedProductSlugs]
+      additionalProperties: false
+    FeatureSelectionInput:
+      type: object
+      properties:
+        valueId:
+          type: string
+          format: uuid
+      required: [valueId]
+      additionalProperties: false
+    FeatureSelectionSnapshotItem:
+      type: object
+      properties:
+        definitionId:
+          type: string
+          format: uuid
+        definitionKey:
+          type: string
+        definitionName:
+          type: string
+        valueId:
+          type: string
+          format: uuid
+        display:
+          type: string
+        unit:
+          type:
+            - string
+            - 'null'
+      required: [definitionId, definitionKey, definitionName, valueId, display]
+      additionalProperties: false
+    ProductListResponse:
+      type: object
+      properties:
+        locale:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductCard'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+        facets:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+      required: [locale, items, meta, facets]
+      additionalProperties: false
+    CartItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        productId:
+          type: string
+          format: uuid
+        product:
+          $ref: '#/components/schemas/ProductCard'
+        quantity:
+          type: integer
+          minimum: 1
+        unitPrice:
+          $ref: '#/components/schemas/Money'
+        subtotal:
+          $ref: '#/components/schemas/Money'
+        variantLabel:
+          type: string
+        configurationLabel:
+          type: string
+        configurationKey:
+          type: string
+        featureSelections:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeatureSelectionSnapshotItem'
+      required: [id, productId, product, quantity, unitPrice, subtotal]
+      additionalProperties: false
+    Cart:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        locale:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItem'
+        itemCount:
+          type: integer
+        couponCode:
+          type:
+            - string
+            - 'null'
+        coupon:
+          type:
+            - object
+            - 'null'
+          properties:
+            code:
+              type: string
+              description: 已应用的优惠券代码（区分大小写）
+            description:
+              type: string
+            discountType:
+              type: string
+              enum: [direct_amount, percent, fixed_amount, special_price]
+            isApplied:
+              type: boolean
+            message:
+              type:
+                - string
+                - 'null'
+          required: [code, description, discountType, isApplied, message]
+        subtotal:
+          $ref: '#/components/schemas/Money'
+        discount:
+          $ref: '#/components/schemas/Money'
+        shipping:
+          $ref: '#/components/schemas/Money'
+        tax:
+          $ref: '#/components/schemas/Money'
+        total:
+          $ref: '#/components/schemas/Money'
+        freeShippingThreshold:
+          $ref: '#/components/schemas/Money'
+        remainingForFreeShipping:
+          $ref: '#/components/schemas/Money'
+      required: [id, items, itemCount, subtotal, discount, shipping, tax, total, freeShippingThreshold, remainingForFreeShipping]
+      additionalProperties: false
+    Address:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        company:
+          type: string
+        phone:
+          type: string
+        countryCode:
+          type: string
+        state:
+          type: string
+        city:
+          type: string
+        addressLine1:
+          type: string
+        addressLine2:
+          type: string
+        postalCode:
+          type: string
+        isDefault:
+          type: boolean
+      required: [id, firstName, lastName, countryCode, city, addressLine1, postalCode, isDefault]
+      additionalProperties: false
+    GeoCountry:
+      type: object
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        isoAlpha2:
+          type: string
+        isoAlpha3:
+          type: string
+          nullable: true
+        continentCode:
+          type: string
+        nameEn:
+          type: string
+        nameZh:
+          type: string
+          nullable: true
+        label:
+          type: string
+      required: [id, code, isoAlpha2, continentCode, nameEn, label]
+      additionalProperties: false
+    GeoDivision:
+      type: object
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        level:
+          type: string
+        nameEn:
+          type: string
+        nameZh:
+          type: string
+          nullable: true
+        label:
+          type: string
+      required: [id, code, level, nameEn, label]
+      additionalProperties: false
+    UserProfile:
+      type: object
+      description: 当前用户基本资料（不含公司字段；公司信息见 GET /api/front/profile/company）
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+        lastName:
+          type: string
+        phone:
+          type:
+            - string
+            - 'null'
+        jobTitle:
+          type:
+            - string
+            - 'null'
+          description: 注册/资料中的职位（如 Purchasing）；与系统权限 role 无关
+        status:
+          type: string
+          enum: [active, disabled, pending]
+        role:
+          type: string
+          enum: [customer, staff, admin]
+          description: 系统账户类型（权限），非注册职位
+        emailVerifiedAt:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, email, firstName, lastName, status, role, createdAt, updatedAt]
+      additionalProperties: false
+    UserProfileUpdate:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        phone:
+          type:
+            - string
+            - 'null'
+        jobTitle:
+          type:
+            - string
+            - 'null'
+          maxLength: 100
+      additionalProperties: false
+    CompanyProfile:
+      type: object
+      properties:
+        company:
+          type:
+            - string
+            - 'null'
+        industry:
+          type:
+            - string
+            - 'null'
+        companyCountryCode:
+          type:
+            - string
+            - 'null'
+        companyState:
+          type:
+            - string
+            - 'null'
+        companyCity:
+          type:
+            - string
+            - 'null'
+        companyAddressLine1:
+          type:
+            - string
+            - 'null'
+        companyAddressLine2:
+          type:
+            - string
+            - 'null'
+        companyPostalCode:
+          type:
+            - string
+            - 'null'
+        website:
+          type:
+            - string
+            - 'null'
+        taxId:
+          type:
+            - string
+            - 'null'
+        companySize:
+          type:
+            - string
+            - 'null'
+        annualVolumeEstimate:
+          type:
+            - string
+            - 'null'
+          description: 年采购量/需求量预估
+        verificationDocuments:
+          type: array
+          description: B2B 注册时上传的资质文件（只读，注册后由服务端写入）
+          items:
+            $ref: '#/components/schemas/VerificationDocument'
+      additionalProperties: false
+    CompanyProfileUpdate:
+      type: object
+      description: 可更新的公司资料字段（不含 verificationDocuments）
+      properties:
+        company:
+          type:
+            - string
+            - 'null'
+        industry:
+          type:
+            - string
+            - 'null'
+        companyCountryCode:
+          type:
+            - string
+            - 'null'
+          description: ISO 3166-1 alpha-2
+        companyState:
+          type:
+            - string
+            - 'null'
+        companyCity:
+          type:
+            - string
+            - 'null'
+        companyAddressLine1:
+          type:
+            - string
+            - 'null'
+        companyAddressLine2:
+          type:
+            - string
+            - 'null'
+        companyPostalCode:
+          type:
+            - string
+            - 'null'
+        website:
+          type:
+            - string
+            - 'null'
+        taxId:
+          type:
+            - string
+            - 'null'
+        companySize:
+          type:
+            - string
+            - 'null'
+        annualVolumeEstimate:
+          type:
+            - string
+            - 'null'
+          maxLength: 255
+          description: 年采购量/需求量预估
+      additionalProperties: false
+    VerificationDocument:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+        key:
+          type: string
+        filename:
+          type: string
+        contentType:
+          type: string
+        uploadedAt:
+          type: string
+          format: date-time
+      required: [url, key, filename, contentType, uploadedAt]
+      additionalProperties: false
+    RegistrationDocumentInput:
+      type: object
+      description: 注册提交用的证件对象；须先通过 POST /api/front/upload/registration 上传获得
+      properties:
+        url:
+          type: string
+          format: uri
+        key:
+          type: string
+          description: OSS 对象 key，须以 registrations/documents/ 为前缀
+        filename:
+          type: string
+        contentType:
+          type: string
+      required: [url, key, filename, contentType]
+      additionalProperties: false
+    RegistrationUploadResponse:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+        key:
+          type: string
+        filename:
+          type: string
+        contentType:
+          type: string
+        size:
+          type: integer
+      required: [url, key, filename, contentType, size]
+      additionalProperties: false
+    SiteLanguage:
+      type: object
+      description: 前台可用语言；每种语言在后台绑定一个展示币种（currencyCode），商品/购物车等接口按 x-vex-locale 选用对应币种。
+      properties:
+        code:
+          type: string
+          description: 语言代码（如 en、de、zh-CN）
+          example: en
+        name:
+          type: string
+          description: 英文显示名
+          example: English
+        nativeName:
+          type: string
+          description: 本地语言显示名
+          example: English
+        region:
+          type: string
+          description: 区域/市场标签
+          example: Global
+        direction:
+          type: string
+          enum: [ltr, rtl]
+        countryCodes:
+          type: array
+          description: 关联 ISO 3166-1 alpha-2 国家/地区代码
+          items:
+            type: string
+          example: [US, GB]
+        currencyCode:
+          type: string
+          description: 该语言绑定的 ISO 4217 币种代码，用于前台价格展示
+          example: USD
+        isDefault:
+          type: boolean
+          description: 是否为站点默认语言
+        sortOrder:
+          type: integer
+          description: 语言切换器排序（升序）
+      required: [code, name, nativeName, region, direction, countryCodes, currencyCode, isDefault, sortOrder]
+      additionalProperties: false
+    StorefrontLanguagesResponse:
+      type: object
+      properties:
+        languages:
+          type: array
+          items:
+            $ref: '#/components/schemas/SiteLanguage'
+      required: [languages]
+      additionalProperties: false
+    AuthTokenResponse:
+      type: object
+      description: 登录或注册成功。`token` 为 JWT，默认有效期 7 天（可由服务端 JWT_EXPIRES_IN 配置）。
+      properties:
+        token:
+          type: string
+          description: Bearer JWT，用于 Authorization 请求头
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            email:
+              type: string
+              format: email
+            firstName:
+              type: string
+            lastName:
+              type: string
+            company:
+              type:
+                - string
+                - 'null'
+            status:
+              type: string
+              enum: [active, disabled, pending]
+          required: [id, email, firstName, lastName, status]
+        redirectPath:
+          type: string
+        message:
+          type: string
+      required: [token, user]
+      additionalProperties: false
+    ChangePasswordRequest:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+          minLength: 8
+      required: [currentPassword, newPassword]
+      additionalProperties: false
+    AccountSummary:
+      type: object
+      description: 会员中心仪表盘统计（订单、地址、询盘、收藏数量）
+      properties:
+        orders:
+          type: integer
+          minimum: 0
+          description: 订单总数
+        addresses:
+          type: integer
+          minimum: 0
+          description: 地址簿条目数
+        inquiries:
+          type: integer
+          minimum: 0
+          description: 询盘总数
+        wishlist:
+          type: integer
+          minimum: 0
+          description: 收藏商品数
+      required: [orders, addresses, inquiries, wishlist]
+      additionalProperties: false
+    ShippingMethod:
+      type: object
+      description: 物流方式（name/etaLabel/note 按 x-vex-locale 本地化；code 为跨语言稳定业务键）
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        name:
+          type: string
+        etaLabel:
+          type: string
+        note:
+          type: string
+        enabled:
+          type: boolean
+        sortOrder:
+          type: integer
+      required: [id, code, name, etaLabel, note, enabled, sortOrder]
+      additionalProperties: false
+    ShippingCountryRate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        regionCode:
+          type: string
+        countryIsoCode:
+          type: string
+          nullable: true
+        regionName:
+          type: string
+        countryName:
+          type: string
+          nullable: true
+        countryCode:
+          type: string
+        shippingMethodCode:
+          type: string
+        currencyCode:
+          type: string
+        rate:
+          type: number
+        freeShippingThreshold:
+          type: number
+          nullable: true
+        taxRate:
+          type: number
+        enabled:
+          type: boolean
+        note:
+          type: string
+          nullable: true
+      required: [id, regionCode, countryCode, shippingMethodCode, currencyCode, rate, taxRate, enabled]
+      additionalProperties: false
+    VolumePricingRule:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        minQuantity:
+          type: integer
+        priceFactor:
+          type: number
+        note:
+          type: string
+          nullable: true
+        enabled:
+          type: boolean
+      required: [id, label, minQuantity, priceFactor, enabled]
+      additionalProperties: false
+    CommerceConfig:
+      type: object
+      description: 结账与商城配置；物流方式文案随请求语言解析
+      properties:
+        currencyCode:
+          type: string
+          deprecated: true
+          description: 已迁移至 GET /api/front/site-settings
+        defaultCountryCode:
+          type: string
+          deprecated: true
+          description: 已迁移至 GET /api/front/site-settings
+        defaultShippingMethodCode:
+          type: string
+        exchangeRateSnapshot:
+          type: object
+          properties:
+            baseCurrencyCode:
+              type: string
+            ratesByCurrency:
+              type: object
+              additionalProperties:
+                type: number
+          required: [baseCurrencyCode, ratesByCurrency]
+        countryContinentByIso:
+          type: object
+          description: ISO 3166-1 alpha-2 国家代码到大洲代码的映射，用于地区级运费匹配
+          additionalProperties:
+            type: string
+        volumePricingRules:
+          type: array
+          items:
+            $ref: '#/components/schemas/VolumePricingRule'
+        shippingMethods:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShippingMethod'
+        shippingCountryRates:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShippingCountryRate'
+      required:
+        - defaultShippingMethodCode
+        - exchangeRateSnapshot
+        - countryContinentByIso
+        - volumePricingRules
+        - shippingMethods
+        - shippingCountryRates
+      additionalProperties: false
+    SiteSettings:
+      type: object
+      properties:
+        defaultCurrencyCode:
+          type: string
+        defaultCountryCode:
+          type: string
+      required: [defaultCurrencyCode, defaultCountryCode]
+      additionalProperties: false
+    OrderItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        productName:
+          type: string
+        spu:
+          type: string
+        quantity:
+          type: integer
+        unitPrice:
+          $ref: '#/components/schemas/Money'
+        subtotal:
+          $ref: '#/components/schemas/Money'
+      required: [id, productName, spu, quantity, unitPrice, subtotal]
+      additionalProperties: false
+    OrderSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        orderNumber:
+          type: string
+        status:
+          type: string
+        total:
+          $ref: '#/components/schemas/Money'
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, orderNumber, status, total, createdAt]
+      additionalProperties: false
+    OrderDetail:
+      allOf:
+        - $ref: '#/components/schemas/OrderSummary'
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/OrderItem'
+            shippingAddress:
+              $ref: '#/components/schemas/Address'
+            billingAddress:
+              $ref: '#/components/schemas/Address'
+          required: [items, shippingAddress, billingAddress]
+          additionalProperties: false
+    Inquiry:
+      type: object
+      description: 遗留简化询盘结构（创建响应字段子集）
+      properties:
+        id:
+          type: string
+          format: uuid
+        quoteNumber:
+          type: string
+          nullable: true
+        fullName:
+          type: string
+        email:
+          type: string
+          format: email
+        redirectPath:
+          type: string
+      required: [id, fullName, email]
+    InquiryMessage:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        senderType:
+          type: string
+          enum: [customer, admin]
+        body:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        adminName:
+          type: string
+          nullable: true
+      required: [id, senderType, body, createdAt]
+    AccountInquiryListItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        quoteNumber:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [new, contacted, quoted, closed]
+        projectName:
+          type: string
+        lineCount:
+          type: integer
+        valueLabel:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        quotedLines:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/InquiryQuotedLine'
+      required: [id, status, projectName, lineCount, valueLabel, createdAt]
+    AccountInquiryDetail:
+      allOf:
+        - $ref: '#/components/schemas/AccountInquiryListItem'
+        - type: object
+          properties:
+            fullName:
+              type: string
+            email:
+              type: string
+              format: email
+            phone:
+              type: string
+              nullable: true
+            company:
+              type: string
+              nullable: true
+            country:
+              type: string
+              nullable: true
+            message:
+              type: string
+            rfqPayload:
+              $ref: '#/components/schemas/InquiryRfqPayload'
+              nullable: true
+            quotedLines:
+              type: array
+              nullable: true
+              items:
+                $ref: '#/components/schemas/InquiryQuotedLine'
+            messages:
+              type: array
+              items:
+                $ref: '#/components/schemas/InquiryMessage'
+            productName:
+              type: string
+            productSlug:
+              type: string
+            productSpu:
+              type: string
+          required: [fullName, email, message, messages, productName, productSlug, productSpu]
+    WishlistItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        productId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        spu:
+          type: string
+        shortDescription:
+          type: string
+        purchaseMode:
+          type: string
+        price:
+          $ref: '#/components/schemas/Money'
+        currencyCode:
+          type: string
+        stockQuantity:
+          type: integer
+        inStock:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, productId, name, slug, spu, price, createdAt]
+      additionalProperties: false
+    WishlistResponse:
+      type: object
+      properties:
+        locale:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/WishlistItem'
+      required: [locale, items]
+      additionalProperties: false
+    CompareProductSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        spu:
+          type: string
+        brand:
+          type:
+            - string
+            - 'null'
+        category:
+          type:
+            - string
+            - 'null'
+        price:
+          $ref: '#/components/schemas/Money'
+        stockQuantity:
+          type: integer
+        inStock:
+          type: boolean
+        purchaseMode:
+          type: string
+      required: [id, name, slug, spu, price, stockQuantity, inStock, purchaseMode]
+      additionalProperties: false
+    CompareMatrixRow:
+      type: object
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        group:
+          type: string
+        values:
+          type: array
+          items:
+            type: string
+        isDifferent:
+          type: boolean
+      required: [key, label, group, values, isDifferent]
+      additionalProperties: false
+    CompareResult:
+      type: object
+      properties:
+        locale:
+          type: string
+        products:
+          type: array
+          items:
+            $ref: '#/components/schemas/CompareProductSummary'
+        groups:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              rows:
+                type: array
+                items:
+                  type: string
+            required: [name, rows]
+        matrix:
+          type: array
+          items:
+            $ref: '#/components/schemas/CompareMatrixRow'
+        summary:
+          type: object
+          properties:
+            sharedFeatureKeys:
+              type: array
+              items:
+                type: string
+            uniqueByProduct:
+              type: array
+              items:
+                type: object
+                properties:
+                  productId:
+                    type: string
+                    format: uuid
+                  keys:
+                    type: array
+                    items:
+                      type: string
+                required: [productId, keys]
+          required: [sharedFeatureKeys, uniqueByProduct]
+      required: [locale, products, groups, matrix, summary]
+      additionalProperties: false
+    CompareListItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: compare_items 表主键
+        productId:
+          type: string
+          format: uuid
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        product:
+          $ref: '#/components/schemas/CompareProductSummary'
+      required: [id, productId, sortOrder, createdAt, product]
+      additionalProperties: false
+    CompareItemsResponse:
+      type: object
+      properties:
+        locale:
+          type: string
+        items:
+          type: array
+          maxItems: 4
+          items:
+            $ref: '#/components/schemas/CompareListItem'
+      required: [locale, items]
+      additionalProperties: false
+    AuthLoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+      required: [email, password]
+      additionalProperties: false
+    AuthRegisterRequest:
+      type: object
+      description: |
+        用户注册。轻量注册：仅填基础字段并设 `_quick: true` 或省略 B2B 合规字段。
+        B2B 完整注册：须勾选 termsAccepted、privacyAccepted、exportComplianceAccepted。
+        B2B 注册成功后账户 status 为 active（无需人工审核）。
+        `jobTitle` 为注册页所选职位（如 Purchasing），写入 users.jobTitle；
+        系统权限 role 恒为 customer，与 jobTitle 无关。
+        `documents` 须先调用 POST /api/front/upload/registration 上传，最多 5 个。
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        firstName:
+          type: string
+        lastName:
+          type: string
+        phone:
+          type: string
+        jobTitle:
+          type: string
+          maxLength: 100
+          description: 注册职位（如 Purchasing、Engineering），映射 users.jobTitle
+        companyName:
+          type: string
+        country:
+          type: string
+        industry:
+          type: string
+        companySize:
+          type: string
+        website:
+          type: string
+        taxId:
+          type: string
+        annualVolumeEstimate:
+          type: string
+          maxLength: 255
+          description: 年采购量/需求量预估（可选，自由文本）
+        documents:
+          type: array
+          maxItems: 5
+          items:
+            $ref: '#/components/schemas/RegistrationDocumentInput'
+        termsAccepted:
+          type: boolean
+        privacyAccepted:
+          type: boolean
+        exportComplianceAccepted:
+          type: boolean
+        _quick:
+          type: boolean
+          description: 快速结账注册；走轻量注册流程
+      required: [email, password, firstName, lastName]
+      additionalProperties: false
+    AddCartItemRequest:
+      type: object
+      properties:
+        productId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+        featureSelections:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeatureSelectionInput'
+      required: [productId, quantity]
+      additionalProperties: false
+    UpdateCartItemRequest:
+      type: object
+      properties:
+        quantity:
+          type: integer
+          minimum: 1
+      required: [quantity]
+      additionalProperties: false
+    UpdateCartCouponRequest:
+      type: object
+      properties:
+        couponCode:
+          type:
+            - string
+            - 'null'
+          description: 优惠券代码（区分大小写）；传 null 或空字符串移除已应用优惠
+          maxLength: 64
+      additionalProperties: false
+    CreateOrderRequest:
+      type: object
+      properties:
+        shippingAddressId:
+          type: string
+          format: uuid
+        billingAddressId:
+          type: string
+          format: uuid
+        shippingMethod:
+          type: string
+        paymentMethod:
+          type: string
+        customerNote:
+          type: string
+        orderComment:
+          type: string
+        purchaseOrderNumber:
+          type: string
+          description: Optional PO reference
+        taxId:
+          type: string
+          description: Optional tax identifier
+        buyNow:
+          type: object
+          properties:
+            productId:
+              type: string
+              format: uuid
+            quantity:
+              type: integer
+              minimum: 1
+            featureValueIds:
+              type: array
+              items:
+                type: string
+                format: uuid
+          required: [productId, quantity]
+      required: [shippingMethod, paymentMethod]
+      additionalProperties: false
+    BuyNowPreviewRequest:
+      type: object
+      properties:
+        productId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+        featureValueIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+      required: [productId, quantity]
+      additionalProperties: false
+    CreateInquiryRequest:
+      type: object
+      description: |
+        支持三种提交方式：
+        1. 产品 RFQ：`productId` + `rfqPayload.lines`（至少 1 行）
+        2. 通用联系询盘：`rfqPayload.kind=contact`，无 `productId`，含 `procurementDetails`
+        3. 简单询盘（产品页）：`productId` + `message`
+      properties:
+        productId:
+          type: string
+          format: uuid
+          nullable: true
+          description: contact 询盘不传；产品 RFQ / 简单询盘必填
+        fullName:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        company:
+          type: string
+        country:
+          type: string
+        message:
+          type: string
+        rfqPayload:
+          $ref: '#/components/schemas/InquiryRfqPayload'
+      required: [fullName, email]
+      additionalProperties: false
+    InquiryRfqPayload:
+      type: object
+      description: |
+        `kind=contact` 时为无商品通用询盘，需 `procurementDetails`，`lines` 为空数组。
+        产品 RFQ 可省略 `kind` 或设为 `rfq`，`lines` 至少 1 行。
+      properties:
+        kind:
+          type: string
+          enum: [rfq, contact]
+        procurementDetails:
+          type: string
+      additionalProperties: true
+    InquiryQuotedLine:
+      type: object
+      properties:
+        productId:
+          type: string
+          format: uuid
+        spu:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+        quantity:
+          type: integer
+        unitPrice:
+          type: number
+        currency:
+          type: string
+        leadTime:
+          type: string
+        note:
+          type: string
+      required: [productId, spu, name, slug, quantity, unitPrice, currency]
+paths:
+  /api/front/home:
+    get:
+      tags: [Home]
+      summary: 获取首页聚合数据
+      responses:
+        '200':
+          description: 首页数据
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  heroBanners:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  featuredCategories:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+                  hotSale:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProductCard'
+                  newRelease:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProductCard'
+                  featuredIndustries:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  testimonials:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                required: [heroBanners, featuredCategories, hotSale, newRelease, featuredIndustries, testimonials]
+  /api/front/navigation:
+    get:
+      tags: [Navigation]
+      summary: 获取导航和页头公共数据
+      responses:
+        '200':
+          description: 导航数据
+  /api/front/categories:
+    get:
+      tags: [Categories]
+      summary: 获取分类树或分类列表
+      parameters:
+        - $ref: '#/components/parameters/LocaleHeader'
+        - $ref: '#/components/parameters/LocaleQueryParam'
+      responses:
+        '200':
+          description: 分类列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  locale:
+                    type: string
+                  categories:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+                required: [locale, categories]
+  /api/front/categories/{slug}:
+    get:
+      tags: [Categories]
+      summary: 获取单个分类详情
+      parameters:
+        - $ref: '#/components/parameters/CategorySlugParam'
+        - $ref: '#/components/parameters/LocaleHeader'
+        - $ref: '#/components/parameters/LocaleQueryParam'
+      responses:
+        '200':
+          description: 分类详情
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  locale:
+                    type: string
+                  category:
+                    $ref: '#/components/schemas/Category'
+                required: [locale, category]
+        '404':
+          description: 分类不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/front/categories/{slug}/products:
+    get:
+      tags: [Categories]
+      summary: 获取分类商品列表
+      parameters:
+        - $ref: '#/components/parameters/CategorySlugParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+      responses:
+        '200':
+          description: 分类商品列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductListResponse'
+        '404':
+          description: 分类不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/front/search:
+    get:
+      tags: [Search]
+      summary: 搜索商品
+      parameters:
+        - $ref: '#/components/parameters/LocaleHeader'
+        - $ref: '#/components/parameters/LocaleQueryParam'
+        - $ref: '#/components/parameters/SearchKeywordParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+      responses:
+        '200':
+          description: 搜索结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductListResponse'
+        '400':
+          description: 缺少关键词
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/front/brands:
+    get:
+      tags: [Brands]
+      summary: 获取品牌列表
+      parameters:
+        - $ref: '#/components/parameters/LocaleHeader'
+        - $ref: '#/components/parameters/LocaleQueryParam'
+      responses:
+        '200':
+          description: 品牌列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  locale:
+                    type: string
+                  brands:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BrandListItem'
+                required: [locale, brands]
+  /api/front/boards/{boardKey}/faqs:
+    get:
+      tags: [Content]
+      summary: 按看板获取已发布 FAQ 列表
+      parameters:
+        - $ref: '#/components/parameters/BoardKeyParam'
+        - $ref: '#/components/parameters/LocaleHeader'
+        - $ref: '#/components/parameters/LocaleQueryParam'
+      responses:
+        '200':
+          description: FAQ 列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FaqListResponse'
+  /api/front/boards/{boardKey}/blogs:
+    get:
+      tags: [Content]
+      summary: 按看板获取已发布博客列表
+      parameters:
+        - $ref: '#/components/parameters/BoardKeyParam'
+        - $ref: '#/components/parameters/LocaleHeader'
+        - $ref: '#/components/parameters/LocaleQueryParam'
+      responses:
+        '200':
+          description: 博客列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BlogListResponse'
+  /api/front/boards/{boardKey}/content:
+    get:
+      tags: [Content]
+      summary: 按内容看板获取已发布内容列表
+      description: |
+        统一的内容看板列表接口。通过 `module` 区分博客（editorial）与 FAQ（faq）。
+        与 `/boards/{boardKey}/blogs`、`/boards/{boardKey}/faqs` 数据来源一致，返回结构统一为 `ContentListResponse`。
+      parameters:
+        - $ref: '#/components/parameters/BoardKeyParam'
+        - $ref: '#/components/parameters/ContentModuleParam'
+        - $ref: '#/components/parameters/LocaleHeader'
+        - $ref: '#/components/parameters/LocaleQueryParam'
+      responses:
+        '200':
+          description: 看板内容列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentListResponse'
+  /api/front/product-boards/{boardKey}/products:
+    get:
+      tags: [Products]
+      summary: 按产品看板获取商品列表
+      description: |
+        返回指定产品看板下已上架商品，分页与卡片字段与 `GET /api/front/categories/{slug}/products` 一致。
+        内置看板默认排序：`newest` 按上新时间，`featured` / `hot-sale` 按推荐权重。
+      parameters:
+        - $ref: '#/components/parameters/ProductBoardKeyParam'
+        - $ref: '#/components/parameters/LocaleHeader'
+        - $ref: '#/components/parameters/LocaleQueryParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [featured, name-asc, price-asc, price-desc, newest]
+        - name: purchaseMode
+          in: query
+          schema:
+            type: string
+            enum: [buy, inquiry]
+        - name: inStockOnly
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: 产品看板商品列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductBoardProductListResponse'
+        '404':
+          description: 产品看板不存在或已停用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/front/blog/categories:
+    get:
+      tags: [Content]
+      summary: 获取博客内置分类枚举（含 URL slug）
+      description: |
+        返回英文内置分类及其唯一 slug，供前台生成筛选链接，例如 `/blog?category=application-note`。
+      responses:
+        '200':
+          description: 分类枚举列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BlogCategoriesResponse'
+  /api/front/blog/{slug}:
+    get:
+      tags: [Content]
+      summary: 获取博客详情（按 slug）
+      description: |
+        按文章 slug 查询已发布博客详情，与前台路径 `/blog/{slug}` 对应。不使用 content id 查询。
+      parameters:
+        - $ref: '#/components/parameters/ProductSlugParam'
+        - $ref: '#/components/parameters/LocaleHeader'
+        - $ref: '#/components/parameters/LocaleQueryParam'
+      responses:
+        '200':
+          description: 博客详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BlogDetail'
+        '404':
+          description: 博客不存在或未发布
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/front/products:
+    get:
+      tags: [Products]
+      summary: 商品列表（分页）
+      parameters:
+        - $ref: '#/components/parameters/LocaleHeader'
+        - $ref: '#/components/parameters/LocaleQueryParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [featured, newest, price_asc, price_desc]
+            default: featured
+        - name: purchaseMode
+          in: query
+          schema:
+            type: string
+            enum: [buy, inquiry]
+        - name: inStockOnly
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: 商品列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductListResponse'
+  /api/front/products/{slug}:
+    get:
+      tags: [Products]
+      summary: 获取商品详情
+      parameters:
+        - $ref: '#/components/parameters/ProductSlugParam'
+        - $ref: '#/components/parameters/LocaleHeader'
+        - $ref: '#/components/parameters/LocaleQueryParam'
+      responses:
+        '200':
+          description: 商品详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductDetail'
+        '404':
+          description: 商品不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/front/products/{slug}/related:
+    get:
+      tags: [Products]
+      summary: 获取相关推荐商品
+      parameters:
+        - $ref: '#/components/parameters/ProductSlugParam'
+      responses:
+        '200':
+          description: 相关推荐列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProductCard'
+  /api/front/products/{slug}/live:
+    get:
+      tags: [Products]
+      summary: 获取商品实时价格与库存快照（轻量轮询）
+      parameters:
+        - $ref: '#/components/parameters/ProductSlugParam'
+      responses:
+        '200':
+          description: 实时价格与库存
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  price:
+                    type: object
+                    properties:
+                      currency:
+                        type: string
+                      amount:
+                        type: number
+                      formatted:
+                        type: string
+                  stockQuantity:
+                    type: integer
+                  moq:
+                    type: integer
+                  leadTimeMin:
+                    type: integer
+                  leadTimeMax:
+                    type: integer
+                  leadTimeUnit:
+                    type: string
+                  inStock:
+                    type: boolean
+                  purchaseMode:
+                    type: string
+        '404':
+          description: 商品不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/front/cart:
+    get:
+      tags: [Cart]
+      summary: 获取当前购物车
+      parameters:
+        - $ref: '#/components/parameters/LocaleHeader'
+        - $ref: '#/components/parameters/LocaleQueryParam'
+      responses:
+        '200':
+          description: 购物车详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+    post:
+      tags: [Cart]
+      summary: 添加商品到购物车（需为每个可配置特性选定一个值）
+      parameters:
+        - $ref: '#/components/parameters/LocaleHeader'
+        - $ref: '#/components/parameters/LocaleQueryParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddCartItemRequest'
+      responses:
+        '200':
+          description: 更新后的购物车
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '400':
+          description: 请求非法
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags: [Cart]
+      summary: 应用或移除购物车优惠码
+      parameters:
+        - $ref: '#/components/parameters/LocaleHeader'
+        - $ref: '#/components/parameters/LocaleQueryParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCartCouponRequest'
+      responses:
+        '200':
+          description: 更新后的购物车
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '400':
+          description: 请求非法或优惠码不可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/front/cart/items/{itemId}:
+    patch:
+      tags: [Cart]
+      summary: 更新购物车商品数量
+      parameters:
+        - $ref: '#/components/parameters/CartItemIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCartItemRequest'
+      responses:
+        '200':
+          description: 更新后的购物车
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+    delete:
+      tags: [Cart]
+      summary: 删除购物车商品
+      parameters:
+        - $ref: '#/components/parameters/CartItemIdParam'
+      responses:
+        '204':
+          description: 删除成功
+  /api/front/checkout/buy-now-preview:
+    post:
+      tags: [Checkout]
+      summary: 生成 Buy Now 结账预览（不写持久购物车）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BuyNowPreviewRequest'
+      responses:
+        '200':
+          description: 预览购物车结构
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartDetail'
+        '400':
+          description: 参数错误或商品不可购买
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/front/checkout/orders:
+    post:
+      tags: [Checkout]
+      summary: 从当前购物车创建订单
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderDetail'
+        '401':
+          description: 未登录
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/front/checkout/payment-intent:
+    post:
+      tags: [Checkout]
+      summary: 为订单创建 Airwallex PaymentIntent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [orderNumber]
+              properties:
+                orderNumber:
+                  type: string
+                customerEmail:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: PaymentIntent 创建成功
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [intentId, clientSecret, currency, env]
+                properties:
+                  intentId:
+                    type: string
+                  clientSecret:
+                    type: string
+                  currency:
+                    type: string
+                  env:
+                    type: string
+                    enum: [demo, prod]
+        '503':
+          description: Airwallex 未配置
+  /api/front/checkout/payment/confirm:
+    post:
+      tags: [Checkout]
+      summary: 服务端确认 Airwallex 支付结果并更新订单
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [orderNumber]
+              properties:
+                orderNumber:
+                  type: string
+      responses:
+        '200':
+          description: 支付已确认
+        '409':
+          description: 支付尚未完成
+  /api/front/checkout/payment/status:
+    get:
+      tags: [Checkout]
+      summary: 查询订单支付状态（可轮询）
+      parameters:
+        - name: orderNumber
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 支付状态
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  paymentStatus:
+                    type: string
+                  intentStatus:
+                    type: string
+                    nullable: true
+                  orderStatus:
+                    type: string
+  /api/front/orders:
+    get:
+      tags: [Orders]
+      summary: 分页获取当前用户订单列表（支持筛选）
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: 订单号模糊搜索
+        - name: paymentStatus
+          in: query
+          schema:
+            type: string
+            enum: [all, unpaid, paid]
+        - name: orderStatus
+          in: query
+          schema:
+            type: string
+            enum: [all, pending_processing, partially_shipped, shipped, completed, cancelled]
+      responses:
+        '200':
+          description: 分页订单列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/OrderSummary'
+                  page:
+                    type: integer
+                  pageSize:
+                    type: integer
+                  total:
+                    type: integer
+                  totalPages:
+                    type: integer
+  /api/front/orders/{orderNumber}/payment-gateway-status:
+    get:
+      tags: [Orders]
+      summary: 查询订单在支付网关（Airwallex）的支付状态，并在网关已成功时同步站内订单
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrderNumberParam'
+        - name: guestToken
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 访客订单访问令牌（也可通过 x-guest-order-token 请求头传递）
+      responses:
+        '200':
+          description: 支付网关状态
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orderNumber:
+                    type: string
+                  sitePaymentStatus:
+                    type: string
+                  orderStatus:
+                    type: string
+                  gatewayConfigured:
+                    type: boolean
+                  gatewayIntentId:
+                    type: string
+                    nullable: true
+                  gatewayStatus:
+                    type: string
+                    nullable: true
+                  isPaidAtGateway:
+                    type: boolean
+                  synced:
+                    type: boolean
+                    description: 本次请求是否将站内订单从 unpaid 同步为 paid
+                  redirectPath:
+                    type: string
+        '401':
+          description: 未授权
+        '403':
+          description: 无权访问该订单
+        '404':
+          description: 订单不存在
+        '502':
+          description: 无法查询支付网关
+        '503':
+          description: Airwallex 未配置
+  /api/front/orders/guest/{orderNumber}:
+    get:
+      tags: [Orders]
+      summary: 访客订单详情（凭 guestToken）
+      parameters:
+        - $ref: '#/components/parameters/OrderNumberParam'
+        - $ref: '#/components/parameters/GuestOrderTokenQueryParam'
+        - $ref: '#/components/parameters/GuestOrderTokenHeader'
+      responses:
+        '200':
+          description: 访客订单详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderDetail'
+        '404':
+          description: 订单不存在或令牌无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/front/orders/{orderNumber}:
+    get:
+      tags: [Orders]
+      summary: 获取订单详情
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrderNumberParam'
+      responses:
+        '200':
+          description: 订单详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderDetail'
+        '404':
+          description: 订单不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/front/orders/{orderNumber}/cancel:
+    post:
+      tags: [Orders]
+      summary: 取消未支付订单
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrderNumberParam'
+      responses:
+        '200':
+          description: 订单已取消
+        '409':
+          description: 订单当前不可取消
+  /api/front/orders/{orderNumber}/refund-requests:
+    post:
+      tags: [Orders]
+      summary: 提交退款申请
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrderNumberParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refundType, returnType, reason]
+              properties:
+                refundType:
+                  type: string
+                  enum: [full_refund, partial_refund]
+                returnType:
+                  type: string
+                  enum: [return_goods, no_return]
+                reason:
+                  type: string
+                requestedAmount:
+                  type: string
+      responses:
+        '201':
+          description: 退款申请已提交
+        '409':
+          description: 当前不可申请退款
+  /api/front/geo/country-continents:
+    get:
+      tags: [Geo]
+      summary: 国家 ISO 到大洲映射
+      description: 从 geo 数据表生成，供前台运费按地区费率匹配使用。
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  countryContinentByIso:
+                    type: object
+                    additionalProperties:
+                      type: string
+                required: [countryContinentByIso]
+  /api/front/geo/countries:
+    get:
+      tags: [Geo]
+      summary: 国家列表
+      parameters:
+        - name: continent
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GeoCountry'
+                required: [items]
+  /api/front/geo/divisions:
+    get:
+      tags: [Geo]
+      summary: 行政区划级联
+      parameters:
+        - name: country
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: parentId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GeoDivision'
+                required: [items]
+  /api/front/addresses:
+    get:
+      tags: [Addresses]
+      summary: 获取当前用户地址列表
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AddressTypeQueryParam'
+      responses:
+        '200':
+          description: 地址列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Address'
+    post:
+      tags: [Addresses]
+      summary: 新增地址
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/Address'
+                - type: object
+                  required: [firstName, lastName, countryCode, city, addressLine1, postalCode]
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Address'
+  /api/front/addresses/{id}:
+    patch:
+      tags: [Addresses]
+      summary: 更新地址
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Address'
+      responses:
+        '200':
+          description: 更新成功
+    delete:
+      tags: [Addresses]
+      summary: 删除地址
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: 删除成功
+  /api/front/upload/registration:
+    post:
+      tags: [Auth]
+      summary: 注册证件上传（无需登录）
+      description: |
+        B2B 注册 Step 3 上传资质文件。支持 PDF、Office 文档及常见图片（jpeg/png/gif/webp），单文件最大 10MB。
+        返回的 url/key/filename/contentType 用于 POST /api/front/auth/register 的 documents 字段。
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required: [file]
+      responses:
+        '200':
+          description: 上传成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationUploadResponse'
+        '400':
+          description: 文件类型或大小不符合要求
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/front/auth/register:
+    post:
+      tags: [Auth]
+      summary: 用户注册（轻量或 B2B 完整注册）
+      description: B2B 注册默认创建 active 账户；不再产生审核询价单。redirectPath 成功时为 /account（快速结账为 /checkout）。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRegisterRequest'
+      responses:
+        '201':
+          description: 注册成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokenResponse'
+  /api/front/auth/login:
+    post:
+      tags: [Auth]
+      summary: 用户登录
+      description: 成功返回 JWT `token` 与精简 `user` 对象；完整资料请再调 GET /api/front/profile。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthLoginRequest'
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokenResponse'
+        '401':
+          description: 登录失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/front/auth/change-password:
+    post:
+      tags: [Auth]
+      summary: 登录后修改密码
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '200':
+          description: 修改成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required: [ok]
+        '400':
+          description: 当前密码错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/front/auth/password-reset:
+    get:
+      tags: [Auth]
+      summary: 校验密码重置 token
+      description: |
+        检查 `token` 是否存在于 `verification_tokens` 且未过期（有效期 1 小时）。
+        用于前台打开重置链接时预校验。
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: token 有效
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                    enum: [true]
+                  email:
+                    type: string
+                    format: email
+                    description: 待重置密码的账户邮箱（来自 verification_tokens.identifier）
+                required: [valid, email]
+        '400':
+          description: token 缺失、无效或已过期
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                    enum: [false]
+                  code:
+                    type: string
+                  message:
+                    type: string
+    post:
+      tags: [Auth]
+      summary: 请求或完成密码重置
+      description: |
+        `action=request` 时向已注册邮箱发送重置邮件（链接 1 小时内有效、单次使用；开发环境可能返回 `resetUrl`）；
+        `action=reset` 时使用 token 设置新密码。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  properties:
+                    action:
+                      type: string
+                      enum: [request]
+                    email:
+                      type: string
+                      format: email
+                  required: [action, email]
+                - type: object
+                  properties:
+                    action:
+                      type: string
+                      enum: [reset]
+                    token:
+                      type: string
+                    password:
+                      type: string
+                      minLength: 8
+                  required: [action, token, password]
+      responses:
+        '200':
+          description: 请求已受理或重置完成
+        '400':
+          description: 校验失败或 token 无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/front/auth/verify-email:
+    get:
+      tags: [Auth]
+      summary: 校验邮箱验证 token
+      description: |
+        检查 `token` 是否存在于 `verification_tokens`（identifier=`email-verify:{userId}`）且未过期（有效期 24 小时）。
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: token 有效
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                    enum: [true]
+                  email:
+                    type: string
+                    format: email
+                required: [valid, email]
+        '400':
+          description: token 缺失、无效或已过期
+    post:
+      tags: [Auth]
+      summary: 请求或完成邮箱验证
+      description: |
+        `action=request` 需 Bearer 登录态，向当前用户邮箱发送验证链接（24 小时内有效）；
+        `action=confirm` 使用 token 完成验证并写入 `users.emailVerifiedAt`。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  properties:
+                    action:
+                      type: string
+                      enum: [request]
+                  required: [action]
+                - type: object
+                  properties:
+                    action:
+                      type: string
+                      enum: [confirm]
+                    token:
+                      type: string
+                  required: [action, token]
+      responses:
+        '200':
+          description: 验证邮件已发送或邮箱验证完成
+        '400':
+          description: 已验证、token 无效等
+        '401':
+          description: request 操作未登录
+  /api/front/auth/logout:
+    post:
+      tags: [Auth]
+      summary: 用户退出登录
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 退出成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required: [ok]
+  /api/front/auth/oauth/{path}:
+    get:
+      tags: [Auth]
+      summary: NextAuth OAuth 路由（signin/callback/session 等）
+      description: |
+        NextAuth `basePath` 为 `/api/front/auth/oauth`。
+        常见路径包括 `signin/google`、`callback/google`、`session` 等，由 `{path}` 捕获。
+      parameters:
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
+          description: NextAuth 子路径，如 signin/google
+      responses:
+        '302':
+          description: OAuth 重定向
+        '200':
+          description: OAuth 会话或元数据
+    post:
+      tags: [Auth]
+      summary: NextAuth OAuth POST 处理
+      parameters:
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 处理成功
+        '302':
+          description: 重定向
+  /api/front/profile:
+    get:
+      tags: [Profile]
+      summary: 获取当前用户基本资料
+      description: 需 Bearer 登录态。返回姓名、邮箱、职位（jobTitle）、系统 role 等；公司名与资质文件见 GET /api/front/profile/company。
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 用户资料
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          description: 未登录
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 用户不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags: [Profile]
+      summary: 更新当前用户基本资料
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserProfileUpdate'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '400':
+          description: 参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: 未登录
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 用户不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/front/profile/company:
+    get:
+      tags: [Profile]
+      summary: 获取当前用户公司资料
+      description: 需 Bearer 登录态。含公司名、地址、税号及 B2B 注册上传的 verificationDocuments（只读）。
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 公司资料
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyProfile'
+        '401':
+          description: 未登录
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 用户不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags: [Profile]
+      summary: 更新当前用户公司资料
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompanyProfileUpdate'
+      responses:
+        '200':
+          description: 更新成功（响应含完整 CompanyProfile，含 verificationDocuments）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyProfile'
+        '400':
+          description: 参数校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: 未登录
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 用户不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/front/account/summary:
+    get:
+      tags: [Profile]
+      summary: 获取会员中心统计摘要
+      description: 需 Bearer 登录态。返回当前用户的订单、地址、询盘、收藏数量，用于 account 首页仪表盘。
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 统计摘要
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountSummary'
+        '401':
+          description: 未登录
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/front/locale-path:
+    get:
+      tags: [Languages]
+      summary: 解析目标语言下的前台路径
+      description: |
+        将含多语言 slug 的内部路径（不含 locale 前缀）解析为目标 locale 的 canonical path。
+        支持 `/products/:slug`、`/c/:slug`、`/blog/:slug`；其他路径原样返回（保留 query/hash）。
+        语言切换器在切换前调用，将德语 slug 映射为英文 slug 等。
+      parameters:
+        - in: query
+          name: pathname
+          required: true
+          schema:
+            type: string
+          description: 已去除 locale 前缀的路径，如 `/products/de-slug` 或 `/c/nema-17-schrittmotor`
+          example: /products/17-einwellen-bipolarer-schrittmotor
+        - in: query
+          name: to
+          required: true
+          schema:
+            type: string
+          description: 目标 locale（en / de / es）
+          example: en
+      responses:
+        '200':
+          description: 解析后的路径（不含 locale 前缀）
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [to, path]
+                properties:
+                  to:
+                    type: string
+                  path:
+                    type: string
+              example:
+                to: en
+                path: /products/17-single-shaft-bipolar-stepper-motor
+        '400':
+          description: 缺少 pathname
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/front/languages:
+    get:
+      tags: [Languages]
+      summary: 获取前台可用语言列表（含绑定币种）
+      description: |
+        返回所有 `status=active` 的站点语言，供前台语言切换器使用。
+        每项包含 `currencyCode`，表示该语言下的默认展示币种；调用商品、购物车等接口时通过 `x-vex-locale` 传入 `code`，服务端按语言-币种映射返回对应价格。
+      responses:
+        '200':
+          description: 语言列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorefrontLanguagesResponse'
+              example:
+                languages:
+                  - code: en
+                    name: English
+                    nativeName: English
+                    region: Global
+                    direction: ltr
+                    countryCodes: [US, GB]
+                    currencyCode: USD
+                    isDefault: true
+                    sortOrder: 0
+                  - code: de
+                    name: German
+                    nativeName: Deutsch
+                    region: Europe
+                    direction: ltr
+                    countryCodes: [DE, AT, CH]
+                    currencyCode: EUR
+                    isDefault: false
+                    sortOrder: 10
+  /api/front/ui-strings:
+    get:
+      tags: [Languages]
+      summary: 获取前台 UI 静态文案（按 locale / keys / groups）
+      description: |
+        返回站点壳层 UI 文案。`locale=en` 时全部来自 `ui_strings.default_text`（英文范本）；
+        其他语言优先返回 `ui_string_translations`，缺失时 fallback 英文范本。
+        物流方式名称等实体文案不在此接口范围内。
+      parameters:
+        - name: locale
+          in: query
+          required: true
+          schema:
+            type: string
+            example: de
+        - name: keys
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 逗号分隔的 key 列表
+        - name: groups
+          in: query
+          required: false
+          schema:
+            type: string
+          description: 逗号分隔的分组名，如 navigation,header,footer
+      responses:
+        '200':
+          description: UI 文案映射
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [locale, strings]
+                properties:
+                  locale:
+                    type: string
+                  strings:
+                    type: object
+                    additionalProperties:
+                      type: string
+              example:
+                locale: de
+                strings:
+                  navigation.home: Startseite
+                  navigation.products: Produkte
+  /api/front/inquiries:
+    post:
+      tags: [Inquiries]
+      summary: 提交询价
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInquiryRequest'
+      responses:
+        '201':
+          description: 询价提交成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Inquiry'
+    get:
+      tags: [Inquiries]
+      summary: 获取当前用户询价记录
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 询价列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccountInquiryListItem'
+  /api/front/inquiries/{id}:
+    get:
+      tags: [Inquiries]
+      summary: 获取询价详情（支持 uuid 或 QT-* quoteNumber）
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/InquiryIdParam'
+      responses:
+        '200':
+          description: 询价详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountInquiryDetail'
+  /api/front/inquiries/{id}/messages:
+    post:
+      tags: [Inquiries]
+      summary: 客户发送询盘追问
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/InquiryIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                body:
+                  type: string
+              required: [body]
+      responses:
+        '200':
+          description: 更新后的询盘详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountInquiryDetail'
+  /api/front/inquiries/{id}/messages/stream:
+    get:
+      tags: [Inquiries]
+      summary: 询盘消息 SSE 流（实时推送新消息）
+      description: |
+        Server-Sent Events 端点。连接后发送 `ready` 事件，随后在有新消息时推送 `message` 事件。
+        可选查询参数 `after` 为上一消息 id，用于断点续传。
+        浏览器 EventSource 无法携带 Authorization 头时，可传 `access_token` 查询参数。
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/InquiryIdParam'
+        - in: query
+          name: after
+          schema:
+            type: string
+            format: uuid
+          description: 仅推送该消息之后的新消息
+        - in: query
+          name: access_token
+          schema:
+            type: string
+          description: 前台 JWT（EventSource 备用鉴权）
+      responses:
+        '200':
+          description: text/event-stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+  /api/front/upload/inquiry:
+    post:
+      tags: [Inquiries]
+      summary: 上传询盘附件
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: 上传成功
+  /api/front/checkout/quote-preview:
+    get:
+      tags: [Checkout]
+      summary: 议价报价结账预览
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: quoteNumber
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 合成购物车快照
+  /api/front/wishlist:
+    get:
+      tags: [Wishlist]
+      summary: 获取收藏列表（favorites）
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/LocaleHeader'
+        - $ref: '#/components/parameters/LocaleQueryParam'
+      responses:
+        '200':
+          description: 收藏列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WishlistResponse'
+    post:
+      tags: [Wishlist]
+      summary: 添加商品到收藏
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/LocaleHeader'
+        - $ref: '#/components/parameters/LocaleQueryParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                productId:
+                  type: string
+                  format: uuid
+              required: [productId]
+      responses:
+        '201':
+          description: 添加成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WishlistResponse'
+  /api/front/wishlist/{productId}:
+    delete:
+      tags: [Wishlist]
+      summary: 从收藏中移除商品
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProductIdParam'
+      responses:
+        '204':
+          description: 删除成功
+  /api/front/compare/items:
+    get:
+      tags: [Compare]
+      summary: 获取登录用户对比列表
+      description: |
+        登录用户的服务端对比列表（最多 4 个）。匿名用户请在浏览器 localStorage 维护列表；
+        规格矩阵请调用 `POST /api/front/compare`。
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/LocaleHeader'
+        - $ref: '#/components/parameters/LocaleQueryParam'
+      responses:
+        '200':
+          description: 对比列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompareItemsResponse'
+        '401':
+          description: 未登录
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags: [Compare]
+      summary: 添加商品到对比列表
+      description: 商品已存在时仍返回 201 与当前完整列表（幂等）。列表已满时返回 409。
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/LocaleHeader'
+        - $ref: '#/components/parameters/LocaleQueryParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                productId:
+                  type: string
+                  format: uuid
+              required: [productId]
+              additionalProperties: false
+      responses:
+        '201':
+          description: 添加成功（或商品已在列表中）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompareItemsResponse'
+        '400':
+          description: 请求体校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: 未登录
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 商品不存在或已下架
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 对比列表已达上限（4 个）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/front/compare/items/{productId}:
+    delete:
+      tags: [Compare]
+      summary: 从对比列表移除商品
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProductIdParam'
+      responses:
+        '204':
+          description: 删除成功
+        '401':
+          description: 未登录
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 列表中无此商品
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/front/compare:
+    post:
+      tags: [Compare]
+      summary: 生成商品对比规格矩阵
+      description: |
+        传入 2–4 个商品 ID，返回价格、库存、品牌、分类及 product features 组成的对比矩阵。
+        无需登录，也不要求商品已加入 compare/items 列表。
+      parameters:
+        - $ref: '#/components/parameters/LocaleHeader'
+        - $ref: '#/components/parameters/LocaleQueryParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                productIds:
+                  type: array
+                  minItems: 2
+                  maxItems: 4
+                  items:
+                    type: string
+                    format: uuid
+              required: [productIds]
+              additionalProperties: false
+      responses:
+        '200':
+          description: 对比结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompareResult'
+        '400':
+          description: 请求体校验失败，或商品数量不在 2–4 之间（INVALID_PRODUCT_COUNT）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 一个或多个商品不存在或已下架（NOT_FOUND）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/front/site-settings:
+    get:
+      tags: [Commerce]
+      summary: 获取站点全局默认配置
+      description: 返回站点级默认币种与国家，用于访客地址默认值与无地址时的运费估算。支付沙盒模式由后台「全局配置」管理，不通过此接口暴露。
+      responses:
+        '200':
+          description: 全局配置（前台可见字段）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SiteSettings'
+  /api/front/commerce:
+    get:
+      tags: [Commerce]
+      summary: 获取结账与商城配置
+      description: 返回默认物流、批量定价规则、物流方式、国家费率及汇率快照。默认币种/国家请使用 `/api/front/site-settings`；`currencyCode`/`defaultCountryCode` 为兼容字段。
+      parameters:
+        - $ref: '#/components/parameters/LocaleHeader'
+      responses:
+        '200':
+          description: 商城配置
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommerceConfig'
+  /api/front/knowledge:
+    get:
+      tags: [Content]
+      summary: 获取知识库目录（术语表、FAQ 等）
+      responses:
+        '200':
+          description: 知识库目录
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+  /api/front/press:
+    get:
+      tags: [Content]
+      summary: 获取新闻稿与媒体资料目录
+      responses:
+        '200':
+          description: 新闻稿目录
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+  /api/front/cms/legacy/{legacySlug}:
+    get:
+      tags: [Content]
+      summary: 按 legacy slug 获取 CMS 页面
+      parameters:
+        - $ref: '#/components/parameters/LegacySlugParam'
+        - $ref: '#/components/parameters/LocaleHeader'
+      responses:
+        '200':
+          description: CMS 页面内容
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '404':
+          description: 页面不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/front/meta/industries:
+    get:
+      tags: [Meta]
+      summary: 客户行业选项（注册/公司资料）
+      parameters:
+        - name: locale
+          in: query
+          schema:
+            type: string
+            enum: [en, zh]
+            default: en
+      responses:
+        '200':
+          description: 行业选项列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                required: [items]
+  /api/front/newsletter:
+    post:
+      tags: [Newsletter]
+      summary: 订阅邮件列表
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+              required: [email]
+      responses:
+        '201':
+          description: 订阅成功
+        '400':
+          description: 校验失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/front/resource-access:
+    post:
+      tags: [Content]
+      summary: 记录资源下载线索并解锁门控资源
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                resourceSlug:
+                  type: string
+                sourcePath:
+                  type: string
+                company:
+                  type: string
+                utmSource:
+                  type: string
+                utmMedium:
+                  type: string
+                utmCampaign:
+                  type: string
+              required: [email, resourceSlug]
+      responses:
+        '201':
+          description: 资源已解锁
+        '200':
+          description: 资源无需门控
+        '404':
+          description: 资源不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/front/sitemap:
+    get:
+      tags: [Sitemap]
+      summary: 获取站点地图数据源（分类、商品、博客）
+      parameters:
+        - $ref: '#/components/parameters/LocaleHeader'
+        - $ref: '#/components/parameters/LocaleQueryParam'
+      responses:
+        '200':
+          description: 站点地图数据
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  categories:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  products:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  blogPosts:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  supportArticles:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
