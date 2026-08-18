@@ -17,6 +17,7 @@
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx src/server/db/seed.ts",
     "db:seed:brand-narratives": "tsx scripts/seed-brand-narratives.ts",
+    "db:migrate-oss-keys": "tsx scripts/migrate-images-to-oss-keys.ts",
     "db:test:brand-narratives": "tsx --tsconfig tsconfig.test.json scripts/test-brand-narratives.ts"
   },
   "dependencies": {
@@ -25,8 +26,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@tinymce/tinymce-react": "^6.3.0",
-    "@types/ali-oss": "^6.23.3",
-    "ali-oss": "^6.23.0",
+    "@aws-sdk/client-s3": "^3.864.0",
     "antd": "^6.4.3",
     "dotenv": "^16.6.1",
     "drizzle-orm": "^0.44.5",

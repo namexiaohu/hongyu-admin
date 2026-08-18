@@ -10,6 +10,7 @@ import { AdminListPagination } from '@/components/admin/admin-list-pagination';
 import { AdminEntityRowActions } from '@/components/admin/admin-row-actions';
 import { adminTableFixedActionsColumn, adminTableNowrapHeader, adminTableScroll } from '@/components/admin/admin-table';
 import { brandStatusColors, brandStatusLabels, formatAdminDate } from '@/lib/admin-display';
+import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
 import {
   type AdminListPageSize,
   type AdminListQuery,
@@ -227,7 +228,7 @@ export function BrandListClient({
       onHeaderCell: adminTableNowrapHeader,
       render: (value: string | null) => value ? (
         <Image
-          src={value}
+          src={resolveOssAssetUrl(value)}
           alt="品牌 Logo"
           width={32}
           height={32}

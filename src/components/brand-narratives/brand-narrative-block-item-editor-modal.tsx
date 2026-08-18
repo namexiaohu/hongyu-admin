@@ -6,6 +6,7 @@ import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'reac
 import { ContentTranslateButton } from '@/components/admin/content-translate-button';
 import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
 import { BrandNarrativeSummaryIconPicker } from '@/components/brand-narratives/brand-narrative-summary-icons';
+import { CoverImageField } from '@/components/editorial/cover-image-field';
 import {
   createEmptyBlockLocaleCopy,
   defaultBrandNarrativeSummaryIcon,
@@ -16,7 +17,6 @@ import {
   type BrandNarrativeBlockLocaleCopy,
 } from '@/lib/brand-narrative-blocks';
 import { applyNonemptyTranslatedFields } from '@/lib/content-translate-config';
-import { resolveStorefrontAssetUrl } from '@/lib/storefront-asset-url';
 import type { AdminSiteLanguageRow } from '@/server/admin/languages';
 
 type ItemEditorMode = 'summary' | 'timeline' | 'course' | 'stub';
@@ -195,23 +195,11 @@ export function BrandNarrativeBlockItemEditorModal({
             />
           ) : null}
           {media === 'cover' && item ? (
-            <div>
-              <div style={{ marginBottom: 8 }}>封面图</div>
-              <Input
-                placeholder="图片 URL，如 /images/patent-microscope.jpg"
-                value={item.coverImage ?? ''}
-                onChange={(event) => emit(mergeCurrentLocale({ ...item, coverImage: event.target.value }))}
-              />
-              {item.coverImage?.trim() ? (
-                <div style={{ marginTop: 12, width: 160, height: 90, borderRadius: 8, overflow: 'hidden', background: '#f4f7fb' }}>
-                  <img
-                    src={resolveStorefrontAssetUrl(item.coverImage)}
-                    alt=""
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                  />
-                </div>
-              ) : null}
-            </div>
+            <CoverImageField
+              folder="brand-narratives/covers"
+              value={item.coverImage ?? ''}
+              onChange={(next) => emit(mergeCurrentLocale({ ...item, coverImage: next ?? '' }))}
+            />
           ) : null}
         </div>
 

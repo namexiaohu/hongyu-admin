@@ -8,6 +8,7 @@ import { BrandPickerModal } from '@/components/brands/brand-picker-modal';
 import {
   type BrandPickerItem,
 } from '@/lib/brand-picker';
+import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
 
 type BrandPickerFieldBaseProps = {
   addButtonLabel?: string;
@@ -121,7 +122,7 @@ export function BrandPickerField(props: BrandPickerFieldProps) {
             <div key={item.id} className="entity-picker-selected__item">
               <div className="entity-picker-selected__content">
                 {item.logoUrl ? (
-                  <Avatar shape="square" size={36} src={item.logoUrl} className="entity-picker-selected__thumb" />
+                  <Avatar shape="square" size={36} src={resolveOssAssetUrl(item.logoUrl) || undefined} className="entity-picker-selected__thumb" />
                 ) : null}
                 <div className="entity-picker-selected__body">
                   <div className="entity-picker-selected__name">{item.name}</div>

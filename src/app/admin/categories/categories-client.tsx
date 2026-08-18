@@ -12,6 +12,7 @@ import { AdminEntityRowActions } from '@/components/admin/admin-row-actions';
 import { adminTableFixedActionsColumn, adminTableNowrapHeader, adminTableScroll } from '@/components/admin/admin-table';
 import { CategoryEditorModal } from '@/components/categories/category-editor-modal';
 import { categoryStatusColors, categoryStatusLabels, formatAdminDate } from '@/lib/admin-display';
+import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
 import {
   type AdminListPageSize,
   type AdminListQuery,
@@ -365,7 +366,7 @@ export function CategoriesClient({
       onHeaderCell: adminTableNowrapHeader,
       render: (value: string | null) => value ? (
         <Image
-          src={value}
+          src={resolveOssAssetUrl(value)}
           alt="分类 Logo"
           width={32}
           height={32}

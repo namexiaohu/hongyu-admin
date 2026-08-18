@@ -776,7 +776,6 @@ export function ProductEditorModal({
                             >
                               <CoverImageField folder="products/covers" />
                             </Form.Item>
-                            <Form.Item label="封面图 Alt" name="coverAlt"><Input /></Form.Item>
                             <Form.Item label="轮播图" name="gallery"><ProductGalleryField /></Form.Item>
                           </Space>
                         ),

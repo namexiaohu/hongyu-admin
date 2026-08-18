@@ -1,15 +1,16 @@
 /**
- * Aliyun OSS file upload service.
- * Gracefully degrades when credentials are not configured.
- * 
- * SERVER-ONLY MODULE: This file uses Node.js-specific packages (ali-oss, proxy-agent)
- * and must never be imported into client-side components.
+ * Cloudflare R2 file upload service (S3-compatible).
+ *
+ * SERVER-ONLY MODULE: must never be imported into client-side components.
  */
 
 'use server';
 
+import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
+
+import { getPublicOssDomain } from '@/lib/oss-asset-url';
 
 type UploadResult =
   | { ok: true; url: string; key: string }
@@ -22,97 +23,93 @@ type UploadInput = {
   folder?: string;
 };
 
-function getOssConfig() {
-  const accessKeyId = process.env.ALIYUN_OSS_ACCESS_KEY_ID;
-  const accessKeySecret = process.env.ALIYUN_OSS_ACCESS_KEY_SECRET;
-  const bucket = process.env.ALIYUN_OSS_BUCKET;
-  const endpoint = process.env.ALIYUN_OSS_ENDPOINT;
-  const region = process.env.ALIYUN_OSS_REGION;
-  const domain = process.env.ALIYUN_OSS_DOMAIN;
+function getR2Config() {
+  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+  const accessKeySecret = process.env.R2_ACCESS_KEY_SECRET;
+  const bucket = process.env.R2_BUCKET;
+  const endpoint = process.env.R2_ENDPOINT;
+  const region = process.env.R2_REGION || 'auto';
+  const domain = getPublicOssDomain();
 
   if (!accessKeyId || !accessKeySecret || !bucket || !endpoint) {
     return null;
   }
 
-  return { accessKeyId, accessKeySecret, bucket, endpoint, region, domain: domain?.replace(/\/$/, '') ?? '' };
+  return { accessKeyId, accessKeySecret, bucket, endpoint, region, domain };
 }
 
-async function createOssClient(config: NonNullable<ReturnType<typeof getOssConfig>>) {
-  const OSS = (await import('ali-oss')).default;
-  return new OSS({
-    region: config.region ?? config.endpoint.replace('https://', '').replace('http://', ''),
-    accessKeyId: config.accessKeyId,
-    accessKeySecret: config.accessKeySecret,
-    bucket: config.bucket,
-    secure: config.endpoint.startsWith('https'),
+function createR2Client(config: NonNullable<ReturnType<typeof getR2Config>>) {
+  return new S3Client({
+    region: config.region,
     endpoint: config.endpoint,
+    credentials: {
+      accessKeyId: config.accessKeyId,
+      secretAccessKey: config.accessKeySecret,
+    },
+    forcePathStyle: true,
+    requestChecksumCalculation: 'WHEN_REQUIRED',
+    responseChecksumValidation: 'WHEN_REQUIRED',
   });
 }
 
-/**
- * Upload a file buffer to Aliyun OSS.
- */
-export async function uploadToOss(input: UploadInput): Promise<UploadResult> {
-  const config = getOssConfig();
-
+export async function putStorageObject(
+  key: string,
+  buffer: Buffer,
+  contentType: string,
+): Promise<UploadResult> {
+  const config = getR2Config();
   if (!config) {
-    return { ok: false, error: 'Aliyun OSS not configured' };
+    return { ok: false, error: 'Cloudflare R2 not configured' };
   }
 
   try {
-    const client = await createOssClient(config);
-    const ext = path.extname(input.filename) || '.jpg';
-    const folder = input.folder ?? 'uploads';
-    const key = `${folder}/${randomUUID()}${ext}`;
+    const client = createR2Client(config);
+    await client.send(new PutObjectCommand({
+      Bucket: config.bucket,
+      Key: key,
+      Body: buffer,
+      ContentType: contentType,
+      CacheControl: 'public, max-age=31536000, immutable',
+    }));
 
-    const result = await client.put(key, input.buffer, {
-      mime: input.contentType ?? getMimeType(ext),
-      headers: {
-        'Cache-Control': 'public, max-age=31536000, immutable',
-      },
-    });
-
-    const url = config.domain ? `${config.domain}/${key}` : result.url;
-
+    const url = config.domain ? `${config.domain}/${key}` : key;
     return { ok: true, url, key };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error('[oss] Upload failed:', message);
+    console.error('[r2] Upload failed:', message);
     return { ok: false, error: message };
   }
 }
 
-/**
- * Delete a file from Aliyun OSS by key.
- */
+export async function uploadToOss(input: UploadInput): Promise<UploadResult> {
+  const ext = path.extname(input.filename) || '.jpg';
+  const folder = input.folder ?? 'uploads';
+  const key = `${folder}/${randomUUID()}${ext}`;
+  return putStorageObject(key, input.buffer, input.contentType ?? getMimeType(ext));
+}
+
 export async function deleteFromOss(key: string): Promise<{ ok: boolean; error?: string }> {
-  const config = getOssConfig();
-  if (!config) return { ok: false, error: 'Aliyun OSS not configured' };
+  const config = getR2Config();
+  if (!config) return { ok: false, error: 'Cloudflare R2 not configured' };
 
   try {
-    const client = await createOssClient(config);
-    await client.delete(key);
+    const client = createR2Client(config);
+    await client.send(new DeleteObjectCommand({
+      Bucket: config.bucket,
+      Key: key,
+    }));
     return { ok: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error('[oss] Delete failed:', message);
+    console.error('[r2] Delete failed:', message);
     return { ok: false, error: message };
   }
 }
 
-/**
- * Generate a signed URL for temporary private access (e.g. admin preview).
- */
-export async function getSignedUrl(key: string, expiresSeconds = 3600): Promise<string | null> {
-  const config = getOssConfig();
-  if (!config) return null;
-
-  try {
-    const client = await createOssClient(config);
-    return client.signatureUrl(key, { expires: expiresSeconds });
-  } catch {
-    return null;
-  }
+export async function getSignedUrl(key: string, _expiresSeconds = 3600): Promise<string | null> {
+  const domain = getPublicOssDomain();
+  if (!domain || !key.trim()) return null;
+  return `${domain}/${key.replace(/^\//, '')}`;
 }
 
 function getMimeType(ext: string): string {

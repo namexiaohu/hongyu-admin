@@ -1,5 +1,6 @@
 import { and, asc, count, desc, eq, exists, ilike, inArray, or, sql as drizzleSql } from 'drizzle-orm';
 
+import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
 import { db } from '@/server/db';
 import {
   attachments,
@@ -208,7 +209,7 @@ function toImage(row: {
 }): StorefrontImage {
   return {
     id: row.id,
-    url: row.url,
+    url: resolveOssAssetUrl(row.url),
     alt: row.alt,
     width: row.width,
     height: row.height,
@@ -484,7 +485,7 @@ export async function getCategories(localeInput?: string | null): Promise<Storef
         parentId: item.parentId,
         productCount: directCount,
         rollupProductCount,
-        image: item.imageUrl ? { id: `${item.id}-img`, url: item.imageUrl, alt: item.name ?? '' } : null,
+        image: item.imageUrl ? { id: `${item.id}-img`, url: resolveOssAssetUrl(item.imageUrl), alt: item.name ?? '' } : null,
         isFeatured: item.isFeatured,
         featuredOrder: item.featuredOrder,
       };
@@ -871,7 +872,7 @@ export async function getProductBySlug(slug: string, localeInput?: string | null
         slug: item.slug ?? '',
         description: item.description,
         parentId: item.parentId,
-        image: item.imageUrl ? { id: `${item.id}-img`, url: item.imageUrl, alt: item.name ?? '' } : null,
+        image: item.imageUrl ? { id: `${item.id}-img`, url: resolveOssAssetUrl(item.imageUrl), alt: item.name ?? '' } : null,
       })),
       attributes: variantRows.flatMap((row) => row.attributes).slice(0, 8),
       attachments: attachmentRows.map((item) => ({
@@ -974,7 +975,7 @@ export async function getRelatedProducts(
       slug: item.slug,
       spu: item.spu,
       shortDescription: item.shortDescription,
-      coverImage: item.coverUrl ? { id: `${item.id}-cover`, url: item.coverUrl, alt: item.coverAlt || item.name, width: item.coverWidth, height: item.coverHeight } : null,
+      coverImage: item.coverUrl ? { id: `${item.id}-cover`, url: resolveOssAssetUrl(item.coverUrl), alt: item.coverAlt || item.name, width: item.coverWidth, height: item.coverHeight } : null,
       price: asMoney(item.price, item.currencyCode),
       compareAtPrice: item.compareAtPrice ? asMoney(item.compareAtPrice, item.currencyCode) : null,
       purchaseMode: item.purchaseMode,
@@ -1042,7 +1043,7 @@ export async function getCompatibleGroups(productId: string, localeInput?: strin
         slug: row.slug,
         spu: row.spu,
         shortDescription: row.shortDescription,
-        coverImage: row.coverUrl ? { id: `${row.id}-cover`, url: row.coverUrl, alt: row.coverAlt || row.name, width: row.coverWidth, height: row.coverHeight } : null,
+        coverImage: row.coverUrl ? { id: `${row.id}-cover`, url: resolveOssAssetUrl(row.coverUrl), alt: row.coverAlt || row.name, width: row.coverWidth, height: row.coverHeight } : null,
         price: asMoney(row.price, row.currencyCode),
         compareAtPrice: row.compareAtPrice ? asMoney(row.compareAtPrice, row.currencyCode) : null,
         purchaseMode: row.purchaseMode,

@@ -17,6 +17,7 @@ import {
   adminTableScroll,
 } from '@/components/admin/admin-table';
 import { confirmProductListingChange } from '@/lib/confirm-product-listing';
+import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
 import {
   formatAdminMoney,
   productLifecycleColors,
@@ -254,7 +255,7 @@ export function ProductListClient({
       dataIndex: 'coverUrl',
       width: 72,
       render: (value: string | null) => value
-        ? <Image src={value} width={48} height={48} style={{ objectFit: 'cover', borderRadius: 6 }} preview={{ mask: '预览' }} />
+        ? <Image src={resolveOssAssetUrl(value)} width={48} height={48} style={{ objectFit: 'cover', borderRadius: 6 }} preview={{ mask: '预览' }} />
         : <Typography.Text type="secondary">—</Typography.Text>,
     },
     {

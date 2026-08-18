@@ -1,11 +1,13 @@
 'use client';
 
 import { DeleteOutlined, LoadingOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Image, Space, Typography, Upload, message } from 'antd';
+import { Button, Space, Typography, Upload, message } from 'antd';
 import type { UploadProps } from 'antd';
 import { useState } from 'react';
 
 import { IMAGE_UPLOAD_MIME_TYPES, MAX_IMAGE_UPLOAD_BYTES, uploadMediaFile } from '@/lib/media-upload';
+import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
+import { MediaPreviewImage } from '@/components/editorial/media-preview-image';
 
 type CoverImageFieldProps = {
   value?: string | null;
@@ -45,7 +47,7 @@ export function CoverImageField({
       try {
         setUploading(true);
         const result = await uploadMediaFile(file as File, { kind: 'image', folder });
-        onChange?.(result.url);
+        onChange?.(result.key);
         onSuccess?.(result);
         void message.success('封面上传成功');
       } catch (error) {
@@ -62,11 +64,7 @@ export function CoverImageField({
     <Space orientation="vertical" size="small" style={{ width: '100%' }}>
       {value ? (
         <div style={{ position: 'relative', display: 'inline-block' }}>
-          <Image
-            src={value}
-            alt={previewAlt}
-            style={{ maxWidth: 320, borderRadius: 8 }}
-          />
+          <MediaPreviewImage src={resolveOssAssetUrl(value)} alt={previewAlt} />
           {!disabled ? (
             <Button
               danger
@@ -86,7 +84,7 @@ export function CoverImageField({
           </Button>
         </Upload>
       )}
-      <Typography.Text type="secondary">支持 JPG / PNG / GIF / WebP / SVG，最大 10MB，上传至阿里云 OSS。</Typography.Text>
+      <Typography.Text type="secondary">支持 JPG / PNG / GIF / WebP / SVG，最大 10MB，上传至对象存储。</Typography.Text>
     </Space>
   );
 }

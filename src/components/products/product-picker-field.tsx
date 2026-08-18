@@ -10,6 +10,7 @@ import {
   type ProductPickerItem,
   formatProductSelectedDisplay,
 } from '@/lib/product-picker';
+import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
 
 type ProductPickerFieldBaseProps = {
   categoryTree: AdminCategoryTreeNode[];
@@ -141,7 +142,7 @@ export function ProductPickerField(props: ProductPickerFieldProps) {
                 <Avatar
                   shape="square"
                   size={40}
-                  src={item.coverUrl ?? undefined}
+                  src={resolveOssAssetUrl(item.coverUrl) || undefined}
                   className="entity-picker-selected__thumb"
                 >
                   {item.name.slice(0, 1).toUpperCase()}

@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 
 import { ContentTranslateButton } from '@/components/admin/content-translate-button';
 import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
+import { CoverImageField } from '@/components/editorial/cover-image-field';
 import { BrandNarrativeBlockEditorModal, type BrandNarrativeBlockEditorHandle } from '@/components/brand-narratives/brand-narrative-block-editor-modal';
 import { BrandNarrativeBlockList } from '@/components/brand-narratives/brand-narrative-block-list';
 import type { BrandNarrativeBlockDraft } from '@/lib/brand-narrative-blocks';
@@ -561,8 +562,12 @@ export function BrandNarrativeEditorModal({
                   }}
                 />
               </Form.Item>
-              <Form.Item name="coverImage" label="封面图（各语言共用）">
-                <Input placeholder="图片 URL，如 /images/about-hero.jpg，选填" />
+              <Form.Item
+                name="coverImage"
+                label="封面图（各语言共用）"
+                getValueFromEvent={(value: string | null) => value ?? ''}
+              >
+                <CoverImageField folder="brand-narratives/covers" />
               </Form.Item>
             </Form>
           </div>

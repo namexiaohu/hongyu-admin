@@ -9,6 +9,7 @@ import {
   type BrandPickerItem,
   buildBrandPickerQueryString,
 } from '@/lib/brand-picker';
+import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
 
 type BrandPickerModalProps = {
   open: boolean;
@@ -103,7 +104,7 @@ export function BrandPickerModal({
           <Avatar
             shape="square"
             size={24}
-            src={row.logoUrl ?? undefined}
+            src={resolveOssAssetUrl(row.logoUrl) || undefined}
             className="brand-picker-row__logo"
           >
             {row.name.slice(0, 1).toUpperCase()}

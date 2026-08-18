@@ -1,5 +1,6 @@
 import { asc, inArray } from 'drizzle-orm';
 
+import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
 import { defaultProductPayload, type AdminProductPayload } from '@/lib/product-content';
 import { db } from '@/server/db';
 import { productTranslations } from '@/server/db/schema';
@@ -69,7 +70,7 @@ export function coverImageFromPayload(
 
   return {
     id: `${productId}-cover`,
-    url: data.coverUrl,
+    url: resolveOssAssetUrl(data.coverUrl),
     alt: data.coverAlt?.trim() || productName,
     width: null,
     height: null,
@@ -86,7 +87,7 @@ export function galleryFromPayload(
     .filter((item) => item.url?.trim())
     .map((item, index) => ({
       id: `${productId}-gallery-${index}`,
-      url: item.url,
+      url: resolveOssAssetUrl(item.url),
       alt: item.alt?.trim() || productName,
       width: item.width ?? null,
       height: item.height ?? null,

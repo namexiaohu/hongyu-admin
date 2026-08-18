@@ -5,6 +5,7 @@ import { and, asc, eq } from 'drizzle-orm';
 import type { BrandNarrativeBlockDraft, BrandNarrativeBlockLocaleCopy } from '@/lib/brand-narrative-blocks';
 import { isSummaryIcon, pickBlockLocaleCopy, summaryItemUsesCoverImage } from '@/lib/brand-narrative-blocks';
 import { resolveNarrativePageMeta } from '@/lib/brand-narrative-content';
+import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import { db } from '@/server/db';
 import { brandNarrativeContents, brandNarrativeTranslations, brandNarratives } from '@/server/db/schema';
@@ -26,8 +27,6 @@ export type BrandNarrativePageData = {
   sections: Array<Record<string, unknown>>;
 };
 
-const SOFT_BACKGROUND_BLOCK_IDS = new Set(['values', 'certs', 'outlook', 'rd']);
-
 function pickLocaleCopy(
   locales: Record<string, BrandNarrativeBlockLocaleCopy> | undefined,
   locale: string,
@@ -37,10 +36,6 @@ function pickLocaleCopy(
 
 function text(value: string | undefined, fallback = '') {
   return value?.trim() || fallback;
-}
-
-function blockBackground(block: BrandNarrativeBlockDraft) {
-  return SOFT_BACKGROUND_BLOCK_IDS.has(block.id) ? 'soft' as const : undefined;
 }
 
 function isPatentId(value: string) {
@@ -59,13 +54,12 @@ function mapSplitSection(
   return {
     type: 'split-content',
     id: block.id,
-    background: blockBackground(block),
     layout: slug === 'patents' ? 'rd-split' as const : 'team-split' as const,
     imagePosition: block.layout === 'image-right' ? 'right' as const : 'left' as const,
     eyebrow: eyebrow || title,
     title: title || eyebrow || ' ',
     body: body || ' ',
-    image: block.carouselImages?.find((slide) => slide.url.trim())?.url ?? '',
+    image: resolveOssAssetUrl(block.carouselImages?.find((slide) => slide.url.trim())?.url ?? ''),
     imageAlt: title || eyebrow,
   };
 }
@@ -100,7 +94,6 @@ function mapSummarySection(block: BrandNarrativeBlockDraft, locale: string) {
     return {
       type: 'header-grid',
       id: block.id,
-      background: blockBackground(block),
       grid,
       eyebrow: eyebrow || title,
       title: title || eyebrow || ' ',
@@ -132,7 +125,7 @@ function mapSummarySection(block: BrandNarrativeBlockDraft, locale: string) {
           year: text(itemCopy.smallTitle),
           title: text(itemCopy.largeTitle, text(itemCopy.smallTitle)),
           body: text(itemCopy.description),
-          image: item.coverImage?.trim() ?? '',
+          image: resolveOssAssetUrl(item.coverImage),
           imageAlt: text(itemCopy.largeTitle),
         };
       }),
@@ -143,7 +136,6 @@ function mapSummarySection(block: BrandNarrativeBlockDraft, locale: string) {
     return {
       type: 'header-grid',
       id: block.id,
-      background: blockBackground(block),
       grid,
       eyebrow: eyebrow || title,
       title: title || eyebrow || ' ',
@@ -174,7 +166,6 @@ function mapSummarySection(block: BrandNarrativeBlockDraft, locale: string) {
   return {
     type: 'header-grid',
     id: block.id,
-    background: blockBackground(block),
     grid,
     eyebrow: eyebrow || title,
     title: title || eyebrow || ' ',
@@ -194,7 +185,6 @@ function mapTimelineSection(block: BrandNarrativeBlockDraft, locale: string) {
   return {
     type: 'timeline',
     id: block.id,
-    background: blockBackground(block),
     eyebrow: eyebrow || title,
     title: title || eyebrow || ' ',
     lead: body,
@@ -204,7 +194,7 @@ function mapTimelineSection(block: BrandNarrativeBlockDraft, locale: string) {
         year: text(itemCopy.smallTitle, ' '),
         title: text(itemCopy.largeTitle, text(itemCopy.smallTitle, ' ')),
         body: text(itemCopy.description, ' '),
-        image: item.coverImage?.trim() || undefined,
+        image: resolveOssAssetUrl(item.coverImage) || undefined,
         imageAlt: text(itemCopy.largeTitle) || undefined,
         tags: [] as string[],
       };
@@ -233,7 +223,7 @@ function mapCourseSection(block: BrandNarrativeBlockDraft, locale: string) {
         kicker: kicker && kicker !== courseTitle ? kicker : '',
         title: courseTitle || ' ',
         description: text(itemCopy.description),
-        image: item.coverImage?.trim() ?? '',
+        image: resolveOssAssetUrl(item.coverImage),
         meta: [text(itemCopy.totalHours), text(itemCopy.teachingFormat), text(itemCopy.trainingCycle)].filter(Boolean),
       };
     }),
@@ -328,7 +318,7 @@ function mapPageData(
       eyebrow: pageTitle,
       title: headline,
       lead: text(translation.description),
-      image: text(row.coverImage),
+      image: resolveOssAssetUrl(row.coverImage),
       imageAlt: headline,
     },
     stats: stats.length ? stats.map((item) => ({ label: item.label, value: item.value })) : null,

@@ -5,7 +5,9 @@ import path from 'node:path';
 import { eq } from 'drizzle-orm';
 
 import { type AdminProductPayload } from '@/lib/product-content';
+import { isOssCdnUrl, toOssStorageKey } from '@/lib/oss-asset-url';
 import { db } from '@/server/db';
+import { putStorageObject } from '@/server/oss';
 import { productTranslations, products } from '@/server/db/schema';
 import { DEFAULT_PRODUCT_LOCALE } from '@/server/products/resolve-product-translation';
 
@@ -39,51 +41,17 @@ function safeKeySegment(value: string) {
   return value.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'product';
 }
 
-function getOssDomain() {
-  return process.env.ALIYUN_OSS_DOMAIN?.replace(/\/$/, '') ?? '';
-}
-
 function isAlreadyOnOss(url: string | null | undefined) {
   if (!url?.trim()) return false;
-  const domain = getOssDomain();
-  if (!domain) return false;
-  return url.startsWith(`${domain}/`);
-}
-
-async function getOssClient() {
-  const accessKeyId = process.env.ALIYUN_OSS_ACCESS_KEY_ID;
-  const accessKeySecret = process.env.ALIYUN_OSS_ACCESS_KEY_SECRET;
-  const bucket = process.env.ALIYUN_OSS_BUCKET;
-  const endpoint = process.env.ALIYUN_OSS_ENDPOINT;
-  const region = process.env.ALIYUN_OSS_REGION;
-  const domain = getOssDomain();
-
-  if (!accessKeyId || !accessKeySecret || !bucket || !endpoint || !domain) {
-    throw new Error('Aliyun OSS 未配置，无法上传产品图片');
-  }
-
-  const OSS = (await import('ali-oss')).default;
-  const client = new OSS({
-    region: region ?? endpoint.replace(/^https?:\/\//, ''),
-    accessKeyId,
-    accessKeySecret,
-    bucket,
-    secure: endpoint.startsWith('https'),
-    endpoint,
-  });
-
-  return { client, domain };
+  return isOssCdnUrl(url);
 }
 
 async function uploadToOssKey(key: string, buffer: Buffer, contentType: string) {
-  const { client, domain } = await getOssClient();
-  await client.put(key, buffer, {
-    mime: contentType,
-    headers: {
-      'Cache-Control': 'public, max-age=31536000, immutable',
-    },
-  });
-  return `${domain}/${key}`;
+  const result = await putStorageObject(key, buffer, contentType);
+  if (!result.ok) {
+    throw new Error(result.error);
+  }
+  return result.key;
 }
 
 async function downloadImage(url: string, retries = 3) {
@@ -137,7 +105,9 @@ async function migrateImageUrl(
   }
 
   if (!forceRefresh && isAlreadyOnOss(trimmed)) {
-    return { url: trimmed, uploaded: false, skipped: true, failed: false };
+    const key = toOssStorageKey(trimmed);
+    cache.set(trimmed, key);
+    return { url: key, uploaded: false, skipped: true, failed: false };
   }
 
   const cached = cache.get(trimmed);
@@ -209,7 +179,7 @@ async function main() {
       || payload.gallery.some((item) => item.url && (!isAlreadyOnOss(item.url) || forceRefresh));
 
     if (!forceRefresh && !hasPendingImages) {
-      console.log(`跳过（已是 OSS）: ${row.spu} | ${row.name}`);
+      console.log(`跳过（已是 R2）: ${row.spu} | ${row.name}`);
       stats.skipped += 1;
       continue;
     }
@@ -263,7 +233,7 @@ async function main() {
     stats.updated += 1;
   }
 
-  console.log('\n产品图片 OSS 迁移完成:', {
+  console.log('\n产品图片 R2 迁移完成:', {
     ...stats,
     uniqueImagesCached: cache.size,
   });

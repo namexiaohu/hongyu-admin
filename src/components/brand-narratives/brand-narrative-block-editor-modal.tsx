@@ -1,13 +1,14 @@
 'use client';
 
-import { DeleteOutlined, DownOutlined, PlusOutlined, UpOutlined } from '@ant-design/icons';
-import { Button, Empty, Form, Input, Modal, Select, Space, Tabs, Tooltip } from 'antd';
+import { Button, Form, Input, Modal, Select, Space, Tabs, Tooltip } from 'antd';
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 
 import { ContentTranslateButton } from '@/components/admin/content-translate-button';
 import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
 import { BrandNarrativeBlockItemEditorModal, type BrandNarrativeBlockItemEditorHandle } from '@/components/brand-narratives/brand-narrative-block-item-editor-modal';
 import { BrandNarrativeBlockItemList } from '@/components/brand-narratives/brand-narrative-block-item-list';
+import { ProductGalleryField } from '@/components/products/product-gallery-field';
+import type { ProductGalleryImage } from '@/lib/product-content';
 import {
   brandNarrativeSplitLayoutLabels,
   brandNarrativeSplitLayouts,
@@ -243,72 +244,32 @@ export function BrandNarrativeBlockEditorModal({
                       />
                     </div>
                     <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                        <span>轮播图</span>
-                        <Button
-                          type="primary"
-                          size="small"
-                          icon={<PlusOutlined />}
-                          onClick={() => patchShared({
-                            carouselImages: [...(block.carouselImages ?? []), createBrandNarrativeCarouselSlide()],
-                          })}
-                        >
-                          添加轮播图
-                        </Button>
-                      </div>
-                      {(block.carouselImages ?? []).length === 0 ? (
-                        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="尚未添加轮播图" />
-                      ) : (
-                        <Space orientation="vertical" size="small" style={{ width: '100%' }}>
-                          {(block.carouselImages ?? []).map((slide, index, slides) => (
-                            <div key={slide.id} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                              <Input
-                                placeholder="图片 URL"
-                                value={slide.url}
-                                onChange={(event) => {
-                                  const next = slides.map((item) => (
-                                    item.id === slide.id ? { ...item, url: event.target.value } : item
-                                  ));
-                                  patchShared({ carouselImages: next });
-                                }}
-                              />
-                              <Button
-                                type="text"
-                                size="small"
-                                icon={<UpOutlined />}
-                                disabled={index === 0}
-                                onClick={() => {
-                                  const next = [...slides];
-                                  const [item] = next.splice(index, 1);
-                                  next.splice(index - 1, 0, item);
-                                  patchShared({ carouselImages: next });
-                                }}
-                              />
-                              <Button
-                                type="text"
-                                size="small"
-                                icon={<DownOutlined />}
-                                disabled={index === slides.length - 1}
-                                onClick={() => {
-                                  const next = [...slides];
-                                  const [item] = next.splice(index, 1);
-                                  next.splice(index + 1, 0, item);
-                                  patchShared({ carouselImages: next });
-                                }}
-                              />
-                              <Button
-                                type="text"
-                                size="small"
-                                danger
-                                icon={<DeleteOutlined />}
-                                onClick={() => patchShared({
-                                  carouselImages: slides.filter((item) => item.id !== slide.id),
-                                })}
-                              />
-                            </div>
-                          ))}
-                        </Space>
-                      )}
+                      <div style={{ marginBottom: 8 }}>轮播图</div>
+                      <ProductGalleryField
+                        folder="brand-narratives/gallery"
+                        value={(block.carouselImages ?? []).map((slide) => ({
+                          url: slide.url,
+                          alt: '',
+                          width: null,
+                          height: null,
+                        }))}
+                        onChange={(gallery: ProductGalleryImage[]) => {
+                          const previous = block.carouselImages ?? [];
+                          const usedIds = new Set<string>();
+                          patchShared({
+                            carouselImages: gallery
+                              .filter((item) => item.url.trim())
+                              .map((item) => {
+                                const match = previous.find((slide) => slide.url === item.url && !usedIds.has(slide.id));
+                                if (match) {
+                                  usedIds.add(match.id);
+                                  return match;
+                                }
+                                return createBrandNarrativeCarouselSlide(item.url);
+                              }),
+                          });
+                        }}
+                      />
                     </div>
                   </>
                 ) : null}

@@ -1,6 +1,7 @@
 import { asc, eq } from 'drizzle-orm';
 
 import { normalizeLocale, type Locale } from '@/lib/i18n';
+import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
 import { brandNameSql, brandSlugSql } from '@/server/brands/resolve-brand-translation';
 import { db } from '@/server/db';
 import { brands } from '@/server/db/schema';
@@ -37,7 +38,7 @@ export async function getStorefrontBrands(localeInput?: string | null) {
       id: row.id,
       name: row.name,
       slug: row.slug,
-      logo: row.logoUrl ? { url: row.logoUrl, alt: row.name } : null,
+      logo: row.logoUrl ? { url: resolveOssAssetUrl(row.logoUrl), alt: row.name } : null,
       websiteUrl: row.websiteUrl,
     })) satisfies StorefrontBrandListItem[],
   };

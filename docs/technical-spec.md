@@ -16,7 +16,7 @@
 - Drizzle ORM + drizzle-kit 作为数据库建模、迁移与类型安全访问方案
 - OpenAPI 3.1 作为 Front API 契约规范（`docs/openapi.front.yaml`）
 - Stripe + Airwallex 作为在线支付网关（信用卡 checkout）
-- Aliyun OSS 作为上传对象存储（商品图、附件、注册/询盘文件等）
+- Cloudflare R2 作为上传对象存储（商品图、附件、注册/询盘文件等）
 
 ## 3. 总体架构
 
@@ -128,7 +128,7 @@ admin 侧同时承载后台管理系统与前台 REST API；web 为纯展示与�
 - `CORS_ALLOWED_ORIGINS` — 可选，多域名逗号分隔
 - `STRIPE_SANDBOX_*` / `STRIPE_LIVE_*` — Stripe 密钥
 - `AIRWALLEX_SANDBOX_*` / `AIRWALLEX_LIVE_*` — Airwallex 密钥
-- `ALIYUN_OSS_*` — 对象存储
+- `R2_*` — 对象存储（Cloudflare R2）
 - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — 前台 OAuth（可选）
 - `TEXT_API_*` — Admin AI 翻译（OpenAI 兼容接口）
 - `DB_ENABLE_IN_DEV` — 由 dev-server 注入，开发态启用真实 DB
@@ -245,10 +245,10 @@ Neon 连接串采用 PostgreSQL 兼容连接方式，首期默认使用 Node Run
 
 ## 12. 上传与静态资源策略
 
-- 上传走 **Aliyun OSS**（`ALIYUN_OSS_*`）；数据库存 URL 与元数据，不存二进制。
+- 上传走 **Cloudflare R2**（`R2_*`）；数据库存 key，展示时拼 `R2_DOMAIN` + `/` + key。
 - 前台上传场景：注册验证文档、询盘附件等（`/api/front/upload/*`）。
-- 商品图片/附件：Admin 维护，Front API 返回 CDN/OSS URL。
-- web `public/` 存放品牌静态资源；Next `images.remotePatterns` 允许 OSS/Unsplash 等域名。
+- 商品图片/附件：Admin 维护，Front API 返回公网 URL。
+- web `public/` 存放品牌静态资源；Next `images.remotePatterns` 允许 R2/Unsplash 等域名。
 
 ## 13. 后台实现原则
 

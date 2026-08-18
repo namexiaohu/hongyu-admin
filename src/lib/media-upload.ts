@@ -53,15 +53,7 @@ export function defaultUploadFolder(kind: MediaUploadKind) {
   }
 }
 
-export function getPublicOssDomain() {
-  return process.env.ALIYUN_OSS_DOMAIN?.replace(/\/$/, '') ?? '';
-}
-
-export function isOssCdnUrl(url: string) {
-  const domain = getPublicOssDomain();
-  if (!domain) return false;
-  return url.startsWith(`${domain}/`);
-}
+export { getPublicOssDomain, isOssCdnUrl } from '@/lib/oss-asset-url';
 
 export async function uploadMediaFile(
   file: File,

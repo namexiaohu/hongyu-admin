@@ -12,6 +12,7 @@ import {
   productStatusColors,
   productStatusLabels,
 } from '@/lib/admin-display';
+import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
 import {
   type BrandPickerItem,
   buildBrandPickerQueryString,
@@ -152,7 +153,7 @@ export function ProductPickerModal({
           <Avatar
             shape="square"
             size={40}
-            src={row.coverUrl ?? undefined}
+            src={resolveOssAssetUrl(row.coverUrl) || undefined}
             className="product-picker-row__cover"
           >
             {row.name.slice(0, 1).toUpperCase()}

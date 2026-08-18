@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm';
 import postgres from 'postgres';
 
 import { db } from '@/server/db';
+import { putStorageObject } from '@/server/oss';
 import { categories, categoryTranslations } from '@/server/db/schema';
 
 const DEFAULT_LOCALE = 'en';
@@ -114,40 +115,12 @@ async function loadNeonImageBySlug() {
   }
 }
 
-async function getOssClient() {
-  const accessKeyId = process.env.ALIYUN_OSS_ACCESS_KEY_ID;
-  const accessKeySecret = process.env.ALIYUN_OSS_ACCESS_KEY_SECRET;
-  const bucket = process.env.ALIYUN_OSS_BUCKET;
-  const endpoint = process.env.ALIYUN_OSS_ENDPOINT;
-  const region = process.env.ALIYUN_OSS_REGION;
-  const domain = process.env.ALIYUN_OSS_DOMAIN?.replace(/\/$/, '');
-
-  if (!accessKeyId || !accessKeySecret || !bucket || !endpoint || !domain) {
-    throw new Error('Aliyun OSS 未配置，无法上传分类图片');
-  }
-
-  const OSS = (await import('ali-oss')).default;
-  const client = new OSS({
-    region: region ?? endpoint.replace(/^https?:\/\//, ''),
-    accessKeyId,
-    accessKeySecret,
-    bucket,
-    secure: endpoint.startsWith('https'),
-    endpoint,
-  });
-
-  return { client, domain };
-}
-
 async function uploadToOssKey(key: string, buffer: Buffer, contentType: string) {
-  const { client, domain } = await getOssClient();
-  await client.put(key, buffer, {
-    mime: contentType,
-    headers: {
-      'Cache-Control': 'public, max-age=31536000, immutable',
-    },
-  });
-  return `${domain}/${key}`;
+  const result = await putStorageObject(key, buffer, contentType);
+  if (!result.ok) {
+    throw new Error(result.error);
+  }
+  return result.key;
 }
 
 async function persistCategoryImage(
@@ -166,7 +139,7 @@ async function persistCategoryImage(
     const ossUrl = await uploadToOssKey(key, buffer, contentType);
     return { mode: 'oss' as const, url: ossUrl };
   } catch (error) {
-    console.warn(`OSS 上传失败，改用源 URL: ${slug}`, error instanceof Error ? error.message : error);
+    console.warn(`R2 上传失败，改用源 URL: ${slug}`, error instanceof Error ? error.message : error);
     return { mode: 'direct' as const, url: sourceUrl };
   }
 }

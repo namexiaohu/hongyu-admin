@@ -1,12 +1,14 @@
 'use client';
 
 import { DeleteOutlined, LoadingOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Image, Input, Space, Typography, Upload, message } from 'antd';
+import { Button, Space, Upload, message } from 'antd';
 import type { UploadProps } from 'antd';
 import { useState } from 'react';
 
 import type { ProductGalleryImage } from '@/lib/product-content';
 import { IMAGE_UPLOAD_MIME_TYPES, MAX_IMAGE_UPLOAD_BYTES, uploadMediaFile } from '@/lib/media-upload';
+import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
+import { MediaPreviewImage } from '@/components/editorial/media-preview-image';
 
 type ProductGalleryFieldProps = {
   value?: ProductGalleryImage[];
@@ -17,11 +19,6 @@ type ProductGalleryFieldProps = {
 export function ProductGalleryField({ value = [], onChange, folder = 'products/gallery' }: ProductGalleryFieldProps) {
   const items = value ?? [];
   const [uploading, setUploading] = useState(false);
-
-  function updateItem(index: number, patch: Partial<ProductGalleryImage>) {
-    const next = items.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item));
-    onChange?.(next);
-  }
 
   function removeItem(index: number) {
     onChange?.(items.filter((_, itemIndex) => itemIndex !== index));
@@ -46,7 +43,7 @@ export function ProductGalleryField({ value = [], onChange, folder = 'products/g
       try {
         setUploading(true);
         const result = await uploadMediaFile(file as File, { kind: 'image', folder });
-        onChange?.([...items, { url: result.url, alt: '', width: null, height: null }]);
+        onChange?.([...items, { url: result.key, alt: '', width: null, height: null }]);
         onSuccess?.(result);
       } catch (error) {
         const err = error instanceof Error ? error : new Error('上传失败');
@@ -61,16 +58,8 @@ export function ProductGalleryField({ value = [], onChange, folder = 'products/g
   return (
     <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
       {items.map((item, index) => (
-        <div key={`${item.url}-${index}`} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-          <Image src={item.url} alt={item.alt || 'gallery'} width={72} height={72} style={{ objectFit: 'cover', borderRadius: 8 }} preview={{ mask: '预览' }} />
-          <div style={{ flex: 1 }}>
-            <Typography.Text style={{ display: 'block', marginBottom: 4 }}>图片 Alt</Typography.Text>
-            <Input
-              placeholder="图片描述文本"
-              value={item.alt}
-              onChange={(event) => updateItem(index, { alt: event.target.value })}
-            />
-          </div>
+        <div key={`${item.url}-${index}`} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <MediaPreviewImage src={resolveOssAssetUrl(item.url)} />
           <Button danger icon={<DeleteOutlined />} onClick={() => removeItem(index)} />
         </div>
       ))}
