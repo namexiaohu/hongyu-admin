@@ -5,16 +5,16 @@ import { AdminFaqClient } from './faq-client';
 import { parseAdminListQuery } from '@/lib/admin-list-query';
 import { getAdminEditorialContentListPaginated } from '@/server/admin/editorial-content';
 import { getAdminEditorialDashboard } from '@/server/admin/editorial';
-import { getAdminSiteLanguages } from '@/server/admin/languages';
+import { getActiveAdminSiteLanguages } from '@/server/admin/languages';
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 async function FaqPageContent({ searchParams }: PageProps) {
-  const [dashboard, siteLanguages, params] = await Promise.all([
+  const [dashboard, activeLanguages, params] = await Promise.all([
     getAdminEditorialDashboard(),
-    getAdminSiteLanguages(),
+    getActiveAdminSiteLanguages(),
     searchParams,
   ]);
 
@@ -30,8 +30,6 @@ async function FaqPageContent({ searchParams }: PageProps) {
     pageSize: initialQuery.pageSize,
     knownBoardKeys: dashboard.coverage.map((board) => board.key),
   });
-
-  const activeLanguages = siteLanguages.filter((language) => language.status === 'active');
 
   return (
     <AdminFaqClient

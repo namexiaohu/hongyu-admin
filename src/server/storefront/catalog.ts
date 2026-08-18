@@ -26,7 +26,6 @@ import {
   resolveProductCoverImage,
 } from '@/server/products/load-product-translations';
 import { getStorefrontProductFeatureOptions, getStorefrontProductFeatures } from '@/server/admin/product-features';
-import { normalizeLocale, type Locale } from '@/lib/i18n';
 import {
   footerContactBlocks,
   footerCopyright,
@@ -59,8 +58,9 @@ import {
   DEFAULT_CATEGORY_LOCALE,
 } from '@/server/categories/resolve-category-translation';
 
-function catalogLocale(locale?: string | null): Locale {
-  return normalizeLocale(locale);
+function catalogLocale(locale?: string | null): string {
+  const value = locale?.trim();
+  return value || DEFAULT_PRODUCT_LOCALE;
 }
 
 const defaultHomeData: HomeData = {

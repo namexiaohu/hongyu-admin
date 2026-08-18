@@ -46,6 +46,75 @@ export async function runMigrations() {
     )`,
 
     `CREATE UNIQUE INDEX IF NOT EXISTS product_translations_product_locale_unique ON product_translations (product_id, locale)`,
+
+    // ── brand_narratives: 封面图字段从翻译表迁移到主表 ─────────────────────────
+    `ALTER TABLE brand_narratives ADD COLUMN IF NOT EXISTS cover_image text NOT NULL DEFAULT ''`,
+
+    // ── brand_narrative_contents: 新表，存内容区块（多语言全在 blocks payload） ──
+    `CREATE TABLE IF NOT EXISTS brand_narrative_contents (
+      id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+      narrative_id uuid NOT NULL REFERENCES brand_narratives(id) ON DELETE CASCADE,
+      blocks jsonb NOT NULL DEFAULT '[]'::jsonb,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now()
+    )`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS brand_narrative_contents_narrative_id_unique ON brand_narrative_contents (narrative_id)`,
+
+    // ── brand_narratives_i18n: 展开 payload 为独立字段 ─────────────────────────
+    `ALTER TABLE brand_narratives_i18n ADD COLUMN IF NOT EXISTS large_title varchar(255) NOT NULL DEFAULT ''`,
+    `ALTER TABLE brand_narratives_i18n ADD COLUMN IF NOT EXISTS description text NOT NULL DEFAULT ''`,
+    `ALTER TABLE brand_narratives_i18n ADD COLUMN IF NOT EXISTS seo_title varchar(255) NOT NULL DEFAULT ''`,
+    `ALTER TABLE brand_narratives_i18n ADD COLUMN IF NOT EXISTS seo_description varchar(500) NOT NULL DEFAULT ''`,
+    `ALTER TABLE brand_narratives_i18n ADD COLUMN IF NOT EXISTS stats jsonb NOT NULL DEFAULT '[]'::jsonb`,
+
+    // ── 迁移现有 payload 数据 → 独立字段（payload 列已删除时跳过） ──────────────
+    `DO $$
+     BEGIN
+       IF EXISTS (
+         SELECT 1 FROM information_schema.columns
+         WHERE table_name = 'brand_narratives_i18n' AND column_name = 'payload'
+       ) THEN
+         UPDATE brand_narratives_i18n
+         SET
+           title          = COALESCE(NULLIF(TRIM(payload->'hero'->>'smallTitle'), ''), title),
+           large_title    = COALESCE(NULLIF(TRIM(payload->'hero'->>'largeTitle'), ''), large_title),
+           description    = COALESCE(NULLIF(TRIM(payload->'hero'->>'description'), ''), description),
+           stats          = COALESCE((payload->>'stats')::jsonb, stats)
+         WHERE payload IS NOT NULL;
+
+         UPDATE brand_narratives n
+         SET cover_image = COALESCE(NULLIF(TRIM(t.payload->'hero'->>'coverImage'), ''), n.cover_image)
+         FROM brand_narratives_i18n t
+         WHERE t.narrative_id = n.id
+           AND n.cover_image = ''
+           AND t.payload->'hero'->>'coverImage' IS NOT NULL
+           AND t.id = (
+             SELECT id FROM brand_narratives_i18n
+             WHERE narrative_id = n.id
+             ORDER BY locale
+             LIMIT 1
+           );
+       END IF;
+     END $$;`,
+
+    // ── brand_narrative_contents：把 brand_narratives.blocks 移入新表 ─────────────
+    `DO $$
+     BEGIN
+       IF EXISTS (
+         SELECT 1 FROM information_schema.columns
+         WHERE table_name = 'brand_narratives' AND column_name = 'blocks'
+       ) THEN
+         INSERT INTO brand_narrative_contents (narrative_id, blocks, created_at, updated_at)
+         SELECT id, COALESCE(blocks, '[]'::jsonb), now(), now()
+         FROM brand_narratives
+         ON CONFLICT (narrative_id) DO NOTHING;
+       END IF;
+     END $$;`,
+
+    `DROP INDEX IF EXISTS brand_narratives_route_path_unique`,
+    `ALTER TABLE brand_narratives DROP COLUMN IF EXISTS route_path`,
+    `ALTER TABLE brand_narratives DROP COLUMN IF EXISTS blocks`,
+    `ALTER TABLE brand_narratives_i18n DROP COLUMN IF EXISTS payload`,
   ];
 
   try {

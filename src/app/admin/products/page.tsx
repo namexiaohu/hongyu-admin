@@ -1,5 +1,5 @@
 import { getAdminCategoryTree } from '@/server/admin/categories';
-import { getAdminSiteLanguages } from '@/server/admin/languages';
+import { getActiveAdminSiteLanguages } from '@/server/admin/languages';
 import { getEnabledProductBoardOptions } from '@/server/admin/product-boards';
 import { getAdminProductOptions, getAdminProductsPaginated } from '@/server/admin/products';
 
@@ -19,7 +19,7 @@ export default async function AdminProductsPage({
     getAdminProductsPaginated(query),
     getAdminProductOptions(),
     getAdminCategoryTree(),
-    getAdminSiteLanguages(),
+    getActiveAdminSiteLanguages(),
     getEnabledProductBoardOptions(),
   ]);
 

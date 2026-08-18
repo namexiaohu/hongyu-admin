@@ -13,7 +13,7 @@ export async function GET(
   { params }: { params: Promise<{ boardKey: string }> },
 ) {
   const { boardKey } = await params;
-  const locale = resolveFrontRequestLocale(request);
+  const locale = await resolveFrontRequestLocale(request);
   const module = parseContentModule(request.nextUrl.searchParams.get('module'));
   return NextResponse.json(
     await getStorefrontBoardContent(boardKey, locale, module),

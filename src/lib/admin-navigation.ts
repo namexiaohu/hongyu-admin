@@ -46,6 +46,13 @@ export const adminNavItems: AdminNavItem[] = [
     ],
   },
   {
+    key: 'exclusive-content',
+    title: '专属内容',
+    children: [
+      { key: '/admin/brand-narratives', title: '叙事', href: '/admin/brand-narratives' },
+    ],
+  },
+  {
     key: 'content-management',
     title: '内容管理',
     children: [

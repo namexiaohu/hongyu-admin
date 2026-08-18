@@ -18,6 +18,8 @@ import {
 import type { ShippingCountryRateConfig, VolumePricingRuleConfig } from '@/lib/commerce-config';
 import type { EditorialContentPayload } from '@/lib/editorial-content';
 import type { VerificationDocument } from '@/lib/customer-profile';
+import type { BrandNarrativeBlockDraft } from '@/lib/brand-narrative-blocks';
+import type { BrandNarrativeStat } from '@/lib/brand-narrative-content';
 import type { AdminProductPayload } from '@/lib/product-content';
 import type { ProductCoverageBoard } from '@/lib/product-boards';
 import {
@@ -1196,5 +1198,60 @@ export const productTranslations = pgTable(
     productLocaleUnique: uniqueIndex('product_translations_product_locale_unique').on(table.productId, table.locale),
     slugLocaleUnique: uniqueIndex('product_translations_slug_locale_unique').on(table.slug, table.locale),
     productIdIdx: index('product_translations_product_id_idx').on(table.productId),
+  }),
+);
+
+export const brandNarratives = pgTable(
+  'brand_narratives',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    slug: varchar('slug', { length: 64 }).notNull(),
+    sortOrder: integer('sort_order').notNull().default(0),
+    status: cmsStatusEnum('status').notNull().default('draft'),
+    publishedAt: timestamp('published_at', { withTimezone: true }),
+    coverImage: text('cover_image').notNull().default(''),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    slugUnique: uniqueIndex('brand_narratives_slug_unique').on(table.slug),
+    statusSortIdx: index('brand_narratives_status_sort_idx').on(table.status, table.sortOrder),
+  }),
+);
+
+/** 多语言看板字段：标题、大标题、描述、SEO、数据指标 */
+export const brandNarrativeTranslations = pgTable(
+  'brand_narratives_i18n',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    narrativeId: uuid('narrative_id').notNull().references(() => brandNarratives.id, { onDelete: 'cascade' }),
+    locale: varchar('locale', { length: 16 }).notNull(),
+    title: varchar('title', { length: 255 }).notNull().default(''),
+    largeTitle: varchar('large_title', { length: 255 }).notNull().default(''),
+    description: text('description').notNull().default(''),
+    seoTitle: varchar('seo_title', { length: 255 }).notNull().default(''),
+    seoDescription: varchar('seo_description', { length: 500 }).notNull().default(''),
+    stats: jsonb('stats').$type<BrandNarrativeStat[]>().notNull().default([]),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    narrativeLocaleUnique: uniqueIndex('brand_narratives_i18n_narrative_locale_unique').on(table.narrativeId, table.locale),
+    narrativeIdIdx: index('brand_narratives_i18n_narrative_id_idx').on(table.narrativeId),
+  }),
+);
+
+/** 内容区块（不按语言分行，多语言全存在 blocks payload 内部） */
+export const brandNarrativeContents = pgTable(
+  'brand_narrative_contents',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    narrativeId: uuid('narrative_id').notNull().references(() => brandNarratives.id, { onDelete: 'cascade' }),
+    blocks: jsonb('blocks').$type<BrandNarrativeBlockDraft[]>().notNull().default([]),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    narrativeIdUnique: uniqueIndex('brand_narrative_contents_narrative_id_unique').on(table.narrativeId),
   }),
 );

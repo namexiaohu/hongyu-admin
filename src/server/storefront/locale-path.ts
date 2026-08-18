@@ -2,6 +2,7 @@ import { and, eq } from 'drizzle-orm';
 
 import { normalizeLocale } from '@/lib/i18n';
 import { normalizeSlug } from '@/lib/slug';
+import { resolveBrandNarrativeCanonicalPath } from '@/server/storefront/brand-narratives';
 import { DEFAULT_CATEGORY_LOCALE } from '@/server/categories/resolve-category-translation';
 import { db } from '@/server/db';
 import {
@@ -126,6 +127,12 @@ async function resolveBlogSlugForLocale(slugInput: string, locale: string) {
 export async function resolveLocalizedPath(pathname: string, toLocaleInput?: string | null): Promise<string> {
   const { pathname: pathOnly, suffix } = parsePathInput(pathname);
   const toLocale = normalizeLocale(toLocaleInput);
+
+  const brandNarrativePath = await resolveBrandNarrativeCanonicalPath(pathOnly);
+  if (brandNarrativePath) {
+    return `${brandNarrativePath}${suffix}`;
+  }
+
   const segments = pathOnly.split('/').filter(Boolean);
 
   if (segments[0] === 'products' && segments[1]) {

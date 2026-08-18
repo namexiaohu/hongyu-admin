@@ -15,7 +15,7 @@ function readPurchaseMode(searchParams: URLSearchParams): 'buy' | 'inquiry' | un
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const locale = resolveFrontRequestLocale(request);
+  const locale = await resolveFrontRequestLocale(request);
   const searchParams = request.nextUrl.searchParams;
   const page = Number(searchParams.get('page') ?? '1');
   const pageSize = Number(searchParams.get('pageSize') ?? '12');

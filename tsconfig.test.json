@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"],
+      "@C/*": ["./src/components/ui/*"],
+      "server-only": ["./scripts/server-only-stub.cjs"]
+    }
+  },
+  "exclude": ["node_modules", "reference"]
+}

@@ -57,7 +57,7 @@ function buildCartResponse(
 }
 
 export async function GET(request: NextRequest) {
-  const locale = resolveFrontRequestLocale(request);
+  const locale = await resolveFrontRequestLocale(request);
   const { cart, anonymousToken } = await getCartContext(request);
   if (!cart) {
     return NextResponse.json({ code: 'CART_UNAVAILABLE', message: 'Cart could not be initialized' }, { status: 500, headers: frontCorsHeaders() });
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const locale = resolveFrontRequestLocale(request);
+  const locale = await resolveFrontRequestLocale(request);
   const body = await request.json();
   const parsed = addSchema.safeParse(body);
   if (!parsed.success) {
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const locale = resolveFrontRequestLocale(request);
+  const locale = await resolveFrontRequestLocale(request);
   const body = await request.json();
   const parsed = couponSchema.safeParse(body);
   if (!parsed.success) {

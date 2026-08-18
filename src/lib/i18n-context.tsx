@@ -16,6 +16,7 @@ type TranslationObject = Record<string, any>;
 
 // All translations map
 const translations: Record<Locale, TranslationObject> = {
+  zh: enTranslations,
   en: enTranslations,
   de: deTranslations,
   es: esTranslations,

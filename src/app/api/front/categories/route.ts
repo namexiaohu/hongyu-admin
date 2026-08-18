@@ -5,7 +5,7 @@ import { resolveFrontRequestLocale } from '@/lib/front-request-locale';
 import { getCategories } from '@/server/storefront';
 
 export async function GET(request: NextRequest) {
-  const locale = resolveFrontRequestLocale(request);
+  const locale = await resolveFrontRequestLocale(request);
   const categories = await getCategories(locale);
   return NextResponse.json({ locale, categories }, { headers: frontCorsHeaders() });
 }

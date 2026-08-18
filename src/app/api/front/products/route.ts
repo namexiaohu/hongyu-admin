@@ -6,7 +6,7 @@ import { getProductList } from '@/server/storefront';
 import type { ProductListSort } from '@/server/storefront/types';
 
 export async function GET(request: NextRequest) {
-  const locale = resolveFrontRequestLocale(request);
+  const locale = await resolveFrontRequestLocale(request);
   const searchParams = request.nextUrl.searchParams;
   const page = Number(searchParams.get('page') ?? '1');
   const pageSize = Number(searchParams.get('pageSize') ?? '12');

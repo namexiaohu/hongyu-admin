@@ -6,7 +6,6 @@ import { resolveBlogCategorySlug } from '@/lib/blog-categories';
 import {
   type EditorialContentPayload,
 } from '@/lib/editorial-content';
-import { normalizeLocale, type Locale } from '@/lib/i18n';
 import { normalizeSlug } from '@/lib/slug';
 import { db } from '@/server/db';
 import {
@@ -23,10 +22,21 @@ export type StorefrontBlogAuthor = {
   bio: string | null;
 };
 
-function pickTranslation(rows: TranslationRow[], locale: Locale) {
+function editorialLocale(localeInput?: string | null) {
+  return localeInput?.trim() || 'en';
+}
+
+function pickTranslation(rows: TranslationRow[], locale: string) {
   if (!rows.length) return null;
-  const exact = rows.find((row) => row.locale === locale);
+  const normalized = locale.trim().toLowerCase();
+  const exact = rows.find((row) => row.locale.toLowerCase() === normalized);
   if (exact) return exact;
+  const prefix = normalized.split('-')[0];
+  const prefixMatch = rows.find((row) => {
+    const rowLocale = row.locale.toLowerCase();
+    return rowLocale === prefix || rowLocale.startsWith(`${prefix}-`);
+  });
+  if (prefixMatch) return prefixMatch;
   const english = rows.find((row) => row.locale.toLowerCase().startsWith('en'));
   return english ?? rows[0] ?? null;
 }
@@ -72,7 +82,7 @@ async function loadBoardKeys(contentId: string) {
 }
 
 export async function getStorefrontBoardFaqs(boardKeyInput: string, localeInput?: string | null) {
-  const locale = normalizeLocale(localeInput);
+  const locale = editorialLocale(localeInput);
   const boardKey = boardKeyInput.trim();
   if (!boardKey.trim()) {
     return { locale, boardKey, items: [] as { id: string; title: string; body: string }[] };
@@ -114,7 +124,7 @@ export async function getStorefrontBoardFaqs(boardKeyInput: string, localeInput?
 }
 
 export async function getStorefrontBoardBlogs(boardKeyInput: string, localeInput?: string | null) {
-  const locale = normalizeLocale(localeInput);
+  const locale = editorialLocale(localeInput);
   const boardKey = boardKeyInput.trim();
   if (!boardKey.trim()) {
     return {
@@ -199,7 +209,7 @@ export async function getStorefrontBoardContent(
   localeInput?: string | null,
   moduleInput: StorefrontBoardContentModule = 'editorial',
 ) {
-  const locale = normalizeLocale(localeInput);
+  const locale = editorialLocale(localeInput);
   const boardKey = boardKeyInput.trim();
   const module = moduleInput === 'faq' ? 'faq' : 'editorial';
 
@@ -253,7 +263,7 @@ export async function getStorefrontBoardContent(
 }
 
 export async function getStorefrontBlogDetailBySlug(slugInput: string, localeInput?: string | null) {
-  const locale = normalizeLocale(localeInput);
+  const locale = editorialLocale(localeInput);
   const slug = normalizeSlug(slugInput);
   if (!slug) return null;
 

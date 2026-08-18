@@ -12,6 +12,7 @@ type TranslationObject = Record<string, any>;
 type TranslationParams = Record<string, string | number | boolean>;
 
 const translations: Record<Locale, TranslationObject> = {
+  zh: enTranslations,
   en: enTranslations,
   de: deTranslations,
   es: esTranslations,
@@ -28,6 +29,7 @@ function getNestedValue(obj: TranslationObject, path: string): any {
  * Pluralization rules for supported locales
  */
 const pluralRules: Record<Locale, (count: number) => 'zero' | 'one' | 'two' | 'few' | 'many' | 'other'> = {
+  zh: () => 'other',
   en: (count) => {
     if (count === 0) return 'zero';
     if (count === 1) return 'one';

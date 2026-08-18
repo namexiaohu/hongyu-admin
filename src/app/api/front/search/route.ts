@@ -14,7 +14,7 @@ function readPurchaseMode(searchParams: URLSearchParams): 'buy' | 'inquiry' | un
 }
 
 export async function GET(request: NextRequest) {
-  const locale = resolveFrontRequestLocale(request);
+  const locale = await resolveFrontRequestLocale(request);
   const searchParams = request.nextUrl.searchParams;
   const keyword = searchParams.get('keyword')?.trim() ?? searchParams.get('q')?.trim() ?? '';
   const page = Number(searchParams.get('page') ?? '1');

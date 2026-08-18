@@ -5,7 +5,7 @@ import { resolveFrontRequestLocale } from '@/lib/front-request-locale';
 import { getStorefrontBrands } from '@/server/storefront/brands';
 
 export async function GET(request: NextRequest) {
-  const locale = resolveFrontRequestLocale(request);
+  const locale = await resolveFrontRequestLocale(request);
   return NextResponse.json(await getStorefrontBrands(locale), { headers: frontCorsHeaders() });
 }
 

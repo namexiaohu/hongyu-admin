@@ -1,4 +1,4 @@
-export const SUPPORTED_LOCALES = ['en', 'de', 'es'] as const;
+export const SUPPORTED_LOCALES = ['zh', 'en', 'es', 'de'] as const;
 export const SUPPORTED_CURRENCIES = ['USD', 'EUR', 'GBP'] as const;
 export const SUPPORTED_UNIT_SYSTEMS = ['imperial', 'metric'] as const;
 
@@ -14,6 +14,7 @@ export const PREFERENCE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 export const LOCALE_REQUEST_HEADER = 'x-vex-locale';
 
 const localeDefaults: Record<Locale, { currency: Currency; unitSystem: UnitSystem; label: string }> = {
+  zh: { currency: 'USD', unitSystem: 'metric', label: '中文' },
   en: { currency: 'USD', unitSystem: 'imperial', label: 'English' },
   de: { currency: 'EUR', unitSystem: 'metric', label: 'Deutsch' },
   es: { currency: 'EUR', unitSystem: 'metric', label: 'Español' },
@@ -42,6 +43,7 @@ export function normalizeUnitSystem(value: string | null | undefined): UnitSyste
 }
 
 const countryToLocale: Record<string, Locale> = {
+  CN: 'zh', TW: 'zh', HK: 'zh', SG: 'zh',
   US: 'en', GB: 'en', CA: 'en', AU: 'en', NZ: 'en', IE: 'en',
   DE: 'de', AT: 'de', CH: 'de',
   ES: 'es', MX: 'es', AR: 'es', CO: 'es', CL: 'es', PE: 'es',
@@ -64,21 +66,28 @@ export function detectCurrencyFromCountry(countryCode: string | null | undefined
   return countryToCurrency[countryCode.toUpperCase()] ?? null;
 }
 
+function resolveMarketLocale(locale: string): Locale {
+  if (isSupportedLocale(locale)) return locale;
+  const prefix = locale.slice(0, 2);
+  return isSupportedLocale(prefix) ? prefix : DEFAULT_LOCALE;
+}
+
 export function getEffectiveCurrency(locale: Locale, countryCode?: string | null): Currency {
   const countryCurrency = detectCurrencyFromCountry(countryCode);
   if (countryCurrency) return countryCurrency;
   return localeDefaults[locale].currency;
 }
 
-export function getMarketDefaults(locale: Locale, countryCode?: string | null) {
+export function getMarketDefaults(locale: string, countryCode?: string | null) {
+  const resolved = resolveMarketLocale(locale);
   return {
-    ...localeDefaults[locale],
-    currency: getEffectiveCurrency(locale, countryCode),
+    ...localeDefaults[resolved],
+    currency: getEffectiveCurrency(resolved, countryCode),
   };
 }
 
-export function getLocaleLabel(locale: Locale) {
-  return localeDefaults[locale].label;
+export function getLocaleLabel(locale: string) {
+  return localeDefaults[resolveMarketLocale(locale)].label;
 }
 
 export function formatOrderLocaleDisplay(locale: string | null | undefined) {

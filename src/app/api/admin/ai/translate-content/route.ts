@@ -6,7 +6,18 @@ import { LlmConfigError, LlmRequestError } from '@/server/ai/chat-with-llm';
 import { HtmlStructureMismatchError, translateContentFields } from '@/server/ai/translate';
 
 const translateContentSchema = z.object({
-  contentType: z.enum(['blog', 'faq', 'brand', 'category', 'product', 'feature', 'shippingMethod']),
+  contentType: z.enum([
+    'blog',
+    'faq',
+    'brand',
+    'category',
+    'product',
+    'feature',
+    'shippingMethod',
+    'brandNarrative',
+    'brandNarrativeBlock',
+    'brandNarrativeBlockItem',
+  ]),
   sourceLocale: z.string().trim().min(1),
   targetLocale: z.string().trim().min(1),
   fields: z.record(z.string(), z.string()),

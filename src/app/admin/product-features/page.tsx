@@ -4,15 +4,15 @@ import { AdminProductFeaturesClient } from './product-features-client';
 
 import { parseAdminListQuery } from '@/lib/admin-list-query';
 import { getAdminFeatureDefinitionsPaginated } from '@/server/admin/feature-definitions';
-import { getAdminSiteLanguages } from '@/server/admin/languages';
+import { getActiveAdminSiteLanguages } from '@/server/admin/languages';
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 async function ProductFeaturesPageContent({ searchParams }: PageProps) {
-  const [siteLanguages, params] = await Promise.all([
-    getAdminSiteLanguages(),
+  const [activeLanguages, params] = await Promise.all([
+    getActiveAdminSiteLanguages(),
     searchParams,
   ]);
 
@@ -22,8 +22,6 @@ async function ProductFeaturesPageContent({ searchParams }: PageProps) {
     page: initialQuery.page,
     pageSize: initialQuery.pageSize,
   });
-
-  const activeLanguages = siteLanguages.filter((language) => language.status === 'active');
 
   return (
     <AdminProductFeaturesClient

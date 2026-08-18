@@ -7,7 +7,10 @@ export type ContentTranslateType =
   | 'category'
   | 'product'
   | 'feature'
-  | 'shippingMethod';
+  | 'shippingMethod'
+  | 'brandNarrative'
+  | 'brandNarrativeBlock'
+  | 'brandNarrativeBlockItem';
 
 type ContentTranslateProfile = {
   sourceFields: readonly string[];
@@ -16,6 +19,7 @@ type ContentTranslateProfile = {
   passthroughFields?: readonly string[];
   serverLabel: string;
   tooltip: string;
+  translateNotes?: string;
 };
 
 export const CONTENT_TRANSLATE_PROFILES: Record<ContentTranslateType, ContentTranslateProfile> = {
@@ -104,6 +108,27 @@ export const CONTENT_TRANSLATE_PROFILES: Record<ContentTranslateType, ContentTra
     serverLabel: 'shipping method',
     tooltip: '将默认语言已保存的物流方式名称、时效与说明翻译到当前语言；编码不会翻译，翻译后请校对',
   },
+  brandNarrative: {
+    sourceFields: ['heroTitle', 'heroSlogan', 'heroLead', 'statsText', 'heroImage'],
+    plainTextFields: ['heroTitle', 'heroSlogan', 'heroLead', 'statsText'],
+    passthroughFields: ['heroImage'],
+    serverLabel: 'brand narrative page',
+    tooltip: '将默认语言已保存的看板与数据指标覆盖并翻译到当前语言；Slug 与封面图 URL 不会翻译，翻译后请校对',
+    translateNotes:
+      'statsText has one metric per line as LABEL|||VALUE. Translate LABEL only. Keep VALUE exactly, including numbers, units, and +. Keep the same line count and the ||| separator. Do not return a JSON array.',
+  },
+  brandNarrativeBlock: {
+    sourceFields: ['smallTitle', 'largeTitle', 'description', 'buttonLabel'],
+    plainTextFields: ['smallTitle', 'largeTitle', 'description', 'buttonLabel'],
+    serverLabel: 'brand narrative content block',
+    tooltip: '将默认语言已填写的区块标题与描述翻译到当前语言，翻译后请校对',
+  },
+  brandNarrativeBlockItem: {
+    sourceFields: ['smallTitle', 'largeTitle', 'description', 'badge', 'totalHours', 'teachingFormat', 'trainingCycle'],
+    plainTextFields: ['smallTitle', 'largeTitle', 'description', 'badge', 'totalHours', 'teachingFormat', 'trainingCycle'],
+    serverLabel: 'brand narrative block item',
+    tooltip: '将默认语言已填写的内容项标题与描述翻译到当前语言，翻译后请校对',
+  },
 };
 
 export function pickTranslatePayload(
@@ -167,6 +192,25 @@ export function validateDefaultTranslateSource(
     }
     if (!hasMeaningfulHtmlBody(fields.body ?? '')) {
       return '默认语言内容不完整，请先完善标题与正文';
+    }
+    return null;
+  }
+
+  if (contentType === 'brandNarrative') {
+    if (!fields.heroTitle?.trim()) {
+      return '默认语言内容不完整，请先完善标题';
+    }
+    return null;
+  }
+
+  if (contentType === 'brandNarrativeBlock' || contentType === 'brandNarrativeBlockItem') {
+    if (
+      !fields.smallTitle?.trim()
+      && !fields.largeTitle?.trim()
+      && !fields.description?.trim()
+      && !fields.buttonLabel?.trim()
+    ) {
+      return '默认语言内容不完整，请先完善区块文案';
     }
     return null;
   }

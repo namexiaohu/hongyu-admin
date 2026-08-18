@@ -23,7 +23,7 @@ export async function GET(
   { params }: { params: Promise<{ boardKey: string }> },
 ) {
   const { boardKey } = await params;
-  const locale = resolveFrontRequestLocale(request);
+  const locale = await resolveFrontRequestLocale(request);
   const searchParams = request.nextUrl.searchParams;
   const page = parsePositiveInt(searchParams.get('page'), 1);
   const pageSize = parsePositiveInt(searchParams.get('pageSize') ?? searchParams.get('page_size'), 12);

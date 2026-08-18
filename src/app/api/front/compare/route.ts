@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const locale = resolveFrontRequestLocale(request);
+  const locale = await resolveFrontRequestLocale(request);
   const result = await buildProductCompare(parsed.data.productIds, locale);
   if (!result.ok) {
     const status = result.code === 'NOT_FOUND' ? 404 : 400;

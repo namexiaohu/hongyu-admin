@@ -1,5 +1,5 @@
 import { getAdminCategoryTree } from '@/server/admin/categories';
-import { getAdminSiteLanguages } from '@/server/admin/languages';
+import { getActiveAdminSiteLanguages } from '@/server/admin/languages';
 import { listAdminCoupons } from '@/server/admin/coupons';
 
 import { parseCouponListQuery } from '@/lib/coupon-list-query';
@@ -19,7 +19,7 @@ export default async function AdminCouponsPage({
   const [listResult, categoryTree, activeLanguages] = await Promise.all([
     listAdminCoupons(query),
     getAdminCategoryTree(),
-    getAdminSiteLanguages(),
+    getActiveAdminSiteLanguages(),
   ]);
 
   return (

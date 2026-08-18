@@ -38,6 +38,8 @@ function parseJsonObject(raw: string): Record<string, string> {
   for (const [key, value] of Object.entries(parsed)) {
     if (typeof value === 'string') {
       result[key] = value;
+    } else if (value != null && typeof value === 'object') {
+      result[key] = JSON.stringify(value);
     }
   }
   return result;
@@ -96,12 +98,13 @@ async function translatePlainFields(options: {
 
   const sourceLabel = resolveLocaleLabel(sourceLocale);
   const targetLabel = resolveLocaleLabel(targetLocale);
-  const multilineNote = profile.plainTextFields.some((key) => key.endsWith('Text'))
+  const multilineNote = profile.plainTextFields.some((key) => key.endsWith('Text') && key !== 'statsText')
     ? '\nFor multiline fields ending with Text (tagsText, textOptionsText, certificationsText), keep one item per line.'
     : '';
+  const extraNotes = profile.translateNotes ? `\n${profile.translateNotes}` : '';
 
   const prompt = `Translate the following ${profile.serverLabel} fields from ${sourceLabel} to ${targetLabel}.
-Return a JSON object with the same keys. Translate only human-readable text values.${multilineNote}
+Return a JSON object with the same keys. Translate only human-readable text values.${multilineNote}${extraNotes}
 
 Fields JSON:
 ${JSON.stringify(payload, null, 2)}`;

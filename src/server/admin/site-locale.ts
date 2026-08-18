@@ -5,7 +5,7 @@ import { asc, eq } from 'drizzle-orm';
 import { db } from '@/server/db';
 import { siteLanguages } from '@/server/db/schema';
 
-const FALLBACK_DEFAULT_LOCALE = 'en';
+const FALLBACK_DEFAULT_LOCALE = 'zh';
 
 export async function getDefaultSiteLanguageCode(): Promise<string> {
   const [defaultRow] = await db

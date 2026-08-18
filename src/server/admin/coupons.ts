@@ -31,7 +31,7 @@ import {
   couponScopes,
   couponStatuses,
 } from '@/lib/coupon-list-query';
-import { getAdminSiteLanguages } from '@/server/admin/languages';
+import { getActiveAdminSiteLanguages, getAdminSiteLanguages } from '@/server/admin/languages';
 import { db } from '@/server/db';
 import {
   admins,
@@ -116,8 +116,7 @@ export type AdminCouponListPage = {
 };
 
 async function getPrimaryDisplayLocale() {
-  const languages = await getAdminSiteLanguages();
-  const active = languages.filter((language) => language.status === 'active');
+  const active = await getActiveAdminSiteLanguages();
   return active[0]?.code ?? 'en';
 }
 

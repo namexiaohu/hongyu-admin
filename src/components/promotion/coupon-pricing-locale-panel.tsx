@@ -6,6 +6,7 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState }
 
 import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
 import type { CouponDiscountType, CouponLocalePricing, CouponLocalePricingInput } from '@/lib/coupon-list-query';
+import { sortEditorLanguages } from '@/lib/languages';
 import type { AdminSiteLanguageRow } from '@/server/admin/languages';
 
 const COUPON_NUMERIC_INPUT_STYLE = { width: '100%' } as const;
@@ -118,7 +119,7 @@ export const CouponPricingLocalePanel = forwardRef<CouponPricingLocalePanelRef, 
     const pricingRows = initialLocalePricing ?? EMPTY_LOCALE_PRICING;
 
     const enabledLanguages = useMemo(
-      () => activeLanguages.filter((language) => language.status === 'active'),
+      () => sortEditorLanguages(activeLanguages.filter((language) => language.status === 'active')),
       [activeLanguages],
     );
 

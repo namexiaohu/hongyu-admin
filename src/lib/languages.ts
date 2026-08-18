@@ -131,3 +131,12 @@ export function getCommonLanguage(code: string) {
 export function isCommonLanguageCode(code: string) {
   return COMMON_LANGUAGE_CODES.includes(code);
 }
+
+/** 后台新建/编辑页语言列表：默认语言优先，其余按 sortOrder 从小到大。 */
+export function sortEditorLanguages<T extends { isDefault: boolean; sortOrder: number; name?: string }>(languages: T[]): T[] {
+  return [...languages].sort((left, right) => {
+    if (left.isDefault !== right.isDefault) return left.isDefault ? -1 : 1;
+    if (left.sortOrder !== right.sortOrder) return left.sortOrder - right.sortOrder;
+    return (left.name ?? '').localeCompare(right.name ?? '');
+  });
+}

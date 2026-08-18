@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ code: 'UNAUTHORIZED', message: 'Authentication required' }, { status: 401, headers: frontCorsHeaders() });
   }
 
-  const locale = resolveFrontRequestLocale(request);
+  const locale = await resolveFrontRequestLocale(request);
   return NextResponse.json({ locale, items: await getWishlistByUser(userId, locale) }, { headers: frontCorsHeaders() });
 }
 
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
   }
 
   await db.insert(wishlists).values({ userId, productId: parsed.data.productId }).onConflictDoNothing();
-  const locale = resolveFrontRequestLocale(request);
+  const locale = await resolveFrontRequestLocale(request);
   return NextResponse.json({ locale, items: await getWishlistByUser(userId, locale) }, { status: 201, headers: frontCorsHeaders() });
 }
 

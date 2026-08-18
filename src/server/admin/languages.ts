@@ -1,7 +1,7 @@
 import { asc, eq } from 'drizzle-orm';
 
 import { getDefaultCurrencyForLanguage, isCommonCurrencyCode } from '@/lib/currencies';
-import { COMMON_LANGUAGES, getCommonLanguage } from '@/lib/languages';
+import { COMMON_LANGUAGES, getCommonLanguage, sortEditorLanguages } from '@/lib/languages';
 import { db } from '@/server/db';
 import { siteLanguages } from '@/server/db/schema';
 
@@ -74,6 +74,11 @@ async function seedDatabaseLanguages() {
 export async function getAdminSiteLanguages(): Promise<AdminSiteLanguageRow[]> {
   await seedDatabaseLanguages();
   return db.select().from(siteLanguages).orderBy(asc(siteLanguages.sortOrder), asc(siteLanguages.name));
+}
+
+export async function getActiveAdminSiteLanguages(): Promise<AdminSiteLanguageRow[]> {
+  const rows = await getAdminSiteLanguages();
+  return sortEditorLanguages(rows.filter((row) => row.status === 'active'));
 }
 
 export async function getAvailableCommonLanguages() {

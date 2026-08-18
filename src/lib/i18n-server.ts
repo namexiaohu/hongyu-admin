@@ -23,6 +23,7 @@ type TranslationObject = Record<string, any>;
 type TranslationParams = Record<string, string | number | boolean>;
 
 const translations: Record<Locale, TranslationObject> = {
+  zh: enTranslations,
   en: enTranslations,
   de: deTranslations,
   es: esTranslations,

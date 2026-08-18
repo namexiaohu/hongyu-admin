@@ -6,7 +6,7 @@ import { getStorefrontBoardBlogs } from '@/server/storefront/editorial-content';
 import { getCategories, getProductList } from '@/server/storefront';
 
 export async function GET(request: NextRequest) {
-  const locale = resolveFrontRequestLocale(request);
+  const locale = await resolveFrontRequestLocale(request);
   const [categories, products, blogBoard] = await Promise.all([
     getCategories(),
     getProductList({ page: 1, pageSize: 1000 }),

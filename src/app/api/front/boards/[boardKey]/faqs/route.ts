@@ -9,7 +9,7 @@ export async function GET(
   { params }: { params: Promise<{ boardKey: string }> },
 ) {
   const { boardKey } = await params;
-  const locale = resolveFrontRequestLocale(request);
+  const locale = await resolveFrontRequestLocale(request);
   return NextResponse.json(await getStorefrontBoardFaqs(boardKey, locale), { headers: frontCorsHeaders() });
 }
 

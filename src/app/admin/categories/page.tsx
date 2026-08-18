@@ -2,7 +2,7 @@ import { CategoriesClient } from './categories-client';
 import { ROOT_CATEGORY_PARENT_KEY } from '@/lib/category-content';
 import { parseAdminListQuery } from '@/lib/admin-list-query';
 import { getAdminCategoriesPaginated, getAdminCategoryStats, getAdminCategoryTree } from '@/server/admin/categories';
-import { getAdminSiteLanguages } from '@/server/admin/languages';
+import { getActiveAdminSiteLanguages } from '@/server/admin/languages';
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -22,7 +22,7 @@ export default async function AdminCategoriesPage({ searchParams }: PageProps) {
     }),
     getAdminCategoryTree(),
     getAdminCategoryStats(),
-    getAdminSiteLanguages(),
+    getActiveAdminSiteLanguages(),
   ]);
 
   return (

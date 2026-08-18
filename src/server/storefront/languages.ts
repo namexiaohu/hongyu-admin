@@ -1,4 +1,4 @@
-import { asc, eq } from 'drizzle-orm';
+import { asc, desc, eq } from 'drizzle-orm';
 
 import { db } from '@/server/db';
 import { siteLanguages } from '@/server/db/schema';
@@ -30,17 +30,23 @@ export async function getStorefrontLanguages(): Promise<StorefrontLanguage[]> {
     })
     .from(siteLanguages)
     .where(eq(siteLanguages.status, 'active'))
-    .orderBy(asc(siteLanguages.sortOrder), asc(siteLanguages.name));
+    .orderBy(desc(siteLanguages.isDefault), asc(siteLanguages.sortOrder), asc(siteLanguages.name));
 
-  return rows.map((row) => ({
-    code: row.code,
-    name: row.name,
-    nativeName: row.nativeName,
-    region: row.region,
-    direction: row.direction,
-    countryCodes: row.countryCodes ?? [],
-    currencyCode: row.currencyCode,
-    isDefault: row.isDefault,
-    sortOrder: row.sortOrder,
-  }));
+  return rows
+    .map((row) => ({
+      code: row.code,
+      name: row.name,
+      nativeName: row.nativeName,
+      region: row.region,
+      direction: row.direction as StorefrontLanguage['direction'],
+      countryCodes: row.countryCodes ?? [],
+      currencyCode: row.currencyCode,
+      isDefault: row.isDefault,
+      sortOrder: row.sortOrder,
+    }))
+    .sort((left, right) => {
+      if (left.isDefault !== right.isDefault) return left.isDefault ? -1 : 1;
+      if (left.sortOrder !== right.sortOrder) return left.sortOrder - right.sortOrder;
+      return left.name.localeCompare(right.name);
+    });
 }

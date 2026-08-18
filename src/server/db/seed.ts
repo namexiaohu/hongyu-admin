@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm';
 
 import { md5Hash } from '@/lib/auth/password';
 import { db } from '@/server/db';
+import { seedBrandNarratives } from '@/server/db/seed-brand-narratives';
 import {
   addresses,
   brandTranslations,
@@ -517,6 +518,8 @@ async function main() {
       requestedAmount: '37.81',
     });
   }
+
+  await seedBrandNarratives();
 
   console.log('Seed complete');
   console.log('Admin login:', 'admin@lianchuan.local / Admin123456');
