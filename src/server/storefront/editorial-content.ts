@@ -7,7 +7,6 @@ import {
   type EditorialContentPayload,
 } from '@/lib/editorial-content';
 import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
-import { normalizeSlug } from '@/lib/slug';
 import { db } from '@/server/db';
 import {
   editorialContentBoards,
@@ -23,11 +22,11 @@ export type StorefrontBlogAuthor = {
   bio: string | null;
 };
 
-function editorialLocale(localeInput?: string | null) {
+export function editorialLocale(localeInput?: string | null) {
   return localeInput?.trim() || 'en';
 }
 
-function pickTranslation(rows: TranslationRow[], locale: string) {
+export function pickTranslation(rows: TranslationRow[], locale: string) {
   if (!rows.length) return null;
   const normalized = locale.trim().toLowerCase();
   const exact = rows.find((row) => row.locale.toLowerCase() === normalized);
@@ -49,7 +48,7 @@ function normalizeCoverStyle(value: unknown): number | null {
   return value;
 }
 
-function normalizePayload(payload: unknown): EditorialContentPayload {
+export function normalizePayload(payload: unknown): EditorialContentPayload {
   const value = (payload ?? {}) as Partial<EditorialContentPayload>;
   return {
     body: typeof value.body === 'string' ? value.body : '',
@@ -65,21 +64,12 @@ function normalizePayload(payload: unknown): EditorialContentPayload {
   };
 }
 
-function buildAuthor(payload: EditorialContentPayload): StorefrontBlogAuthor {
+export function buildAuthor(payload: EditorialContentPayload): StorefrontBlogAuthor {
   return {
     name: payload.authorName ?? null,
     title: payload.authorTitle ?? null,
     bio: payload.authorBio ?? null,
   };
-}
-
-async function loadBoardKeys(contentId: string) {
-  const rows = await db
-    .select({ boardKey: editorialContentBoards.boardKey })
-    .from(editorialContentBoards)
-    .where(eq(editorialContentBoards.contentId, contentId))
-    .orderBy(asc(editorialContentBoards.boardKey));
-  return rows.map((row) => row.boardKey);
 }
 
 export async function getStorefrontBoardFaqs(boardKeyInput: string, localeInput?: string | null) {
@@ -269,61 +259,6 @@ export async function getStorefrontBoardContent(
 }
 
 export async function getStorefrontBlogDetailBySlug(slugInput: string, localeInput?: string | null) {
-  const locale = editorialLocale(localeInput);
-  const slug = normalizeSlug(slugInput);
-  if (!slug) return null;
-
-  const rows = await db
-    .select({
-      content: editorialContents,
-      translation: editorialContentTranslations,
-    })
-    .from(editorialContentTranslations)
-    .innerJoin(editorialContents, eq(editorialContents.id, editorialContentTranslations.contentId))
-    .where(and(
-      eq(editorialContentTranslations.slug, slug),
-      eq(editorialContentTranslations.contentModule, 'editorial'),
-      eq(editorialContents.status, 'published'),
-      eq(editorialContents.contentModule, 'editorial'),
-    ));
-
-  if (!rows.length) return null;
-
-  const preferred = rows.find((row) => row.translation.locale === locale)
-    ?? rows.find((row) => row.translation.locale.toLowerCase().startsWith('en'))
-    ?? rows[0];
-  if (!preferred) return null;
-
-  const content = preferred.content;
-  const contentId = content.id;
-
-  const translations = await db
-    .select()
-    .from(editorialContentTranslations)
-    .where(eq(editorialContentTranslations.contentId, contentId));
-
-  const picked = pickTranslation(translations, locale) ?? preferred.translation;
-  const payload = normalizePayload(picked.payload);
-  const boardKeys = await loadBoardKeys(contentId);
-
-  return {
-    id: content.id,
-    title: picked.title,
-    summary: picked.summary,
-    body: payload.body,
-    slug: picked.slug,
-    category: payload.category,
-    categorySlug: resolveBlogCategorySlug(payload.category),
-    coverStyle: payload.coverStyle,
-    coverImage: resolveOssAssetUrl(content.coverImage) || null,
-    author: buildAuthor(payload),
-    seo: {
-      title: picked.seoTitle,
-      description: picked.seoDescription,
-    },
-    publishedAt: content.publishedAt?.toISOString() ?? null,
-    boardKeys,
-    tags: payload.tags,
-    relatedProductSlugs: payload.relatedProductSlugs,
-  };
+  const { getStorefrontInsightDetailBySlug } = await import('@/server/storefront/insights');
+  return getStorefrontInsightDetailBySlug(slugInput, localeInput);
 }
