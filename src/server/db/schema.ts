@@ -1,3 +1,28 @@
+// Summit jsonb types
+export type AgendaItem = {
+  id: string;
+  startTime: string;
+  endTime: string;
+  title: string;
+  desc: string;
+  speaker: string;
+};
+
+export type AgendaGroup = {
+  id: string;
+  dayLabel: string;
+  groupTitle: string;
+  items: AgendaItem[];
+};
+
+export type SpeakerItem = {
+  id: string;
+  name: string;
+  avatar: string;
+  bio: string;
+  expertise: string;
+};
+
 import {
   type AnyPgColumn,
   boolean,
@@ -1391,6 +1416,59 @@ export const surgeonTranslations = pgTable(
   (table) => ({
     surgeonLocaleUnique: uniqueIndex('surgeons_i18n_surgeon_locale_unique').on(table.surgeonId, table.locale),
     surgeonIdIdx: index('surgeons_i18n_surgeon_id_idx').on(table.surgeonId),
+  }),
+);
+
+/* ───── Industry Summits (行业峰会) ───── */
+
+export const summitStatusEnum = pgEnum('summit_status', [
+  'upcoming',
+  'registering',
+  'completed',
+]);
+
+export const summits = pgTable(
+  'summits',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    slug: varchar('slug', { length: 64 }).notNull(),
+    status: summitStatusEnum('status').notNull().default('upcoming'),
+    startDate: timestamp('start_date', { withTimezone: true }),
+    endDate: timestamp('end_date', { withTimezone: true }),
+    coverImage: text('cover_image').notNull().default(''),
+    venueImage: text('venue_image').notNull().default(''),
+    agenda: jsonb('agenda').$type<AgendaGroup[]>().notNull().default([]),
+    sortOrder: integer('sort_order').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    slugUnique: uniqueIndex('summits_slug_unique').on(table.slug),
+    statusIdx: index('summits_status_idx').on(table.status),
+    startDateIdx: index('summits_start_date_idx').on(table.startDate),
+  }),
+);
+
+export const summitTranslations = pgTable(
+  'summits_i18n',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    summitId: uuid('summit_id').notNull().references(() => summits.id, { onDelete: 'cascade' }),
+    locale: varchar('locale', { length: 16 }).notNull(),
+    title: varchar('title', { length: 300 }).notNull().default(''),
+    description: text('description').notNull().default(''),
+    scale: varchar('scale', { length: 200 }).notNull().default(''),
+    duration: varchar('duration', { length: 100 }).notNull().default(''),
+    location: varchar('location', { length: 300 }).notNull().default(''),
+    address: varchar('address', { length: 400 }).notNull().default(''),
+    transportation: text('transportation').notNull().default(''),
+    speakers: jsonb('speakers').$type<SpeakerItem[]>().notNull().default([]),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    summitLocaleUnique: uniqueIndex('summits_i18n_summit_locale_unique').on(table.summitId, table.locale),
+    summitIdIdx: index('summits_i18n_summit_id_idx').on(table.summitId),
   }),
 );
 

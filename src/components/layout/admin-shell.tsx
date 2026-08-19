@@ -3,6 +3,7 @@
 import {
   AppstoreOutlined,
   BarsOutlined,
+  CalendarOutlined,
   CommentOutlined,
   DashboardOutlined,
   FileTextOutlined,
@@ -57,6 +58,7 @@ const iconByKey: Record<string, React.ReactNode> = {
   '/admin/brand-narratives': <FileTextOutlined />,
   '/admin/surgeons': <TeamOutlined />,
   '/admin/partner-centers': <GlobalOutlined />,
+  '/admin/summits': <CalendarOutlined />,
   '/admin/editorial/boards': <AppstoreOutlined />,
   '/admin/faq': <FileTextOutlined />,
   '/admin/editorial': <FileTextOutlined />,
