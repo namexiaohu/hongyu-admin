@@ -1,6 +1,11 @@
 import 'server-only';
 
-import { ensureProductBoardConfig } from '@/server/admin/product-boards';
+import { eq } from 'drizzle-orm';
+
+import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
+import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
+import { db } from '@/server/db';
+import { productCoverageBoards, productCoverageBoardTranslations } from '@/server/db/schema';
 import { getProductList } from '@/server/storefront/catalog';
 import type { ProductListSort } from '@/server/storefront/types';
 
@@ -8,10 +13,26 @@ export async function resolveStorefrontProductBoard(boardKeyInput: string) {
   const boardKey = boardKeyInput.trim();
   if (!boardKey) return null;
 
-  const config = await ensureProductBoardConfig();
-  const board = config.coverageBoards.find((item) => item.key === boardKey);
-  if (!board || board.enabled === false) return null;
-  return board;
+  const [row] = await db
+    .select()
+    .from(productCoverageBoards)
+    .where(eq(productCoverageBoards.boardKey, boardKey))
+    .limit(1);
+
+  if (!row || !row.enabled) return null;
+
+  const locale = await getDefaultSiteLanguageCode();
+  const translations = await db
+    .select()
+    .from(productCoverageBoardTranslations)
+    .where(eq(productCoverageBoardTranslations.boardId, row.id));
+
+  const display = pickTranslationForDisplay(translations, locale);
+  return {
+    key: row.boardKey,
+    title: display?.name?.trim() || row.boardKey,
+    enabled: row.enabled,
+  };
 }
 
 export function defaultSortForProductBoard(boardKey: string): ProductListSort {

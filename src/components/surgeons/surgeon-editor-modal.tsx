@@ -249,9 +249,8 @@ export function SurgeonEditorModal({ open, detail, activeLanguages, onClose, onS
                 </Form.Item>
                 <Form.Item name="position" label="职位"><Input placeholder="如：主任医师 · 博士" /></Form.Item>
                 <Form.Item name="institution" label="执业机构"><Input /></Form.Item>
-                <Form.Item name="expertise" label="专业擅长"><Input /></Form.Item>
+                <Form.Item name="expertise" label="擅长领域"><Input /></Form.Item>
                 <Form.Item name="experience" label="资历与经验"><Input /></Form.Item>
-                <Form.Item name="gradeTitle" label="等级称号"><Input placeholder="如：铂金级术者" /></Form.Item>
               </div>
 
               <div style={{ display: sectionTab === 'tags' ? 'block' : 'none' }}>

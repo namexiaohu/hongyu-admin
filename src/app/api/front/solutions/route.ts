@@ -7,12 +7,12 @@ import { getStorefrontSolutionsList } from '@/server/storefront/solutions';
 export async function GET(request: NextRequest) {
   const locale = await resolveFrontRequestLocale(request);
   const { searchParams } = request.nextUrl;
-  const category = searchParams.get('category') ?? undefined;
+  const board = (searchParams.get('board') ?? searchParams.get('category')) || undefined;
   const page = Number.parseInt(searchParams.get('page') ?? '1', 10);
   const pageSize = Number.parseInt(searchParams.get('pageSize') ?? '4', 10);
 
   const payload = await getStorefrontSolutionsList({
-    category,
+    board,
     locale,
     page: Number.isFinite(page) ? page : 1,
     pageSize: Number.isFinite(pageSize) ? pageSize : 4,

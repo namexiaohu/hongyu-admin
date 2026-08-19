@@ -41,8 +41,7 @@ export type SolutionMaterial = {
 export type AdminSolutionListItem = {
   id: string;
   slug: SolutionSlug;
-  categoryId: string;
-  categoryName: string;
+  boardKeys: string[];
   sortOrder: number;
   status: SolutionStatus;
   coverImage: string;
@@ -141,7 +140,7 @@ export const adminSolutionTranslationPatchSchema = adminSolutionTranslationSchem
 
 export const adminSolutionPatchSchema = z.object({
   slug: z.string().trim().min(1).max(64).optional(),
-  categoryId: z.string().uuid().optional(),
+  boardKeys: z.array(z.string()).optional(),
   status: z.enum(solutionStatuses).optional(),
   sortOrder: z.number().int().optional(),
   coverImage: z.string().optional(),
@@ -152,7 +151,7 @@ export const adminSolutionPatchSchema = z.object({
 
 export const adminSolutionCreateSchema = z.object({
   slug: z.string().trim().min(1).max(64),
-  categoryId: z.string().uuid(),
+  boardKeys: z.array(z.string()).optional().default([]),
   status: z.enum(solutionStatuses).optional(),
   coverImage: z.string().optional().default(''),
   materials: z.array(materialSchema).optional().default([]),

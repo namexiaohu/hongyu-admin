@@ -9,8 +9,9 @@ import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import type { SolutionMaterial, SolutionProductParam, SolutionStat } from '@/lib/solution-content';
 import { db } from '@/server/db';
 import {
-  categories,
-  categoryTranslations,
+  productCoverageBoards,
+  productCoverageBoardTranslations,
+  solutionBoardLinks,
   solutionContents,
   solutionTranslations,
   solutions,
@@ -216,19 +217,29 @@ function mapBlocksToSections(
   return sections;
 }
 
-async function loadCategoryLabel(categoryId: string, locale: string) {
-  const rows = await db
+async function loadFirstBoardLabel(solutionId: string, locale: string) {
+  const links = await db
     .select({
-      locale: categoryTranslations.locale,
-      name: categoryTranslations.name,
-      slug: categoryTranslations.slug,
+      boardKey: productCoverageBoards.boardKey,
+      translationLocale: productCoverageBoardTranslations.locale,
+      translationName: productCoverageBoardTranslations.name,
     })
-    .from(categoryTranslations)
-    .where(eq(categoryTranslations.categoryId, categoryId));
-  const picked = pickLocaleRow(rows, locale);
+    .from(solutionBoardLinks)
+    .innerJoin(productCoverageBoards, eq(productCoverageBoards.id, solutionBoardLinks.boardId))
+    .leftJoin(productCoverageBoardTranslations, eq(productCoverageBoardTranslations.boardId, productCoverageBoards.id))
+    .where(eq(solutionBoardLinks.solutionId, solutionId));
+
+  if (!links.length) return { name: '', slug: '' };
+
+  const boardKey = links[0].boardKey;
+  const translations = links
+    .filter((l) => l.translationLocale !== null)
+    .map((l) => ({ locale: l.translationLocale!, name: l.translationName ?? '' }));
+
+  const picked = pickLocaleRow(translations, locale);
   return {
-    name: text(picked?.name, ''),
-    slug: text(picked?.slug, ''),
+    name: text(picked?.name, boardKey),
+    slug: boardKey,
   };
 }
 
@@ -236,7 +247,7 @@ function mapListItem(
   slug: string,
   coverImage: string,
   translation: typeof solutionTranslations.$inferSelect,
-  category: { name: string; slug: string },
+  board: { name: string; slug: string },
 ): StorefrontSolutionListItem {
   const title = text(translation.title, slug);
   return {
@@ -244,8 +255,8 @@ function mapListItem(
     href: `/solutions/${slug}`,
     coverImage: resolveOssAssetUrl(coverImage),
     badgeText: text(translation.badgeText),
-    categorySlug: category.slug,
-    categoryLabel: category.name || category.slug,
+    categorySlug: board.slug,
+    categoryLabel: board.name || board.slug,
     title,
     largeTitle: text(translation.largeTitle, title),
     description: text(translation.description),
@@ -265,10 +276,10 @@ export async function getStorefrontSolutionBySlug(
     .limit(1);
   if (!row) return null;
 
-  const [translations, contents, category] = await Promise.all([
+  const [translations, contents, board] = await Promise.all([
     db.select().from(solutionTranslations).where(eq(solutionTranslations.solutionId, row.id)),
     db.select().from(solutionContents).where(eq(solutionContents.solutionId, row.id)).limit(1),
-    loadCategoryLabel(row.categoryId, requestedLocale),
+    loadFirstBoardLabel(row.id, requestedLocale),
   ]);
 
   const translation = pickLocaleRow(translations, requestedLocale) ?? pickTranslationForDisplay(translations, requestedLocale);
@@ -297,7 +308,7 @@ export async function getStorefrontSolutionBySlug(
       { label: pageTitle },
     ],
     hero: {
-      eyebrow: category.name ? `Solution · ${category.name}` : 'Solution',
+      eyebrow: board.name ? `Solution · ${board.name}` : 'Solution',
       title: headline,
       lead: text(translation.description),
       image: resolveOssAssetUrl(row.coverImage),
@@ -315,62 +326,91 @@ export async function getStorefrontSolutionsList(input: {
   locale?: string;
   page?: number;
   pageSize?: number;
-  category?: string | null;
+  board?: string | null;
 }): Promise<StorefrontSolutionListResponse> {
   const locale = input.locale?.trim() || (await getDefaultSiteLanguageCode());
   const page = Math.max(1, input.page ?? 1);
   const pageSize = Math.min(50, Math.max(1, input.pageSize ?? 4));
-  const categorySlug = input.category?.trim() || null;
+  const boardKey = input.board?.trim() || null;
 
+  // Fetch all published solutions with their board links and translations
   const rows = await db
     .select({
       solution: solutions,
       translation: solutionTranslations,
-      categorySlug: categoryTranslations.slug,
-      categoryName: categoryTranslations.name,
-      categoryLocale: categoryTranslations.locale,
+      boardKey: productCoverageBoards.boardKey,
+      boardTranslationLocale: productCoverageBoardTranslations.locale,
+      boardTranslationName: productCoverageBoardTranslations.name,
     })
     .from(solutions)
     .innerJoin(solutionTranslations, eq(solutionTranslations.solutionId, solutions.id))
-    .innerJoin(categories, eq(categories.id, solutions.categoryId))
-    .innerJoin(categoryTranslations, eq(categoryTranslations.categoryId, categories.id))
+    .leftJoin(solutionBoardLinks, eq(solutionBoardLinks.solutionId, solutions.id))
+    .leftJoin(productCoverageBoards, eq(productCoverageBoards.id, solutionBoardLinks.boardId))
+    .leftJoin(
+      productCoverageBoardTranslations,
+      eq(productCoverageBoardTranslations.boardId, productCoverageBoards.id),
+    )
     .where(eq(solutions.status, 'published'))
     .orderBy(asc(solutions.sortOrder), asc(solutions.slug));
 
+  type BoardEntry = { key: string; translations: Array<{ locale: string; name: string }> };
   const grouped = new Map<string, {
     solution: typeof solutions.$inferSelect;
     translations: Array<typeof solutionTranslations.$inferSelect>;
-    categories: Array<{ slug: string; name: string; locale: string }>;
+    boards: Map<string, BoardEntry>;
   }>();
 
   for (const row of rows) {
     const bucket = grouped.get(row.solution.id) ?? {
       solution: row.solution,
       translations: [],
-      categories: [],
+      boards: new Map<string, BoardEntry>(),
     };
-    if (!bucket.translations.some((item) => item.id === row.translation.id)) {
+    if (!bucket.translations.some((t) => t.id === row.translation.id)) {
       bucket.translations.push(row.translation);
     }
-    if (!bucket.categories.some((item) => item.locale === row.categoryLocale && item.slug === row.categorySlug)) {
-      bucket.categories.push({
-        slug: row.categorySlug,
-        name: row.categoryName,
-        locale: row.categoryLocale,
-      });
+    if (row.boardKey) {
+      const boardEntry = bucket.boards.get(row.boardKey) ?? { key: row.boardKey, translations: [] };
+      if (
+        row.boardTranslationLocale
+        && !boardEntry.translations.some((t) => t.locale === row.boardTranslationLocale)
+      ) {
+        boardEntry.translations.push({ locale: row.boardTranslationLocale, name: row.boardTranslationName ?? '' });
+      }
+      bucket.boards.set(row.boardKey, boardEntry);
     }
     grouped.set(row.solution.id, bucket);
   }
 
-  let items = [...grouped.values()].map((entry) => {
+  let items = [...grouped.values()].flatMap((entry) => {
     const translation = pickLocaleRow(entry.translations, locale);
-    const category = pickLocaleRow(entry.categories, locale);
-    if (!translation || !category) return null;
-    return mapListItem(entry.solution.slug, entry.solution.coverImage, translation, category);
-  }).filter((item): item is StorefrontSolutionListItem => Boolean(item));
+    if (!translation) return [];
 
-  if (categorySlug && categorySlug !== 'all') {
-    items = items.filter((item) => item.categorySlug === categorySlug);
+    const boardEntries = [...entry.boards.values()];
+    if (!boardEntries.length) {
+      // Solution not linked to any board — include in "all" only
+      return [{
+        item: mapListItem(entry.solution.slug, entry.solution.coverImage, translation, { name: '', slug: '' }),
+        boardKeys: [] as string[],
+      }];
+    }
+
+    // Use first board for display label, but track all board keys for filtering
+    const firstBoard = boardEntries[0];
+    const firstBoardDisplay = pickLocaleRow(firstBoard.translations, locale);
+    const board = {
+      name: text(firstBoardDisplay?.name, firstBoard.key),
+      slug: firstBoard.key,
+    };
+
+    return [{
+      item: mapListItem(entry.solution.slug, entry.solution.coverImage, translation, board),
+      boardKeys: boardEntries.map((b) => b.key),
+    }];
+  });
+
+  if (boardKey && boardKey !== 'all') {
+    items = items.filter((entry) => entry.boardKeys.includes(boardKey));
   }
 
   const total = items.length;
@@ -378,11 +418,11 @@ export async function getStorefrontSolutionsList(input: {
 
   return {
     locale,
-    category: categorySlug,
+    category: boardKey,
     page,
     pageSize,
     total,
-    items: items.slice(offset, offset + pageSize),
+    items: items.slice(offset, offset + pageSize).map((e) => e.item),
   };
 }
 
@@ -391,50 +431,75 @@ export async function getStorefrontSolutionCategoryTabs(locale?: string): Promis
   tabs: StorefrontSolutionCategoryTab[];
 }> {
   const requestedLocale = locale?.trim() || (await getDefaultSiteLanguageCode());
-  const list = await getStorefrontSolutionsList({
-    locale: requestedLocale,
-    page: 1,
-    pageSize: 500,
-  });
 
-  const counts = new Map<string, { slug: string; label: string; count: number }>();
-  for (const item of list.items) {
-    const current = counts.get(item.categorySlug) ?? {
-      slug: item.categorySlug,
-      label: item.categoryLabel,
-      count: 0,
-    };
-    current.count += 1;
-    counts.set(item.categorySlug, current);
-  }
-
-  const categoryRows = await db
+  // Get all enabled boards with their translations, sorted by sortOrder
+  const boards = await db
     .select({
-      sortOrder: categories.sortOrder,
-      slug: categoryTranslations.slug,
+      id: productCoverageBoards.id,
+      boardKey: productCoverageBoards.boardKey,
+      createdAt: productCoverageBoards.createdAt,
+      translationLocale: productCoverageBoardTranslations.locale,
+      translationName: productCoverageBoardTranslations.name,
     })
-    .from(categories)
-    .innerJoin(categoryTranslations, eq(categoryTranslations.categoryId, categories.id));
+    .from(productCoverageBoards)
+    .leftJoin(
+      productCoverageBoardTranslations,
+      eq(productCoverageBoardTranslations.boardId, productCoverageBoards.id),
+    )
+    .where(eq(productCoverageBoards.enabled, true))
+    .orderBy(asc(productCoverageBoards.createdAt));
 
-  const sortBySlug = new Map<string, number>();
-  for (const row of categoryRows) {
-    const current = sortBySlug.get(row.slug);
-    if (current === undefined || row.sortOrder < current) {
-      sortBySlug.set(row.slug, row.sortOrder);
+  // Group board translations
+  const boardMap = new Map<string, { key: string; translations: Array<{ locale: string; name: string }> }>();
+  for (const row of boards) {
+    const entry = boardMap.get(row.boardKey) ?? { key: row.boardKey, translations: [] };
+    if (row.translationLocale && !entry.translations.some((t) => t.locale === row.translationLocale)) {
+      entry.translations.push({ locale: row.translationLocale, name: row.translationName ?? '' });
     }
+    boardMap.set(row.boardKey, entry);
   }
+
+  // Count solutions per board
+  const linkCounts = await db
+    .select({
+      boardKey: productCoverageBoards.boardKey,
+      count: sql<number>`count(distinct ${solutionBoardLinks.solutionId})`,
+    })
+    .from(solutionBoardLinks)
+    .innerJoin(solutions, eq(solutions.id, solutionBoardLinks.solutionId))
+    .innerJoin(productCoverageBoards, eq(productCoverageBoards.id, solutionBoardLinks.boardId))
+    .where(eq(solutions.status, 'published'))
+    .groupBy(productCoverageBoards.boardKey);
+
+  const countByKey = new Map(linkCounts.map((row) => [row.boardKey, Number(row.count)]));
+
+  // Count total published solutions
+  const [totalRow] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(solutions)
+    .where(eq(solutions.status, 'published'));
+  const totalCount = Number(totalRow?.count ?? 0);
 
   const tabs: StorefrontSolutionCategoryTab[] = [
-    { id: 'all', slug: null, label: requestedLocale.toLowerCase().startsWith('zh') ? '全部产品' : 'All Products', count: list.total },
-    ...[...counts.values()]
-      .sort((left, right) => (sortBySlug.get(left.slug) ?? 999) - (sortBySlug.get(right.slug) ?? 999))
-      .map((item) => ({
-        id: item.slug,
-        slug: item.slug,
-        label: item.label,
-        count: item.count,
-      })),
+    {
+      id: 'all',
+      slug: null,
+      label: requestedLocale.toLowerCase().startsWith('zh') ? '全部产品' : 'All Products',
+      count: totalCount,
+    },
   ];
+
+  for (const [, entry] of boardMap) {
+    const count = countByKey.get(entry.key) ?? 0;
+    if (!count) continue;
+    const display = pickLocaleRow(entry.translations, requestedLocale);
+    tabs.push({
+      id: entry.key,
+      slug: entry.key,
+      label: text(display?.name, entry.key),
+      count,
+    });
+  }
 
   return { locale: requestedLocale, tabs };
 }
@@ -468,8 +533,8 @@ export async function getStorefrontRandomSolutions(input: {
       .where(eq(solutionTranslations.solutionId, row.id));
     const translation = pickLocaleRow(translations, locale);
     if (!translation) continue;
-    const category = await loadCategoryLabel(row.categoryId, locale);
-    items.push(mapListItem(row.slug, row.coverImage, translation, category));
+    const board = await loadFirstBoardLabel(row.id, locale);
+    items.push(mapListItem(row.slug, row.coverImage, translation, board));
   }
   return items;
 }

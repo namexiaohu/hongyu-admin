@@ -1,118 +1,75 @@
 'use client';
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Card, Form, Input, Modal, Space, Table, Tag, message } from 'antd';
-import { useMemo, useState, useTransition } from 'react';
+import { Button, Card, Space, Table, Tag, message } from 'antd';
+import { useState, useTransition } from 'react';
 
 import { AdminPageHeaderStats } from '@/components/admin/admin-page-header-stats';
 import { AdminEntityRowActions } from '@/components/admin/admin-row-actions';
 import { adminTableFixedActionsColumn, adminTableNowrapHeader, adminTableScroll } from '@/components/admin/admin-table';
+import { ProductBoardEditorModal } from '@/components/products/product-board-editor-modal';
 import { buildAdminListRowIndexColumn } from '@/lib/admin-list-query';
-import { normalizeEntityKeyForSave, normalizeEntityKeyInput } from '@/lib/admin-entity-key';
-import {
-  type AdminProductBoardsDashboard,
-  type ProductBoardConfig,
-  type ProductCoverageBoard,
-  type ProductCoverageMetric,
-  upsertProductCoverageBoard,
+import type {
+  AdminProductBoardsDashboard,
+  ProductCoverageMetric,
 } from '@/lib/product-boards';
-
-type BoardFormValues = {
-  key: string;
-  title: string;
-  note: string;
-};
+import type { AdminSiteLanguageRow } from '@/server/admin/languages';
 
 export function AdminProductBoardsClient({
   initialDashboard,
+  activeLanguages,
 }: {
   initialDashboard: AdminProductBoardsDashboard;
+  activeLanguages: AdminSiteLanguageRow[];
 }) {
   const [dashboard, setDashboard] = useState(initialDashboard);
-  const [boardModalOpen, setBoardModalOpen] = useState(false);
-  const [editingBoardKey, setEditingBoardKey] = useState<string | null>(null);
-  const [isModalPending, startModalTransition] = useTransition();
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editingBoard, setEditingBoard] = useState<ProductCoverageMetric | null>(null);
   const [pendingBoardKey, setPendingBoardKey] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
   const [messageApi, contextHolder] = message.useMessage();
-  const [boardForm] = Form.useForm<BoardFormValues>();
 
   const boards = dashboard.coverage;
+  const existingKeys = boards.map((b) => b.key);
 
-  const summaryStats = useMemo(() => [
+  const summaryStats = [
     { label: '看板总数', value: dashboard.summary.boardCount },
     { label: '自定义', value: dashboard.summary.customBoardCount },
     { label: '关联产品', value: dashboard.summary.assignedProductCount },
-  ], [dashboard.summary]);
+  ];
 
-  async function saveProductBoardConfig(nextConfig: ProductBoardConfig) {
-    const response = await fetch('/api/admin/products/boards', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(nextConfig),
-    });
-
-    if (!response.ok) {
-      const payload = await response.json().catch(() => null) as { message?: string } | null;
-      throw new Error(payload?.message ?? '保存看板失败');
-    }
-
-    const saved = (await response.json()) as AdminProductBoardsDashboard;
-    setDashboard(saved);
+  function openEditor(board?: ProductCoverageMetric) {
+    setEditingBoard(board ?? null);
+    setEditorOpen(true);
   }
 
-  function openBoardModal(board?: ProductCoverageMetric) {
-    if (board) {
-      setEditingBoardKey(board.key);
-      boardForm.setFieldsValue({ key: board.key, title: board.title, note: board.note });
-    } else {
-      setEditingBoardKey(null);
-      boardForm.setFieldsValue({ key: '', title: '', note: '' });
-    }
-    setBoardModalOpen(true);
+  function closeEditor() {
+    setEditorOpen(false);
+    setEditingBoard(null);
   }
 
-  function closeBoardModal() {
-    setBoardModalOpen(false);
-    setEditingBoardKey(null);
-    boardForm.resetFields();
+  function handleSaved(nextDashboard: AdminProductBoardsDashboard) {
+    setDashboard(nextDashboard);
   }
 
-  function saveBoard() {
-    void boardForm.validateFields().then((values) => {
-      startModalTransition(async () => {
-        try {
-          const boardKey = editingBoardKey ?? normalizeEntityKeyForSave(values.key);
-          if (!boardKey) {
-            void messageApi.error('Key 只能包含小写英文字母和连字符');
-            return;
-          }
-
-          if (!editingBoardKey && dashboard.config.coverageBoards.some((item) => item.key === boardKey)) {
-            void messageApi.error('Key 已被占用');
-            return;
-          }
-
-          const existing = dashboard.config.coverageBoards.find((item) => item.key === boardKey);
-          const nextBoard: ProductCoverageBoard = {
-            key: boardKey,
-            title: values.title.trim(),
-            note: values.note.trim(),
-            sourceMode: existing?.sourceMode ?? 'admin-managed',
-            enabled: existing?.enabled !== false,
-            createdAt: existing?.createdAt ?? new Date().toISOString(),
-          };
-
-          await saveProductBoardConfig({
-            coverageBoards: editingBoardKey
-              ? upsertProductCoverageBoard(dashboard.config.coverageBoards, boardKey, nextBoard)
-              : [...dashboard.config.coverageBoards, nextBoard],
-          });
-          closeBoardModal();
-          void messageApi.success('保存成功');
-        } catch (error) {
-          void messageApi.error(error instanceof Error ? error.message : '保存失败');
-        }
-      });
+  function toggleBoardEnabled(board: ProductCoverageMetric, enabled: boolean) {
+    setPendingBoardKey(board.key);
+    startTransition(async () => {
+      try {
+        const response = await fetch(`/api/admin/products/boards/${encodeURIComponent(board.key)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled }),
+        });
+        if (!response.ok) throw new Error('操作失败');
+        const payload = (await response.json()) as { dashboard: AdminProductBoardsDashboard };
+        setDashboard(payload.dashboard);
+        void messageApi.success(enabled ? '看板已启用' : '看板已停用');
+      } catch (error) {
+        void messageApi.error(error instanceof Error ? error.message : '操作失败');
+      } finally {
+        setPendingBoardKey(null);
+      }
     });
   }
 
@@ -127,44 +84,32 @@ export function AdminProductBoardsClient({
     }
 
     setPendingBoardKey(board.key);
-    void (async () => {
+    startTransition(async () => {
       try {
-        await saveProductBoardConfig({
-          coverageBoards: dashboard.config.coverageBoards.filter((item) => item.key !== board.key),
+        const response = await fetch(`/api/admin/products/boards/${encodeURIComponent(board.key)}`, {
+          method: 'DELETE',
         });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null) as { message?: string } | null;
+          throw new Error(payload?.message ?? '删除失败');
+        }
+        const payload = (await response.json()) as { dashboard: AdminProductBoardsDashboard };
+        setDashboard(payload.dashboard);
         void messageApi.success('看板已删除');
       } catch (error) {
-        void messageApi.error(error instanceof Error ? error.message : '看板删除失败');
+        void messageApi.error(error instanceof Error ? error.message : '删除失败');
       } finally {
         setPendingBoardKey(null);
       }
-    })();
-  }
-
-  function toggleBoardEnabled(board: ProductCoverageMetric, enabled: boolean) {
-    setPendingBoardKey(board.key);
-    void (async () => {
-      try {
-        await saveProductBoardConfig({
-          coverageBoards: dashboard.config.coverageBoards.map((item) =>
-            item.key === board.key ? { ...item, enabled } : item
-          ),
-        });
-        void messageApi.success(enabled ? '看板已启用' : '看板已停用');
-      } catch (error) {
-        void messageApi.error(error instanceof Error ? error.message : '看板状态更新失败');
-      } finally {
-        setPendingBoardKey(null);
-      }
-    })();
+    });
   }
 
   return (
-    <Space orientation="vertical" size="large" style={{ width: '100%' }}>
+    <Space direction="vertical" size="large" style={{ width: '100%' }}>
       {contextHolder}
       <Space style={{ width: '100%', justifyContent: 'space-between' }} wrap align="center">
         <AdminPageHeaderStats items={summaryStats} />
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => openBoardModal()}>新增看板</Button>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => openEditor()}>新增看板</Button>
       </Space>
 
       <Card>
@@ -190,11 +135,8 @@ export function AdminProductBoardsClient({
               width: 96,
               align: 'center' as const,
               onHeaderCell: adminTableNowrapHeader,
-              render: (_: boolean | undefined, row: ProductCoverageMetric) => (
-                row.custom
-                  ? <Tag>自定义</Tag>
-                  : <Tag color="blue">系统内置</Tag>
-              ),
+              render: (_: boolean | undefined, row: ProductCoverageMetric) =>
+                row.custom ? <Tag>自定义</Tag> : <Tag color="blue">系统内置</Tag>,
             },
             {
               title: 'Key',
@@ -234,7 +176,7 @@ export function AdminProductBoardsClient({
                   loading={pendingBoardKey === row.key}
                   isActive={row.enabled}
                   entityName="看板"
-                  onEdit={() => openBoardModal(row)}
+                  onEdit={() => openEditor(row)}
                   onToggleActive={() => toggleBoardEnabled(row, !row.enabled)}
                   onDelete={() => confirmDeleteBoard(row)}
                   showDelete={Boolean(row.custom)}
@@ -247,31 +189,14 @@ export function AdminProductBoardsClient({
         />
       </Card>
 
-      <Modal
-        open={boardModalOpen}
-        title={editingBoardKey ? '编辑看板' : '新增看板'}
-        onCancel={closeBoardModal}
-        onOk={saveBoard}
-        confirmLoading={isModalPending}
-        okText="保存"
-      >
-        <Form<BoardFormValues> form={boardForm} layout="vertical">
-          <Form.Item
-            label="Key"
-            name="key"
-            rules={[{ required: true, message: '请输入看板 Key' }]}
-            getValueFromEvent={(event) => normalizeEntityKeyInput(event.target.value)}
-          >
-            <Input placeholder="例如 seasonal-picks" disabled={Boolean(editingBoardKey)} />
-          </Form.Item>
-          <Form.Item label="看板名称" name="title" rules={[{ required: true, message: '请输入看板名称' }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item label="说明" name="note" rules={[{ required: true, message: '请输入说明' }]}>
-            <Input.TextArea rows={3} />
-          </Form.Item>
-        </Form>
-      </Modal>
+      <ProductBoardEditorModal
+        open={editorOpen}
+        activeLanguages={activeLanguages}
+        editingBoard={editingBoard}
+        existingKeys={existingKeys}
+        onClose={closeEditor}
+        onSaved={handleSaved}
+      />
     </Space>
   );
 }

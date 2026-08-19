@@ -402,6 +402,40 @@ export const productBoardAssignments = pgTable(
   }),
 );
 
+/* ───── Product Coverage Boards (产品看板，多语言) ───── */
+
+export const productCoverageBoards = pgTable(
+  'product_coverage_boards',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    boardKey: varchar('board_key', { length: 100 }).notNull(),
+    sourceMode: varchar('source_mode', { length: 32 }).notNull().default('admin-managed'),
+    enabled: boolean('enabled').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    boardKeyUnique: uniqueIndex('product_coverage_boards_board_key_unique').on(table.boardKey),
+  }),
+);
+
+export const productCoverageBoardTranslations = pgTable(
+  'product_coverage_boards_i18n',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    boardId: uuid('board_id').notNull().references(() => productCoverageBoards.id, { onDelete: 'cascade' }),
+    locale: varchar('locale', { length: 16 }).notNull(),
+    name: varchar('name', { length: 200 }).notNull().default(''),
+    description: text('description'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    boardLocaleUnique: uniqueIndex('product_coverage_boards_i18n_board_locale_unique').on(table.boardId, table.locale),
+    boardIdIdx: index('product_coverage_boards_i18n_board_id_idx').on(table.boardId),
+  }),
+);
+
 export const shippingMethods = pgTable(
   'shipping_methods',
   {
@@ -1322,7 +1356,7 @@ export const solutions = pgTable(
   {
     id: uuid('id').defaultRandom().primaryKey(),
     slug: varchar('slug', { length: 64 }).notNull(),
-    categoryId: uuid('category_id').notNull().references(() => categories.id, { onDelete: 'restrict' }),
+    categoryId: uuid('category_id'),
     sortOrder: integer('sort_order').notNull().default(0),
     status: cmsStatusEnum('status').notNull().default('draft'),
     publishedAt: timestamp('published_at', { withTimezone: true }),
@@ -1373,6 +1407,19 @@ export const solutionContents = pgTable(
   },
   (table) => ({
     solutionIdUnique: uniqueIndex('solution_contents_solution_id_unique').on(table.solutionId),
+  }),
+);
+
+export const solutionBoardLinks = pgTable(
+  'solution_board_links',
+  {
+    solutionId: uuid('solution_id').notNull().references(() => solutions.id, { onDelete: 'cascade' }),
+    boardId: uuid('board_id').notNull().references(() => productCoverageBoards.id, { onDelete: 'cascade' }),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.solutionId, table.boardId] }),
+    solutionIdIdx: index('solution_board_links_solution_id_idx').on(table.solutionId),
+    boardIdIdx: index('solution_board_links_board_id_idx').on(table.boardId),
   }),
 );
 

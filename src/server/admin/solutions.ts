@@ -20,8 +20,8 @@ import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import { normalizeSlug } from '@/lib/slug';
 import { db } from '@/server/db';
 import {
-  categories,
-  categoryTranslations,
+  productCoverageBoards,
+  solutionBoardLinks,
   solutionContents,
   solutionTranslations,
   solutions,
@@ -36,13 +36,12 @@ function mapListItem(
   row: typeof solutions.$inferSelect,
   title: string,
   localeCount: number,
-  categoryName: string,
+  boardKeys: string[],
 ): AdminSolutionListItem {
   return {
     id: row.id,
     slug: row.slug,
-    categoryId: row.categoryId,
-    categoryName,
+    boardKeys,
     sortOrder: row.sortOrder,
     status: row.status as SolutionStatus,
     coverImage: row.coverImage,
@@ -51,6 +50,43 @@ function mapListItem(
     publishedAt: row.publishedAt ? toIso(row.publishedAt) : null,
     updatedAt: toIso(row.updatedAt),
   };
+}
+
+async function getBoardKeysForSolutions(solutionIds: string[]): Promise<Map<string, string[]>> {
+  if (!solutionIds.length) return new Map();
+  const links = await db
+    .select({
+      solutionId: solutionBoardLinks.solutionId,
+      boardKey: productCoverageBoards.boardKey,
+    })
+    .from(solutionBoardLinks)
+    .innerJoin(productCoverageBoards, eq(productCoverageBoards.id, solutionBoardLinks.boardId))
+    .where(inArray(solutionBoardLinks.solutionId, solutionIds));
+
+  const result = new Map<string, string[]>();
+  for (const link of links) {
+    const bucket = result.get(link.solutionId) ?? [];
+    bucket.push(link.boardKey);
+    result.set(link.solutionId, bucket);
+  }
+  return result;
+}
+
+async function syncSolutionBoardLinks(solutionId: string, boardKeys: string[]) {
+  const boardRows = boardKeys.length
+    ? await db
+        .select({ id: productCoverageBoards.id, boardKey: productCoverageBoards.boardKey })
+        .from(productCoverageBoards)
+        .where(inArray(productCoverageBoards.boardKey, boardKeys))
+    : [];
+
+  await db.delete(solutionBoardLinks).where(eq(solutionBoardLinks.solutionId, solutionId));
+
+  if (boardRows.length) {
+    await db.insert(solutionBoardLinks).values(
+      boardRows.map((board) => ({ solutionId, boardId: board.id })),
+    );
+  }
 }
 
 function mapTranslation(row: typeof solutionTranslations.$inferSelect): AdminSolutionTranslation {
@@ -81,34 +117,6 @@ async function getBlocksForSolution(solutionId: string): Promise<SolutionBlockDr
   return (content?.blocks ?? []) as SolutionBlockDraft[];
 }
 
-async function resolveCategoryNames(categoryIds: string[], locale: string) {
-  if (!categoryIds.length) return new Map<string, string>();
-
-  const rows = await db
-    .select({
-      categoryId: categoryTranslations.categoryId,
-      locale: categoryTranslations.locale,
-      name: categoryTranslations.name,
-    })
-    .from(categoryTranslations)
-    .where(inArray(categoryTranslations.categoryId, categoryIds));
-
-  const byCategory = new Map<string, Array<{ locale: string; name: string }>>();
-  for (const row of rows) {
-    const bucket = byCategory.get(row.categoryId) ?? [];
-    bucket.push({ locale: row.locale, name: row.name });
-    byCategory.set(row.categoryId, bucket);
-  }
-
-  const result = new Map<string, string>();
-  for (const categoryId of categoryIds) {
-    const translations = byCategory.get(categoryId) ?? [];
-    const display = pickTranslationForDisplay(translations, locale);
-    result.set(categoryId, display?.name?.trim() || categoryId);
-  }
-  return result;
-}
-
 async function mapDetail(
   row: typeof solutions.$inferSelect,
   translations: Array<typeof solutionTranslations.$inferSelect>,
@@ -116,13 +124,13 @@ async function mapDetail(
 ): Promise<AdminSolutionDetail> {
   const display = pickTranslationForDisplay(translations, defaultLocale);
   const blocks = await getBlocksForSolution(row.id);
-  const categoryNames = await resolveCategoryNames([row.categoryId], defaultLocale);
+  const boardKeyMap = await getBoardKeysForSolutions([row.id]);
   return {
     ...mapListItem(
       row,
       resolveSolutionDisplayTitle(display, row.slug),
       translations.length,
-      categoryNames.get(row.categoryId) ?? '',
+      boardKeyMap.get(row.id) ?? [],
     ),
     materials: (row.materials ?? []) as SolutionMaterial[],
     blocks,
@@ -134,7 +142,6 @@ export async function getAdminSolutionList(params?: {
   keyword?: string;
   status?: SolutionStatus;
   locale?: string;
-  categoryId?: string;
 }) {
   const defaultLocale = await getDefaultSiteLanguageCode();
   const rows = await db
@@ -143,12 +150,11 @@ export async function getAdminSolutionList(params?: {
     .orderBy(asc(solutions.sortOrder), asc(solutions.slug));
 
   const solutionIds = rows.map((row) => row.id);
-  const categoryIds = [...new Set(rows.map((row) => row.categoryId))];
-  const [translations, categoryNames] = await Promise.all([
+  const [translations, boardKeyMap] = await Promise.all([
     solutionIds.length
       ? db.select().from(solutionTranslations).where(inArray(solutionTranslations.solutionId, solutionIds))
       : Promise.resolve([] as Array<typeof solutionTranslations.$inferSelect>),
-    resolveCategoryNames(categoryIds, defaultLocale),
+    getBoardKeysForSolutions(solutionIds),
   ]);
 
   const translationsBySolution = new Map<string, typeof solutionTranslations.$inferSelect[]>();
@@ -165,16 +171,12 @@ export async function getAdminSolutionList(params?: {
       row,
       resolveSolutionDisplayTitle(display, row.slug),
       rowTranslations.length,
-      categoryNames.get(row.categoryId) ?? '',
+      boardKeyMap.get(row.id) ?? [],
     );
   });
 
   if (params?.status) {
     items = items.filter((item) => item.status === params.status);
-  }
-
-  if (params?.categoryId) {
-    items = items.filter((item) => item.categoryId === params.categoryId);
   }
 
   if (params?.locale) {
@@ -192,7 +194,6 @@ export async function getAdminSolutionList(params?: {
       return (
         item.slug.includes(keyword)
         || item.title.toLowerCase().includes(keyword)
-        || item.categoryName.toLowerCase().includes(keyword)
         || rowTranslations.some((translation) => translation.title.toLowerCase().includes(keyword))
       );
     });
@@ -224,11 +225,6 @@ export async function getAdminSolutionTranslation(translationId: string) {
   return row ? mapTranslation(row) : null;
 }
 
-async function assertCategoryExists(categoryId: string) {
-  const [row] = await db.select({ id: categories.id }).from(categories).where(eq(categories.id, categoryId)).limit(1);
-  if (!row) throw new Error('CATEGORY_NOT_FOUND');
-}
-
 export async function updateAdminSolution(id: string, input: unknown) {
   const parsed = adminSolutionPatchSchema.parse(input);
 
@@ -256,10 +252,6 @@ export async function updateAdminSolution(id: string, input: unknown) {
     }
   }
 
-  if (parsed.categoryId !== undefined) {
-    await assertCategoryExists(parsed.categoryId);
-  }
-
   let nextPublishedAt = current.publishedAt;
   if (parsed.publishedAt !== undefined) {
     nextPublishedAt = parsed.publishedAt;
@@ -271,7 +263,6 @@ export async function updateAdminSolution(id: string, input: unknown) {
     .update(solutions)
     .set({
       ...(parsed.slug !== undefined ? { slug: nextSlug } : {}),
-      ...(parsed.categoryId !== undefined ? { categoryId: parsed.categoryId } : {}),
       ...(parsed.status !== undefined ? { status: parsed.status } : {}),
       ...(parsed.sortOrder !== undefined ? { sortOrder: parsed.sortOrder } : {}),
       ...(parsed.coverImage !== undefined ? { coverImage: parsed.coverImage } : {}),
@@ -283,6 +274,10 @@ export async function updateAdminSolution(id: string, input: unknown) {
     .returning();
 
   if (!updated) return null;
+
+  if (parsed.boardKeys !== undefined) {
+    await syncSolutionBoardLinks(id, parsed.boardKeys);
+  }
 
   if (parsed.blocks !== undefined) {
     await upsertSolutionBlocks(id, parsed.blocks as SolutionBlockDraft[]);
@@ -377,8 +372,6 @@ export async function createAdminSolution(input: unknown) {
     throw new Error('SLUG_RESERVED');
   }
 
-  await assertCategoryExists(parsed.categoryId);
-
   const [existingSlug] = await db.select({ id: solutions.id }).from(solutions).where(eq(solutions.slug, slug)).limit(1);
   if (existingSlug) throw new Error('SLUG_EXISTS');
 
@@ -392,7 +385,7 @@ export async function createAdminSolution(input: unknown) {
     .insert(solutions)
     .values({
       slug,
-      categoryId: parsed.categoryId,
+      categoryId: null,
       sortOrder: (maxSort?.sortOrder ?? 0) + 10,
       status: parsed.status ?? 'draft',
       coverImage: parsed.coverImage ?? '',
@@ -400,6 +393,10 @@ export async function createAdminSolution(input: unknown) {
       publishedAt: (parsed.status ?? 'draft') === 'published' ? new Date() : null,
     })
     .returning({ id: solutions.id });
+
+  if (parsed.boardKeys?.length) {
+    await syncSolutionBoardLinks(inserted.id, parsed.boardKeys);
+  }
 
   await upsertAdminSolutionTranslation(inserted.id, parsed.translation);
 

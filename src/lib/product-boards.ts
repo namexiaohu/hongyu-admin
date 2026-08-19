@@ -1,3 +1,7 @@
+import { z } from 'zod';
+
+/* ─── Storefront / shared types (kept for backward compat) ─── */
+
 export type ProductCoverageBoard = {
   key: string;
   title: string;
@@ -11,8 +15,28 @@ export type ProductBoardConfig = {
   coverageBoards: ProductCoverageBoard[];
 };
 
+/* ─── Admin types ─── */
+
+export type AdminProductCoverageBoardTranslation = {
+  id: string;
+  locale: string;
+  name: string;
+  description: string | null;
+};
+
+export type AdminProductCoverageBoardDetail = {
+  id: string;
+  key: string;
+  enabled: boolean;
+  custom: boolean;
+  sourceMode: 'code-seeded' | 'admin-managed';
+  createdAt?: string;
+  translations: AdminProductCoverageBoardTranslation[];
+};
+
 export type ProductCoverageMetric = {
   key: string;
+  /** Display name resolved from translations (falls back to key) */
   title: string;
   count: number;
   sourceMode: 'code-seeded' | 'admin-managed';
@@ -29,35 +53,30 @@ export type AdminProductBoardsDashboard = {
     customBoardCount: number;
     assignedProductCount: number;
   };
-  config: ProductBoardConfig;
 };
 
-export const defaultProductBoardConfig: ProductBoardConfig = {
-  coverageBoards: [
-    {
-      key: 'featured',
-      title: '特色精选',
-      note: '首页/专题位重点展示',
-      sourceMode: 'code-seeded',
-    },
-    {
-      key: 'newest',
-      title: '最新上架',
-      note: '按上新节奏运营',
-      sourceMode: 'code-seeded',
-    },
-    {
-      key: 'hot-sale',
-      title: '热销',
-      note: '销量/转化导向',
-      sourceMode: 'code-seeded',
-    },
-  ],
-};
+/* ─── Zod schemas ─── */
 
-export const SYSTEM_PRODUCT_BOARD_KEY_ORDER = defaultProductBoardConfig.coverageBoards.map((board) => board.key);
+export const productBoardTranslationInputSchema = z.object({
+  locale: z.string().trim().min(1),
+  name: z.string().trim().min(1),
+  description: z.string().trim().nullable().optional().transform((v) => v || null),
+});
 
-const systemBoardOrder = new Map(SYSTEM_PRODUCT_BOARD_KEY_ORDER.map((key, index) => [key, index]));
+export const upsertProductCoverageBoardSchema = z.object({
+  key: z.string().trim().min(1),
+  translations: z.array(productBoardTranslationInputSchema).min(1),
+});
+
+export const patchProductCoverageBoardSchema = z.object({
+  enabled: z.boolean(),
+});
+
+/* ─── System board ordering ─── */
+
+export const SYSTEM_PRODUCT_BOARD_KEYS = ['featured', 'newest', 'hot-sale'];
+
+const systemBoardOrder = new Map(SYSTEM_PRODUCT_BOARD_KEYS.map((key, index) => [key, index]));
 
 export function isSystemProductBoardKey(key: string) {
   return systemBoardOrder.has(key);
@@ -70,9 +89,7 @@ export function sortProductCoverageBoards<T extends { key: string; createdAt?: s
     const leftIsSystem = leftSystem !== undefined;
     const rightIsSystem = rightSystem !== undefined;
 
-    if (leftIsSystem && rightIsSystem) {
-      return leftSystem! - rightSystem!;
-    }
+    if (leftIsSystem && rightIsSystem) return leftSystem! - rightSystem!;
     if (leftIsSystem) return -1;
     if (rightIsSystem) return 1;
 
@@ -83,14 +100,4 @@ export function sortProductCoverageBoards<T extends { key: string; createdAt?: s
     }
     return left.key.localeCompare(right.key);
   });
-}
-
-export function upsertProductCoverageBoard<T extends { key: string }>(
-  boards: T[],
-  boardKey: string,
-  nextBoard: T,
-): T[] {
-  const index = boards.findIndex((item) => item.key === boardKey);
-  if (index < 0) return [...boards, nextBoard];
-  return boards.map((item) => (item.key === boardKey ? nextBoard : item));
 }

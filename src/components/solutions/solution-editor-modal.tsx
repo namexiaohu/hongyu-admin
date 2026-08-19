@@ -7,12 +7,11 @@ import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 
 import { ContentTranslateButton } from '@/components/admin/content-translate-button';
 import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
-import { CategoryPickerField } from '@/components/categories/category-picker-field';
 import { CoverImageField } from '@/components/editorial/cover-image-field';
+import { ProductBoardMultiSelect, type ProductBoardOption } from '@/components/products/product-board-multi-select';
 import { SolutionBlockEditorModal, type SolutionBlockEditorHandle } from '@/components/solutions/solution-block-editor-modal';
 import { SolutionBlockList } from '@/components/solutions/solution-block-list';
 import { SolutionMaterialsField } from '@/components/solutions/solution-materials-field';
-import type { AdminCategoryTreeNode } from '@/lib/category-content';
 import type { SolutionBlockDraft } from '@/lib/solution-blocks';
 import {
   type AdminSolutionDetail,
@@ -96,7 +95,7 @@ type LocaleDraft = {
 type SharedFormValues = {
   coverImage: string;
   slug: string;
-  categoryId: string;
+  boardKeys: string[];
   materials: SolutionMaterial[];
 };
 
@@ -104,7 +103,7 @@ type SolutionEditorModalProps = {
   open: boolean;
   detail: AdminSolutionDetail | null;
   activeLanguages: AdminSiteLanguageRow[];
-  categoryTree: AdminCategoryTreeNode[];
+  boardOptions: ProductBoardOption[];
   onClose: () => void;
   onSaved: (detail: AdminSolutionDetail) => void;
 };
@@ -205,7 +204,7 @@ function getValidateErrorTab(error: unknown): SectionTabKey | null {
   if (!error || typeof error !== 'object' || !('errorFields' in error)) return null;
   const errorFields = (error as { errorFields?: Array<{ name: Array<string | number> }> }).errorFields;
   const first = errorFields?.[0]?.name?.[0];
-  if (first === 'slug' || first === 'categoryId') return 'hero';
+  if (first === 'slug') return 'hero';
   if (first === 'stats') return 'stats';
   if (first === 'productParams') return 'params';
   if (first === 'tags') return 'tags';
@@ -291,7 +290,7 @@ export function SolutionEditorModal({
   open,
   detail,
   activeLanguages,
-  categoryTree,
+  boardOptions,
   onClose,
   onSaved,
 }: SolutionEditorModalProps) {
@@ -394,7 +393,7 @@ export function SolutionEditorModal({
     sharedForm.setFieldsValue({
       coverImage: detail?.coverImage ?? '',
       slug: detail?.slug ?? '',
-      categoryId: detail?.categoryId ?? '',
+      boardKeys: detail?.boardKeys ?? [],
       materials: detail?.materials ?? [],
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -419,12 +418,7 @@ export function SolutionEditorModal({
         const defaultDraft = mergedDrafts[defaultLocale] ?? emptyDraft();
         const slugSourceTitle = defaultDraft.heroTitle.trim() || readLocaleDraft(values).heroTitle.trim();
         let resolvedSlug = detail?.slug ?? '';
-        const categoryId = sharedValues.categoryId?.trim() ?? '';
-
-        if (!categoryId) {
-          message.error('请选择所属分类');
-          return;
-        }
+        const boardKeys = sharedValues.boardKeys ?? [];
 
         if (isCreate) {
           const slugCheck = validateSourceThenAutoSlug({
@@ -511,7 +505,7 @@ export function SolutionEditorModal({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               slug: resolvedSlug,
-              categoryId,
+              boardKeys,
               status,
               coverImage,
               materials,
@@ -542,7 +536,7 @@ export function SolutionEditorModal({
             blocks: blocksToSave,
             slug: resolvedSlug,
             coverImage,
-            categoryId,
+            boardKeys,
             materials,
           }),
         });
@@ -653,12 +647,15 @@ export function SolutionEditorModal({
                 />
               </Form.Item>
               <Form.Item
-                name="categoryId"
-                label="所属分类"
-                rules={[{ required: true, message: '请选择所属分类' }]}
-                getValueFromEvent={(value: string) => value ?? ''}
+                name="boardKeys"
+                label="看板关联"
+                getValueFromEvent={(value: string[]) => value ?? []}
               >
-                <CategoryPickerField mode="single" categoryTree={categoryTree} />
+                <ProductBoardMultiSelect
+                  boards={boardOptions}
+                  value={sharedForm.getFieldValue('boardKeys') ?? []}
+                  onChange={(value) => sharedForm.setFieldValue('boardKeys', value)}
+                />
               </Form.Item>
               <Form.Item
                 name="coverImage"

@@ -2,15 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import {
   getAdminProductBoardsDashboard,
-  updateAdminProductBoardConfig,
+  upsertProductCoverageBoard,
 } from '@/server/admin/product-boards';
-import type { ProductBoardConfig } from '@/lib/product-boards';
+import { upsertProductCoverageBoardSchema } from '@/lib/product-boards';
 
-function mapProductBoardError(error: unknown) {
+function mapError(error: unknown) {
   if (!(error instanceof Error)) return null;
   switch (error.message) {
-    case 'BOARD_HAS_PRODUCTS':
-      return { status: 409, code: 'BOARD_HAS_PRODUCTS', message: '该看板下已有产品，无法删除' };
+    case 'INVALID_KEY':
+      return { status: 400, code: 'INVALID_KEY', message: 'Key 只能包含小写英文字母和连字符' };
+    case 'SAVE_FAILED':
+      return { status: 500, code: 'SAVE_FAILED', message: '保存看板失败' };
     default:
       return null;
   }
@@ -22,16 +24,21 @@ export async function GET() {
 }
 
 export async function PUT(request: NextRequest) {
-  const body = await request.json() as ProductBoardConfig;
-  if (!body || !Array.isArray(body.coverageBoards)) {
-    return NextResponse.json({ code: 'VALIDATION_ERROR', message: 'Invalid payload' }, { status: 400 });
+  const body = await request.json();
+  const parsed = upsertProductCoverageBoardSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { code: 'VALIDATION_ERROR', message: '请填写 Key 和看板名称', details: parsed.error.flatten() },
+      { status: 400 },
+    );
   }
 
   try {
-    const dashboard = await updateAdminProductBoardConfig(body);
-    return NextResponse.json(dashboard);
+    const item = await upsertProductCoverageBoard(parsed.data);
+    const dashboard = await getAdminProductBoardsDashboard();
+    return NextResponse.json({ item, dashboard });
   } catch (error) {
-    const mapped = mapProductBoardError(error);
+    const mapped = mapError(error);
     if (mapped) {
       return NextResponse.json({ code: mapped.code, message: mapped.message }, { status: mapped.status });
     }

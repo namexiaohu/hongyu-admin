@@ -7,9 +7,9 @@ import { useMemo, useState, useTransition } from 'react';
 import { AdminEditorialRowActions } from '@/components/admin/admin-row-actions';
 import { ADMIN_TABLE_EDITORIAL_ACTIONS_WIDTH, adminTableFixedActionsColumn, adminTableNowrapHeader, adminTableScroll } from '@/components/admin/admin-table';
 import { SolutionEditorModal } from '@/components/solutions/solution-editor-modal';
+import { type ProductBoardOption } from '@/components/products/product-board-multi-select';
 import { formatAdminDate } from '@/lib/admin-display';
 import { buildAdminListRowIndexColumn } from '@/lib/admin-list-query';
-import type { AdminCategoryTreeNode } from '@/lib/category-content';
 import {
   type AdminSolutionDetail,
   type AdminSolutionListItem,
@@ -23,7 +23,7 @@ type SolutionListClientProps = {
     total: number;
   };
   activeLanguages: AdminSiteLanguageRow[];
-  categoryTree: AdminCategoryTreeNode[];
+  boardOptions: ProductBoardOption[];
 };
 
 const narrativeStatusLabels: Record<SolutionStatus, string> = {
@@ -48,8 +48,7 @@ function toListItem(detail: AdminSolutionDetail): AdminSolutionListItem {
   return {
     id: detail.id,
     slug: detail.slug,
-    categoryId: detail.categoryId,
-    categoryName: detail.categoryName,
+    boardKeys: detail.boardKeys,
     sortOrder: detail.sortOrder,
     status: detail.status,
     coverImage: detail.coverImage,
@@ -60,7 +59,7 @@ function toListItem(detail: AdminSolutionDetail): AdminSolutionListItem {
   };
 }
 
-export function SolutionListClient({ initialList, activeLanguages, categoryTree }: SolutionListClientProps) {
+export function SolutionListClient({ initialList, activeLanguages, boardOptions }: SolutionListClientProps) {
   const [items, setItems] = useState(initialList.items);
   const [keyword, setKeyword] = useState('');
   const [editorOpen, setEditorOpen] = useState(false);
@@ -152,14 +151,14 @@ export function SolutionListClient({ initialList, activeLanguages, categoryTree 
       ),
     },
     {
-      title: '所属分类',
-      dataIndex: 'categoryName',
+      title: '看板',
+      dataIndex: 'boardKeys',
       width: 160,
       ellipsis: true,
       onHeaderCell: adminTableNowrapHeader,
-      render: (value: string) => (
-        <Tooltip title={value}>
-          <Typography.Text ellipsis>{value || '—'}</Typography.Text>
+      render: (value: string[]) => (
+        <Tooltip title={(value ?? []).join(', ')}>
+          <Typography.Text ellipsis>{(value ?? []).join(', ') || '—'}</Typography.Text>
         </Tooltip>
       ),
     },
@@ -262,7 +261,7 @@ export function SolutionListClient({ initialList, activeLanguages, categoryTree 
         open={editorOpen}
         detail={editingDetail}
         activeLanguages={activeLanguages}
-        categoryTree={categoryTree}
+        boardOptions={boardOptions}
         onClose={() => {
           setEditorOpen(false);
           setEditingDetail(null);
