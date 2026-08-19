@@ -600,6 +600,39 @@ export const editorialSettings = pgTable('editorial_settings', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const editorialCoverageBoards = pgTable(
+  'editorial_coverage_boards',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    boardKey: varchar('board_key', { length: 100 }).notNull(),
+    contentType: editorialContentTypeEnum('content_type').notNull().default('content'),
+    sourceMode: varchar('source_mode', { length: 32 }).notNull().default('admin-managed'),
+    enabled: boolean('enabled').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    boardKeyUnique: uniqueIndex('editorial_coverage_boards_board_key_unique').on(table.boardKey),
+  }),
+);
+
+export const editorialCoverageBoardTranslations = pgTable(
+  'editorial_coverage_boards_i18n',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    boardId: uuid('board_id').notNull().references(() => editorialCoverageBoards.id, { onDelete: 'cascade' }),
+    locale: varchar('locale', { length: 16 }).notNull(),
+    name: varchar('name', { length: 150 }).notNull(),
+    description: text('description'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    boardLocaleUnique: uniqueIndex('editorial_coverage_boards_i18n_board_locale_unique').on(table.boardId, table.locale),
+    boardIdIdx: index('editorial_coverage_boards_i18n_board_id_idx').on(table.boardId),
+  }),
+);
+
 export const productImages = pgTable('product_images', {
   id: uuid('id').defaultRandom().primaryKey(),
   productId: uuid('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
@@ -1051,6 +1084,7 @@ export const editorialContents = pgTable(
     contentType: editorialContentTypeEnum('content_type').notNull().default('content'),
     contentModule: editorialContentModuleEnum('content_module').notNull().default('editorial'),
     boardKey: varchar('board_key', { length: 100 }).notNull().default('content'),
+    coverImage: text('cover_image').notNull().default(''),
     status: cmsStatusEnum('status').notNull().default('draft'),
     publishedAt: timestamp('published_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

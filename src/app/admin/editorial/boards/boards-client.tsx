@@ -1,44 +1,36 @@
 'use client';
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Card, Form, Input, Modal, Space, Table, Tag, message } from 'antd';
-import { useMemo, useState, useTransition } from 'react';
+import { Button, Card, Space, Table, Tag, message } from 'antd';
+import { useMemo, useState } from 'react';
 
 import { AdminPageHeaderStats } from '@/components/admin/admin-page-header-stats';
 import { AdminEntityRowActions } from '@/components/admin/admin-row-actions';
 import { adminTableFixedActionsColumn, adminTableNowrapHeader, adminTableScroll } from '@/components/admin/admin-table';
+import { EditorialBoardEditorModal } from '@/components/editorial/editorial-board-editor-modal';
 import { buildAdminListRowIndexColumn } from '@/lib/admin-list-query';
-import { normalizeEntityKeyForSave, normalizeEntityKeyInput } from '@/lib/admin-entity-key';
-import { upsertCoverageBoard } from '@/lib/editorial-boards';
 import type { AdminEditorialContentListItem } from '@/lib/editorial-content';
 import type {
   AdminEditorialDashboard,
-  EditorialAutomationConfig,
-  EditorialCoverageBoard,
   EditorialCoverageMetric,
 } from '@/lib/editorial-automation';
-
-type BoardFormValues = {
-  key: string;
-  title: string;
-  note: string;
-};
+import type { AdminSiteLanguageRow } from '@/server/admin/languages';
 
 export function AdminEditorialBoardsClient({
   initialDashboard,
   initialEntries,
+  activeLanguages,
 }: {
   initialDashboard: AdminEditorialDashboard;
   initialEntries: AdminEditorialContentListItem[];
+  activeLanguages: AdminSiteLanguageRow[];
 }) {
   const [dashboard, setDashboard] = useState(initialDashboard);
   const [entries] = useState(initialEntries);
   const [boardModalOpen, setBoardModalOpen] = useState(false);
-  const [editingBoardKey, setEditingBoardKey] = useState<string | null>(null);
-  const [isModalPending, startModalTransition] = useTransition();
+  const [editingBoard, setEditingBoard] = useState<EditorialCoverageMetric | null>(null);
   const [pendingBoardKey, setPendingBoardKey] = useState<string | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
-  const [boardForm] = Form.useForm<BoardFormValues>();
 
   const boards = dashboard.coverage;
 
@@ -54,74 +46,14 @@ export function AdminEditorialBoardsClient({
     { label: '关联内容', value: summary.documents },
   ], [summary]);
 
-  async function saveEditorialConfig(nextConfig: EditorialAutomationConfig) {
-    const response = await fetch('/api/admin/editorial', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(nextConfig),
-    });
-
-    if (!response.ok) throw new Error('保存看板失败');
-    const saved = (await response.json()) as AdminEditorialDashboard;
-    setDashboard(saved);
-  }
-
   function openBoardModal(board?: EditorialCoverageMetric) {
-    if (board) {
-      setEditingBoardKey(board.key);
-      boardForm.setFieldsValue({ key: board.key, title: board.title, note: board.note });
-    } else {
-      setEditingBoardKey(null);
-      boardForm.setFieldsValue({ key: '', title: '', note: '' });
-    }
+    setEditingBoard(board ?? null);
     setBoardModalOpen(true);
   }
 
   function closeBoardModal() {
     setBoardModalOpen(false);
-    setEditingBoardKey(null);
-    boardForm.resetFields();
-  }
-
-  function saveBoard() {
-    void boardForm.validateFields().then((values) => {
-      startModalTransition(async () => {
-        try {
-          const boardKey = editingBoardKey ?? normalizeEntityKeyForSave(values.key);
-          if (!boardKey) {
-            void messageApi.error('Key 只能包含小写英文字母和连字符');
-            return;
-          }
-
-          if (!editingBoardKey && dashboard.config.coverageBoards.some((item) => item.key === boardKey)) {
-            void messageApi.error('Key 已被占用');
-            return;
-          }
-
-          const existing = dashboard.config.coverageBoards.find((item) => item.key === boardKey);
-          const nextBoard: EditorialCoverageBoard = {
-            key: boardKey,
-            title: values.title.trim(),
-            contentType: 'content',
-            note: values.note.trim(),
-            sourceMode: existing?.sourceMode ?? 'admin-managed',
-            enabled: existing?.enabled !== false,
-            createdAt: existing?.createdAt ?? new Date().toISOString(),
-          };
-
-          await saveEditorialConfig({
-            ...dashboard.config,
-            coverageBoards: editingBoardKey
-              ? upsertCoverageBoard(dashboard.config.coverageBoards, boardKey, nextBoard)
-              : [...dashboard.config.coverageBoards, nextBoard],
-          });
-          closeBoardModal();
-          void messageApi.success(editingBoardKey ? '保存成功' : '保存成功');
-        } catch (error) {
-          void messageApi.error('保存失败');
-        }
-      });
-    });
+    setEditingBoard(null);
   }
 
   function confirmDeleteBoard(board: EditorialCoverageMetric) {
@@ -137,10 +69,14 @@ export function AdminEditorialBoardsClient({
     setPendingBoardKey(board.key);
     void (async () => {
       try {
-        await saveEditorialConfig({
-          ...dashboard.config,
-          coverageBoards: dashboard.config.coverageBoards.filter((item) => item.key !== board.key),
+        const response = await fetch(`/api/admin/editorial/boards/${encodeURIComponent(board.key)}`, {
+          method: 'DELETE',
         });
+        const payload = await response.json().catch(() => null) as { dashboard?: AdminEditorialDashboard; message?: string } | null;
+        if (!response.ok) {
+          throw new Error(payload?.message ?? '看板删除失败');
+        }
+        if (payload?.dashboard) setDashboard(payload.dashboard);
         void messageApi.success('看板已删除');
       } catch (error) {
         void messageApi.error(error instanceof Error ? error.message : '看板删除失败');
@@ -154,12 +90,16 @@ export function AdminEditorialBoardsClient({
     setPendingBoardKey(board.key);
     void (async () => {
       try {
-        await saveEditorialConfig({
-          ...dashboard.config,
-          coverageBoards: dashboard.config.coverageBoards.map((item) =>
-            item.key === board.key ? { ...item, enabled } : item
-          ),
+        const response = await fetch(`/api/admin/editorial/boards/${encodeURIComponent(board.key)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled }),
         });
+        const payload = await response.json().catch(() => null) as { dashboard?: AdminEditorialDashboard; message?: string } | null;
+        if (!response.ok) {
+          throw new Error(payload?.message ?? '看板状态更新失败');
+        }
+        if (payload?.dashboard) setDashboard(payload.dashboard);
         void messageApi.success(enabled ? '看板已启用' : '看板已停用');
       } catch (error) {
         void messageApi.error(error instanceof Error ? error.message : '看板状态更新失败');
@@ -257,31 +197,14 @@ export function AdminEditorialBoardsClient({
         />
       </Card>
 
-      <Modal
+      <EditorialBoardEditorModal
         open={boardModalOpen}
-        title={editingBoardKey ? '编辑看板' : '新增看板'}
-        onCancel={closeBoardModal}
-        onOk={saveBoard}
-        confirmLoading={isModalPending}
-        okText="保存"
-      >
-        <Form<BoardFormValues> form={boardForm} layout="vertical">
-          <Form.Item
-            label="Key"
-            name="key"
-            rules={[{ required: true, message: '请输入看板 Key' }]}
-            getValueFromEvent={(event) => normalizeEntityKeyInput(event.target.value)}
-          >
-            <Input placeholder="例如 engineering-guides" disabled={Boolean(editingBoardKey)} />
-          </Form.Item>
-          <Form.Item label="看板名称" name="title" rules={[{ required: true, message: '请输入看板名称' }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item label="说明" name="note" rules={[{ required: true, message: '请输入说明' }]}>
-            <Input.TextArea rows={3} />
-          </Form.Item>
-        </Form>
-      </Modal>
+        activeLanguages={activeLanguages}
+        editingBoard={editingBoard}
+        existingKeys={boards.map((board) => board.key)}
+        onClose={closeBoardModal}
+        onSaved={(saved) => setDashboard(saved)}
+      />
     </Space>
   );
 }

@@ -49,6 +49,7 @@ const adminEditorialContentTranslationBaseSchema = z.object({
   seoTitle: z.string().trim().nullable().optional(),
   seoDescription: z.string().trim().nullable().optional(),
   publishedAt: z.coerce.date().nullable().optional(),
+  coverImage: z.string().trim().optional(),
   payload: payloadSchema,
 });
 
@@ -65,6 +66,7 @@ export const adminEditorialContentPatchSchema = z.object({
   boardKeys: z.array(z.string().trim().min(1)).min(1).optional(),
   status: z.enum(editorialEntryStatuses).optional(),
   publishedAt: z.coerce.date().nullable().optional(),
+  coverImage: z.string().trim().optional(),
 });
 
 /** @deprecated */
@@ -172,6 +174,10 @@ function normalizeDateValue(value: Date | string | null | undefined) {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
+function normalizeCoverImage(value: string | null | undefined) {
+  return value?.trim() || '';
+}
+
 function normalizeCoverStyle(value: number | null | undefined) {
   if (typeof value !== 'number' || !Number.isInteger(value) || value < 1 || value > 10) {
     return null;
@@ -230,6 +236,7 @@ function sanitizeTranslationInput(input: TranslationCreateInput) {
     publishedAt: input.status === 'published'
       ? normalizeDateValue(input.publishedAt) ?? new Date().toISOString()
       : normalizeDateValue(input.publishedAt),
+    coverImage: normalizeCoverImage(input.coverImage),
     payload: normalizedPayload,
   };
 }
@@ -259,6 +266,7 @@ function normalizeTranslationRow(
     seoTitle: translation.seoTitle,
     seoDescription: translation.seoDescription,
     publishedAt: content.publishedAt?.toISOString() ?? null,
+    coverImage: content.coverImage ?? '',
     payload: mergePayload(payload.data),
     createdAt: translation.createdAt.toISOString(),
     updatedAt: Math.max(content.updatedAt.getTime(), translation.updatedAt.getTime()) === translation.updatedAt.getTime()
@@ -284,6 +292,7 @@ function toListItem(
     contentType: 'content',
     boardKey: resolvedBoardKeys[0] ?? normalizeBoardKey(content.boardKey),
     boardKeys: resolvedBoardKeys,
+    coverImage: content.coverImage ?? '',
     status: content.status,
     title: primary.title,
     slug: primary.slug,
@@ -657,6 +666,7 @@ export async function createAdminEditorialContentTranslation(input: TranslationC
         contentType: 'content',
         contentModule: next.contentModule,
         boardKey: next.boardKey,
+        coverImage: next.coverImage,
         status: next.status,
         publishedAt: next.publishedAt ? new Date(next.publishedAt) : null,
       })
@@ -680,6 +690,7 @@ export async function createAdminEditorialContentTranslation(input: TranslationC
       .set({
         contentModule: next.contentModule,
         boardKey: next.boardKey,
+        coverImage: next.coverImage,
         status: next.status,
         publishedAt: next.publishedAt ? new Date(next.publishedAt) : null,
         updatedAt: new Date(),
@@ -745,6 +756,7 @@ export async function updateAdminEditorialContentTranslation(translationId: stri
     seoTitle: input.seoTitle === undefined ? current.seoTitle : input.seoTitle,
     seoDescription: input.seoDescription === undefined ? current.seoDescription : input.seoDescription,
     publishedAt: input.publishedAt === undefined ? (current.publishedAt ? new Date(current.publishedAt) : null) : input.publishedAt,
+    coverImage: input.coverImage === undefined ? current.coverImage : input.coverImage,
     payload: input.payload ?? current.payload,
   });
 
@@ -753,6 +765,7 @@ export async function updateAdminEditorialContentTranslation(translationId: stri
     .set({
       contentModule: merged.contentModule,
       boardKey: merged.boardKey,
+      coverImage: merged.coverImage,
       status: merged.status,
       publishedAt: merged.publishedAt ? new Date(merged.publishedAt) : null,
       updatedAt: new Date(),
@@ -825,6 +838,7 @@ export async function updateAdminEditorialContent(contentId: string, input: Cont
     .update(editorialContents)
     .set({
       boardKey: input.boardKey ? normalizeBoardKey(input.boardKey) : current.boardKey,
+      coverImage: input.coverImage === undefined ? current.coverImage : normalizeCoverImage(input.coverImage),
       status: nextStatus,
       publishedAt: nextStatus === 'published'
         ? new Date(nextPublishedAt ?? new Date().toISOString())

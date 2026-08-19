@@ -10,6 +10,7 @@ import { ContentTranslateButton } from '@/components/admin/content-translate-but
 import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
 import { AdminDateTimePicker } from '@/components/admin/admin-datetime-picker';
 import { BoardMultiSelect } from '@/components/editorial/board-multi-select';
+import { CoverImageField } from '@/components/editorial/cover-image-field';
 import { RichTextEditor } from '@/components/editorial/rich-text-editor';
 import { hasMeaningfulHtmlBody } from '@/lib/editorial-html';
 import {
@@ -169,6 +170,7 @@ function buildEntryPayload(draft: LocaleDraft, locale: string, status: Editorial
   contentId: string;
   boardKey: string;
   boardKeys: string[];
+  coverImage: string;
   publishedAt?: string | null;
 }) {
   const publishedAt = options.publishedAt !== undefined
@@ -185,6 +187,7 @@ function buildEntryPayload(draft: LocaleDraft, locale: string, status: Editorial
     contentId: options.contentId ? options.contentId : undefined,
     boardKey: options.boardKey,
     boardKeys: options.boardKeys,
+    coverImage: options.coverImage,
     title: draft.title.trim(),
     slug: draft.slug.trim(),
     summary: draft.summary.trim() || null,
@@ -259,6 +262,7 @@ export function ContentEditorModal({
   const [isPending, startTransition] = useTransition();
   const [contentId, setContentId] = useState('');
   const [boardKeys, setBoardKeys] = useState<string[]>([boardKey]);
+  const [coverImage, setCoverImage] = useState('');
   const [drafts, setDrafts] = useState<Record<string, LocaleDraft>>({});
   const [activeLocale, setActiveLocale] = useState('');
   const [sectionTab, setSectionTab] = useState<SectionTabKey>('content');
@@ -305,6 +309,7 @@ export function ContentEditorModal({
     const initialContentId = editingEntry?.id ?? '';
     setContentId(initialContentId);
     setBoardKeys(editingEntry?.boardKeys?.length ? editingEntry.boardKeys : [boardKey]);
+    setCoverImage(editingEntry?.coverImage ?? '');
     setSectionTab('content');
     setScheduleOpen(false);
 
@@ -350,6 +355,9 @@ export function ContentEditorModal({
 
         if (payload.item?.boardKeys?.length) {
           setBoardKeys(payload.item.boardKeys);
+        }
+        if (payload.item) {
+          setCoverImage(payload.item.coverImage ?? '');
         }
 
         const mergedDrafts = { ...seedDrafts };
@@ -553,6 +561,7 @@ export function ContentEditorModal({
               contentId: nextContentId,
               boardKey,
               boardKeys,
+              coverImage,
               publishedAt: options?.publishedAt,
             })),
           },
@@ -823,6 +832,17 @@ export function ContentEditorModal({
                 {actionButtons}
               </div>
             ) : null}
+
+            <div className="content-editor-shared-section">
+              <Form.Item label="封面图（各语言共用）" layout="vertical" style={{ marginBottom: 0 }}>
+                <CoverImageField
+                  value={coverImage}
+                  onChange={(value) => setCoverImage(value ?? '')}
+                  disabled={isReadOnly}
+                  folder="editorial/covers"
+                />
+              </Form.Item>
+            </div>
 
             <div className="content-editor-layout">
               <div className="content-editor-locale-nav">

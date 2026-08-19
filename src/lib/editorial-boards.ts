@@ -1,5 +1,22 @@
 import { defaultEditorialAutomationConfig } from '@/lib/editorial-automation';
 
+export type AdminEditorialCoverageBoardTranslation = {
+  id: string;
+  locale: string;
+  name: string;
+  description: string | null;
+};
+
+export type AdminEditorialCoverageBoardDetail = {
+  id: string;
+  key: string;
+  enabled: boolean;
+  custom: boolean;
+  sourceMode: 'code-seeded' | 'admin-managed';
+  createdAt?: string;
+  translations: AdminEditorialCoverageBoardTranslation[];
+};
+
 /** 系统内置看板的固定顺序（与 defaultEditorialAutomationConfig.coverageBoards 一致） */
 export const SYSTEM_BOARD_KEY_ORDER = defaultEditorialAutomationConfig.coverageBoards.map((board) => board.key);
 

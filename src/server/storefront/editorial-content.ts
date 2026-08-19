@@ -6,6 +6,7 @@ import { resolveBlogCategorySlug } from '@/lib/blog-categories';
 import {
   type EditorialContentPayload,
 } from '@/lib/editorial-content';
+import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
 import { normalizeSlug } from '@/lib/slug';
 import { db } from '@/server/db';
 import {
@@ -138,6 +139,7 @@ export async function getStorefrontBoardBlogs(boardKeyInput: string, localeInput
         category: string | null;
         categorySlug: string | null;
         coverStyle: number | null;
+        coverImage: string | null;
         author: StorefrontBlogAuthor;
         tags: string[];
         publishedAt: string | null;
@@ -178,6 +180,7 @@ export async function getStorefrontBoardBlogs(boardKeyInput: string, localeInput
       category: payload.category,
       categorySlug: resolveBlogCategorySlug(payload.category),
       coverStyle: payload.coverStyle,
+      coverImage: resolveOssAssetUrl(content.coverImage) || null,
       author: buildAuthor(payload),
       tags: payload.tags,
       publishedAt: content.publishedAt?.toISOString() ?? null,
@@ -199,6 +202,7 @@ export type StorefrontBoardContentItem = {
   category: string | null;
   categorySlug: string | null;
   coverStyle: number | null;
+  coverImage: string | null;
   author: StorefrontBlogAuthor | null;
   tags: string[];
   publishedAt: string | null;
@@ -233,6 +237,7 @@ export async function getStorefrontBoardContent(
         category: null,
         categorySlug: null,
         coverStyle: null,
+        coverImage: null,
         author: null,
         tags: [],
         publishedAt: null,
@@ -255,6 +260,7 @@ export async function getStorefrontBoardContent(
       category: item.category,
       categorySlug: item.categorySlug,
       coverStyle: item.coverStyle,
+      coverImage: item.coverImage,
       author: item.author,
       tags: item.tags,
       publishedAt: item.publishedAt,
@@ -309,6 +315,7 @@ export async function getStorefrontBlogDetailBySlug(slugInput: string, localeInp
     category: payload.category,
     categorySlug: resolveBlogCategorySlug(payload.category),
     coverStyle: payload.coverStyle,
+    coverImage: resolveOssAssetUrl(content.coverImage) || null,
     author: buildAuthor(payload),
     seo: {
       title: picked.seoTitle,

@@ -25,6 +25,7 @@ import {
   type EditorialWorkflowSettings,
 } from '@/lib/editorial-automation';
 import { getAdminEditorialContentList } from '@/server/admin/editorial-content';
+import { ensureEditorialCoverageBoards } from '@/server/admin/editorial-coverage-boards';
 import { db } from '@/server/db';
 import { editorialSettings } from '@/server/db/schema';
 
@@ -45,7 +46,7 @@ function sanitizeCoverageBoard(board: EditorialCoverageBoard, index: number): Ed
     key,
     title: sanitizeText(board.title) ?? `内容看板 ${index + 1}`,
     contentType: toContentType(board.contentType),
-    note: sanitizeText(board.note) ?? '自定义内容看板。',
+    note: sanitizeText(board.note) ?? '',
     sourceMode: board.sourceMode === 'admin-managed' ? 'admin-managed' : 'code-seeded',
     enabled: board.enabled !== false,
     createdAt: sanitizeText(board.createdAt) ?? undefined,
@@ -241,6 +242,11 @@ function mapDbConfig(row: {
   });
 }
 
+async function attachCoverageBoards(config: EditorialAutomationConfig) {
+  const coverageBoards = await ensureEditorialCoverageBoards(config.coverageBoards);
+  return { ...config, coverageBoards };
+}
+
 async function ensureEditorialConfig() {
   const [row] = await db.select().from(editorialSettings).where(eq(editorialSettings.id, EDITORIAL_SETTINGS_ROW_ID)).limit(1);
   if (row) {
@@ -251,7 +257,7 @@ async function ensureEditorialConfig() {
         .set({ coverageBoards: config.coverageBoards, updatedAt: new Date() })
         .where(eq(editorialSettings.id, EDITORIAL_SETTINGS_ROW_ID));
     }
-    return config;
+    return attachCoverageBoards(config);
   }
 
   const seeded = sanitizeEditorialAutomationConfig(cloneEditorialAutomationConfig(defaultEditorialAutomationConfig));
@@ -265,7 +271,7 @@ async function ensureEditorialConfig() {
     runs: seeded.runs,
     updatedAt: new Date(),
   });
-  return seeded;
+  return attachCoverageBoards(seeded);
 }
 
 export async function getAdminEditorialDashboard(): Promise<AdminEditorialDashboard> {
@@ -303,5 +309,5 @@ export async function updateAdminEditorialConfig(input: EditorialAutomationConfi
     .returning();
 
   const saved = row ? mapDbConfig(row) : normalized;
-  return buildDashboard(cloneEditorialAutomationConfig(saved));
+  return buildDashboard(cloneEditorialAutomationConfig(await attachCoverageBoards(saved)));
 }

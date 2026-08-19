@@ -8,6 +8,7 @@ export type ContentTranslateType =
   | 'product'
   | 'feature'
   | 'shippingMethod'
+  | 'editorialBoard'
   | 'brandNarrative'
   | 'brandNarrativeBlock'
   | 'brandNarrativeBlockItem';
@@ -107,6 +108,12 @@ export const CONTENT_TRANSLATE_PROFILES: Record<ContentTranslateType, ContentTra
     plainTextFields: ['name', 'etaLabel', 'note'],
     serverLabel: 'shipping method',
     tooltip: '将默认语言已保存的物流方式名称、时效与说明翻译到当前语言；编码不会翻译，翻译后请校对',
+  },
+  editorialBoard: {
+    sourceFields: ['name', 'description'],
+    plainTextFields: ['name', 'description'],
+    serverLabel: 'editorial coverage board',
+    tooltip: '将默认语言已保存的看板名称与说明翻译到当前语言；Key 不会翻译',
   },
   brandNarrative: {
     sourceFields: ['heroTitle', 'heroSlogan', 'heroLead', 'statsText', 'heroImage'],

@@ -46,6 +46,7 @@ export type AdminEditorialContentListItem = {
   contentType: 'content';
   boardKey: string;
   boardKeys: string[];
+  coverImage: string;
   status: EditorialEntryStatus;
   title: string;
   slug: string;
@@ -73,6 +74,7 @@ export type AdminEditorialContentTranslation = {
   seoTitle: string | null;
   seoDescription: string | null;
   publishedAt: string | null;
+  coverImage: string;
   payload: EditorialContentPayload;
   createdAt: string;
   updatedAt: string;

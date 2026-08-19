@@ -14,6 +14,7 @@ const translateContentSchema = z.object({
     'product',
     'feature',
     'shippingMethod',
+    'editorialBoard',
     'brandNarrative',
     'brandNarrativeBlock',
     'brandNarrativeBlockItem',
