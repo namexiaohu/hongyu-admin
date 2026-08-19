@@ -11,7 +11,10 @@ export type ContentTranslateType =
   | 'editorialBoard'
   | 'brandNarrative'
   | 'brandNarrativeBlock'
-  | 'brandNarrativeBlockItem';
+  | 'brandNarrativeBlockItem'
+  | 'solution'
+  | 'solutionBlock'
+  | 'solutionBlockItem';
 
 type ContentTranslateProfile = {
   sourceFields: readonly string[];
@@ -136,6 +139,26 @@ export const CONTENT_TRANSLATE_PROFILES: Record<ContentTranslateType, ContentTra
     serverLabel: 'brand narrative block item',
     tooltip: '将默认语言已填写的内容项标题与描述翻译到当前语言，翻译后请校对',
   },
+  solution: {
+    sourceFields: ['heroTitle', 'heroSlogan', 'heroLead', 'badgeText', 'statsText', 'productParamsText', 'tagsText', 'seoTitle', 'seoDescription'],
+    plainTextFields: ['heroTitle', 'heroSlogan', 'heroLead', 'badgeText', 'statsText', 'productParamsText', 'tagsText', 'seoTitle', 'seoDescription'],
+    serverLabel: 'solution page',
+    tooltip: '将默认语言已保存的看板、数据指标、产品参数与标签翻译到当前语言；Slug 与封面图 URL 不会翻译，翻译后请校对',
+    translateNotes:
+      'statsText and productParamsText have one row per line as LABEL|||VALUE. Translate LABEL only. Keep VALUE exactly. tagsText has one tag per line. Keep the same line count. Do not return a JSON array.',
+  },
+  solutionBlock: {
+    sourceFields: ['smallTitle', 'largeTitle', 'description', 'buttonLabel'],
+    plainTextFields: ['smallTitle', 'largeTitle', 'description', 'buttonLabel'],
+    serverLabel: 'solution content block',
+    tooltip: '将默认语言已填写的区块标题与描述翻译到当前语言，翻译后请校对',
+  },
+  solutionBlockItem: {
+    sourceFields: ['smallTitle', 'largeTitle', 'description', 'badge', 'totalHours', 'teachingFormat', 'trainingCycle'],
+    plainTextFields: ['smallTitle', 'largeTitle', 'description', 'badge', 'totalHours', 'teachingFormat', 'trainingCycle'],
+    serverLabel: 'solution block item',
+    tooltip: '将默认语言已填写的内容项标题与描述翻译到当前语言，翻译后请校对',
+  },
 };
 
 export function pickTranslatePayload(
@@ -203,14 +226,19 @@ export function validateDefaultTranslateSource(
     return null;
   }
 
-  if (contentType === 'brandNarrative') {
+  if (contentType === 'brandNarrative' || contentType === 'solution') {
     if (!fields.heroTitle?.trim()) {
       return '默认语言内容不完整，请先完善标题';
     }
     return null;
   }
 
-  if (contentType === 'brandNarrativeBlock' || contentType === 'brandNarrativeBlockItem') {
+  if (
+    contentType === 'brandNarrativeBlock'
+    || contentType === 'brandNarrativeBlockItem'
+    || contentType === 'solutionBlock'
+    || contentType === 'solutionBlockItem'
+  ) {
     if (
       !fields.smallTitle?.trim()
       && !fields.largeTitle?.trim()

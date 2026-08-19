@@ -18,6 +18,7 @@
     "db:seed": "tsx src/server/db/seed.ts",
     "db:seed:brand-narratives": "tsx scripts/seed-brand-narratives.ts",
     "db:seed:insight-blogs": "tsx scripts/seed-insight-blogs.ts",
+    "db:seed:solutions": "tsx scripts/seed-solutions.ts",
     "db:migrate-oss-keys": "tsx scripts/migrate-images-to-oss-keys.ts",
     "db:test:brand-narratives": "tsx --tsconfig tsconfig.test.json scripts/test-brand-narratives.ts"
   },

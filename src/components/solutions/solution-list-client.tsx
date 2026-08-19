@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Card, Input, Space, Table, Tag, Tooltip, Typography, message } from 'antd';
@@ -6,46 +6,50 @@ import { useMemo, useState, useTransition } from 'react';
 
 import { AdminEditorialRowActions } from '@/components/admin/admin-row-actions';
 import { ADMIN_TABLE_EDITORIAL_ACTIONS_WIDTH, adminTableFixedActionsColumn, adminTableNowrapHeader, adminTableScroll } from '@/components/admin/admin-table';
-import { BrandNarrativeEditorModal } from '@/components/brand-narratives/brand-narrative-editor-modal';
+import { SolutionEditorModal } from '@/components/solutions/solution-editor-modal';
 import { formatAdminDate } from '@/lib/admin-display';
 import { buildAdminListRowIndexColumn } from '@/lib/admin-list-query';
+import type { AdminCategoryTreeNode } from '@/lib/category-content';
 import {
-  type AdminBrandNarrativeDetail,
-  type AdminBrandNarrativeListItem,
-  type BrandNarrativeStatus,
-} from '@/lib/brand-narrative-content';
+  type AdminSolutionDetail,
+  type AdminSolutionListItem,
+  type SolutionStatus,
+} from '@/lib/solution-content';
 import type { AdminSiteLanguageRow } from '@/server/admin/languages';
 
-type BrandNarrativeListClientProps = {
+type SolutionListClientProps = {
   initialList: {
-    items: AdminBrandNarrativeListItem[];
+    items: AdminSolutionListItem[];
     total: number;
   };
   activeLanguages: AdminSiteLanguageRow[];
+  categoryTree: AdminCategoryTreeNode[];
 };
 
-const narrativeStatusLabels: Record<BrandNarrativeStatus, string> = {
+const narrativeStatusLabels: Record<SolutionStatus, string> = {
   draft: '草稿',
   published: '已发布',
   archived: '已归档',
 };
 
-const narrativeStatusColors: Record<BrandNarrativeStatus, string> = {
+const narrativeStatusColors: Record<SolutionStatus, string> = {
   draft: 'default',
   published: 'green',
   archived: 'red',
 };
 
-async function fetchBrandNarrativeDetail(id: string): Promise<AdminBrandNarrativeDetail> {
-  const response = await fetch(`/api/admin/brand-narratives/${id}`);
+async function fetchSolutionDetail(id: string): Promise<AdminSolutionDetail> {
+  const response = await fetch(`/api/admin/solutions/${id}`);
   if (!response.ok) throw new Error('加载详情失败');
-  return response.json() as Promise<AdminBrandNarrativeDetail>;
+  return response.json() as Promise<AdminSolutionDetail>;
 }
 
-function toListItem(detail: AdminBrandNarrativeDetail): AdminBrandNarrativeListItem {
+function toListItem(detail: AdminSolutionDetail): AdminSolutionListItem {
   return {
     id: detail.id,
     slug: detail.slug,
+    categoryId: detail.categoryId,
+    categoryName: detail.categoryName,
     sortOrder: detail.sortOrder,
     status: detail.status,
     coverImage: detail.coverImage,
@@ -56,11 +60,11 @@ function toListItem(detail: AdminBrandNarrativeDetail): AdminBrandNarrativeListI
   };
 }
 
-export function BrandNarrativeListClient({ initialList, activeLanguages }: BrandNarrativeListClientProps) {
+export function SolutionListClient({ initialList, activeLanguages, categoryTree }: SolutionListClientProps) {
   const [items, setItems] = useState(initialList.items);
   const [keyword, setKeyword] = useState('');
   const [editorOpen, setEditorOpen] = useState(false);
-  const [editingDetail, setEditingDetail] = useState<AdminBrandNarrativeDetail | null>(null);
+  const [editingDetail, setEditingDetail] = useState<AdminSolutionDetail | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -70,11 +74,11 @@ export function BrandNarrativeListClient({ initialList, activeLanguages }: Brand
     return items.filter((item) => item.slug.includes(normalizedKeyword) || item.title.toLowerCase().includes(normalizedKeyword));
   }, [items, keyword]);
 
-  function patchNarrativeStatus(record: AdminBrandNarrativeListItem, status: BrandNarrativeStatus) {
+  function patchNarrativeStatus(record: AdminSolutionListItem, status: SolutionStatus) {
     startTransition(async () => {
       setPendingId(record.id);
       try {
-        const response = await fetch(`/api/admin/brand-narratives/${record.id}`, {
+        const response = await fetch(`/api/admin/solutions/${record.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status }),
@@ -83,7 +87,7 @@ export function BrandNarrativeListClient({ initialList, activeLanguages }: Brand
           message.error('更新状态失败');
           return;
         }
-        const updated = (await response.json()) as AdminBrandNarrativeDetail;
+        const updated = (await response.json()) as AdminSolutionDetail;
         setItems((current) =>
           current.map((item) =>
             item.id === updated.id ? toListItem(updated) : item,
@@ -92,18 +96,18 @@ export function BrandNarrativeListClient({ initialList, activeLanguages }: Brand
         if (editingDetail?.id === updated.id) {
           setEditingDetail(updated);
         }
-        message.success(`叙事已${narrativeStatusLabels[status]}`);
+        message.success(`解决方案已${narrativeStatusLabels[status]}`);
       } finally {
         setPendingId(null);
       }
     });
   }
 
-  function deleteNarrative(record: AdminBrandNarrativeListItem) {
+  function deleteNarrative(record: AdminSolutionListItem) {
     startTransition(async () => {
       setPendingId(record.id);
       try {
-        const response = await fetch(`/api/admin/brand-narratives/${record.id}`, {
+        const response = await fetch(`/api/admin/solutions/${record.id}`, {
           method: 'DELETE',
         });
         if (!response.ok) {
@@ -115,7 +119,7 @@ export function BrandNarrativeListClient({ initialList, activeLanguages }: Brand
           setEditorOpen(false);
           setEditingDetail(null);
         }
-        message.success('叙事已删除');
+        message.success('解决方案已删除');
       } finally {
         setPendingId(null);
       }
@@ -148,11 +152,23 @@ export function BrandNarrativeListClient({ initialList, activeLanguages }: Brand
       ),
     },
     {
+      title: '所属分类',
+      dataIndex: 'categoryName',
+      width: 160,
+      ellipsis: true,
+      onHeaderCell: adminTableNowrapHeader,
+      render: (value: string) => (
+        <Tooltip title={value}>
+          <Typography.Text ellipsis>{value || '—'}</Typography.Text>
+        </Tooltip>
+      ),
+    },
+    {
       title: '状态',
       dataIndex: 'status',
       width: 72,
       onHeaderCell: adminTableNowrapHeader,
-      render: (value: BrandNarrativeStatus) => (
+      render: (value: SolutionStatus) => (
         <Tag color={narrativeStatusColors[value]}>{narrativeStatusLabels[value]}</Tag>
       ),
     },
@@ -178,14 +194,14 @@ export function BrandNarrativeListClient({ initialList, activeLanguages }: Brand
       title: '操作',
       key: 'actions',
       width: ADMIN_TABLE_EDITORIAL_ACTIONS_WIDTH,
-      render: (_: unknown, record: AdminBrandNarrativeListItem) => (
+      render: (_: unknown, record: AdminSolutionListItem) => (
         <AdminEditorialRowActions
           loading={pendingId === record.id}
           status={record.status}
           onEdit={() => {
             startTransition(async () => {
               try {
-                const detail = await fetchBrandNarrativeDetail(record.id);
+                const detail = await fetchSolutionDetail(record.id);
                 setEditingDetail(detail);
                 setEditorOpen(true);
               } catch (error) {
@@ -217,7 +233,7 @@ export function BrandNarrativeListClient({ initialList, activeLanguages }: Brand
             setEditorOpen(true);
           }}
         >
-          新建企业叙事
+          新建解决方案
         </Button>
       </Space>
 
@@ -237,15 +253,16 @@ export function BrandNarrativeListClient({ initialList, activeLanguages }: Brand
             scroll={adminTableScroll(980)}
             columns={columns}
             dataSource={filteredItems}
-            locale={{ emptyText: '暂无叙事' }}
+            locale={{ emptyText: '暂无解决方案' }}
           />
         </Space>
       </Card>
 
-      <BrandNarrativeEditorModal
+      <SolutionEditorModal
         open={editorOpen}
         detail={editingDetail}
         activeLanguages={activeLanguages}
+        categoryTree={categoryTree}
         onClose={() => {
           setEditorOpen(false);
           setEditingDetail(null);

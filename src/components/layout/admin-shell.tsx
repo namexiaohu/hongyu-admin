@@ -53,6 +53,7 @@ const iconByKey: Record<string, React.ReactNode> = {
   '/admin/customers': <TeamOutlined />,
   'exclusive-content': <FileTextOutlined />,
   'content-management': <BarsOutlined />,
+  '/admin/solutions': <AppstoreOutlined />,
   '/admin/brand-narratives': <FileTextOutlined />,
   '/admin/editorial/boards': <AppstoreOutlined />,
   '/admin/faq': <FileTextOutlined />,

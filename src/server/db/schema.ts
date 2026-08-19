@@ -21,6 +21,8 @@ import type { VerificationDocument } from '@/lib/customer-profile';
 import type { BrandNarrativeBlockDraft } from '@/lib/brand-narrative-blocks';
 import type { BrandNarrativeStat } from '@/lib/brand-narrative-content';
 import type { AdminProductPayload } from '@/lib/product-content';
+import type { SolutionBlockDraft } from '@/lib/solution-blocks';
+import type { SolutionMaterial, SolutionProductParam, SolutionStat } from '@/lib/solution-content';
 import type { ProductCoverageBoard } from '@/lib/product-boards';
 import {
   defaultEditorialAutomationConfig,
@@ -1287,5 +1289,64 @@ export const brandNarrativeContents = pgTable(
   },
   (table) => ({
     narrativeIdUnique: uniqueIndex('brand_narrative_contents_narrative_id_unique').on(table.narrativeId),
+  }),
+);
+
+export const solutions = pgTable(
+  'solutions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    slug: varchar('slug', { length: 64 }).notNull(),
+    categoryId: uuid('category_id').notNull().references(() => categories.id, { onDelete: 'restrict' }),
+    sortOrder: integer('sort_order').notNull().default(0),
+    status: cmsStatusEnum('status').notNull().default('draft'),
+    publishedAt: timestamp('published_at', { withTimezone: true }),
+    coverImage: text('cover_image').notNull().default(''),
+    materials: jsonb('materials').$type<SolutionMaterial[]>().notNull().default([]),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    slugUnique: uniqueIndex('solutions_slug_unique').on(table.slug),
+    statusSortIdx: index('solutions_status_sort_idx').on(table.status, table.sortOrder),
+    categoryIdIdx: index('solutions_category_id_idx').on(table.categoryId),
+  }),
+);
+
+export const solutionTranslations = pgTable(
+  'solutions_i18n',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    solutionId: uuid('solution_id').notNull().references(() => solutions.id, { onDelete: 'cascade' }),
+    locale: varchar('locale', { length: 16 }).notNull(),
+    title: varchar('title', { length: 255 }).notNull().default(''),
+    largeTitle: varchar('large_title', { length: 255 }).notNull().default(''),
+    description: text('description').notNull().default(''),
+    badgeText: varchar('badge_text', { length: 120 }).notNull().default(''),
+    seoTitle: varchar('seo_title', { length: 255 }).notNull().default(''),
+    seoDescription: varchar('seo_description', { length: 500 }).notNull().default(''),
+    stats: jsonb('stats').$type<SolutionStat[]>().notNull().default([]),
+    productParams: jsonb('product_params').$type<SolutionProductParam[]>().notNull().default([]),
+    tags: jsonb('tags').$type<string[]>().notNull().default([]),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    solutionLocaleUnique: uniqueIndex('solutions_i18n_solution_locale_unique').on(table.solutionId, table.locale),
+    solutionIdIdx: index('solutions_i18n_solution_id_idx').on(table.solutionId),
+  }),
+);
+
+export const solutionContents = pgTable(
+  'solution_contents',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    solutionId: uuid('solution_id').notNull().references(() => solutions.id, { onDelete: 'cascade' }),
+    blocks: jsonb('blocks').$type<SolutionBlockDraft[]>().notNull().default([]),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    solutionIdUnique: uniqueIndex('solution_contents_solution_id_unique').on(table.solutionId),
   }),
 );

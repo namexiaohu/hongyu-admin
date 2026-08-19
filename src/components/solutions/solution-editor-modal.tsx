@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import type { FormInstance } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
@@ -7,27 +7,31 @@ import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 
 import { ContentTranslateButton } from '@/components/admin/content-translate-button';
 import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
+import { CategoryPickerField } from '@/components/categories/category-picker-field';
 import { CoverImageField } from '@/components/editorial/cover-image-field';
-import { BrandNarrativeBlockEditorModal, type BrandNarrativeBlockEditorHandle } from '@/components/brand-narratives/brand-narrative-block-editor-modal';
-import { BrandNarrativeBlockList } from '@/components/brand-narratives/brand-narrative-block-list';
-import type { BrandNarrativeBlockDraft } from '@/lib/brand-narrative-blocks';
+import { SolutionBlockEditorModal, type SolutionBlockEditorHandle } from '@/components/solutions/solution-block-editor-modal';
+import { SolutionBlockList } from '@/components/solutions/solution-block-list';
+import { SolutionMaterialsField } from '@/components/solutions/solution-materials-field';
+import type { AdminCategoryTreeNode } from '@/lib/category-content';
+import type { SolutionBlockDraft } from '@/lib/solution-blocks';
 import {
-  type AdminBrandNarrativeDetail,
-  type AdminBrandNarrativeTranslation,
-  type BrandNarrativeStatus,
-} from '@/lib/brand-narrative-content';
+  type AdminSolutionDetail,
+  type AdminSolutionTranslation,
+  type SolutionMaterial,
+  type SolutionStatus,
+} from '@/lib/solution-content';
 import { applyNonemptyTranslatedFields } from '@/lib/content-translate-config';
 import { shouldPersistLocaleDraft } from '@/lib/locale-draft-persistence';
 import { resolveSlugForSave, textToSlug, validateSourceThenAutoSlug } from '@/lib/slug';
 import type { AdminSiteLanguageRow } from '@/server/admin/languages';
 
-type SectionTabKey = 'hero' | 'stats' | 'seo' | 'seo-meta';
+type SectionTabKey = 'hero' | 'stats' | 'params' | 'tags' | 'seo-meta';
 type PersistMode = 'save' | 'publish';
 
 function resolveTargetStatus(
   mode: PersistMode,
-  baselineStatus?: BrandNarrativeStatus,
-): BrandNarrativeStatus {
+  baselineStatus?: SolutionStatus,
+): SolutionStatus {
   if (mode === 'publish') return 'published';
   if (baselineStatus === 'published') return 'published';
   if (baselineStatus === 'archived') return 'archived';
@@ -69,25 +73,40 @@ type LocaleFormValues = {
   heroTitle: string;
   heroSlogan: string;
   heroLead: string;
+  badgeText: string;
   seoTitle: string;
   seoDescription: string;
   stats: Array<{ label: string; value: string }>;
+  productParams: Array<{ label: string; value: string }>;
+  tags: Array<{ name: string }>;
 };
 
-type LocaleDraft = Omit<LocaleFormValues, 'slug'>;
+type LocaleDraft = {
+  heroTitle: string;
+  heroSlogan: string;
+  heroLead: string;
+  badgeText: string;
+  seoTitle: string;
+  seoDescription: string;
+  stats: Array<{ label: string; value: string }>;
+  productParams: Array<{ label: string; value: string }>;
+  tags: string[];
+};
 
-/** 封面图和 slug 是主表字段，不随语言变化，单独管理 */
 type SharedFormValues = {
   coverImage: string;
   slug: string;
+  categoryId: string;
+  materials: SolutionMaterial[];
 };
 
-type BrandNarrativeEditorModalProps = {
+type SolutionEditorModalProps = {
   open: boolean;
-  detail: AdminBrandNarrativeDetail | null;
+  detail: AdminSolutionDetail | null;
   activeLanguages: AdminSiteLanguageRow[];
+  categoryTree: AdminCategoryTreeNode[];
   onClose: () => void;
-  onSaved: (detail: AdminBrandNarrativeDetail) => void;
+  onSaved: (detail: AdminSolutionDetail) => void;
 };
 
 function emptyDraft(): LocaleDraft {
@@ -95,25 +114,31 @@ function emptyDraft(): LocaleDraft {
     heroTitle: '',
     heroSlogan: '',
     heroLead: '',
+    badgeText: '',
     seoTitle: '',
     seoDescription: '',
     stats: [],
+    productParams: [],
+    tags: [],
   };
 }
 
-function translationToDraft(translation: AdminBrandNarrativeTranslation): LocaleDraft {
+function translationToDraft(translation: AdminSolutionTranslation): LocaleDraft {
   return {
     heroTitle: translation.title,
     heroSlogan: translation.largeTitle,
     heroLead: translation.description,
+    badgeText: translation.badgeText ?? '',
     seoTitle: translation.seoTitle,
     seoDescription: translation.seoDescription,
     stats: (translation.stats ?? []).map((stat) => ({ label: stat.label, value: stat.value })),
+    productParams: (translation.productParams ?? []).map((row) => ({ label: row.label, value: row.value })),
+    tags: (translation.tags ?? []).filter((tag) => tag.trim()),
   };
 }
 
 function buildLocaleDrafts(
-  detail: AdminBrandNarrativeDetail | null,
+  detail: AdminSolutionDetail | null,
   languages: AdminSiteLanguageRow[],
 ): Record<string, LocaleDraft> {
   const drafts: Record<string, LocaleDraft> = {};
@@ -129,18 +154,31 @@ function readLocaleDraft(values: LocaleFormValues): LocaleDraft {
     heroTitle: values.heroTitle ?? '',
     heroSlogan: values.heroSlogan ?? '',
     heroLead: values.heroLead ?? '',
+    badgeText: values.badgeText ?? '',
     seoTitle: values.seoTitle ?? '',
     seoDescription: values.seoDescription ?? '',
     stats: values.stats ?? [],
+    productParams: values.productParams ?? [],
+    tags: (values.tags ?? []).map((row) => (typeof row === 'string' ? row : row?.name ?? '')).filter(Boolean),
   };
 }
 
-function hasNarrativeDraftContent(draft: LocaleDraft): boolean {
+function draftToFormValues(draft: LocaleDraft): LocaleFormValues {
+  return {
+    ...draft,
+    tags: (draft.tags ?? []).map((name) => ({ name })),
+  };
+}
+
+function hasSolutionDraftContent(draft: LocaleDraft): boolean {
   return Boolean(
     draft.heroTitle.trim()
     || draft.heroSlogan.trim()
     || draft.heroLead.trim()
-    || draft.stats.some((row) => row.label?.trim() || row.value?.trim()),
+    || draft.badgeText.trim()
+    || draft.stats.some((row) => row.label?.trim() || row.value?.trim())
+    || draft.productParams.some((row) => row.label?.trim() || row.value?.trim())
+    || draft.tags.some((tag) => tag.trim()),
   );
 }
 
@@ -150,11 +188,16 @@ function buildTranslationBody(draft: LocaleDraft, locale: string) {
     title: draft.heroTitle.trim(),
     largeTitle: draft.heroSlogan.trim(),
     description: draft.heroLead.trim(),
+    badgeText: draft.badgeText.trim(),
     seoTitle: draft.seoTitle.trim(),
     seoDescription: draft.seoDescription.trim(),
     stats: (draft.stats ?? [])
       .map((row) => ({ label: row.label?.trim() ?? '', value: row.value?.trim() ?? '' }))
       .filter((row) => row.label && row.value),
+    productParams: (draft.productParams ?? [])
+      .map((row) => ({ label: row.label?.trim() ?? '', value: row.value?.trim() ?? '' }))
+      .filter((row) => row.label && row.value),
+    tags: (draft.tags ?? []).map((tag) => tag.trim()).filter(Boolean),
   };
 }
 
@@ -162,10 +205,12 @@ function getValidateErrorTab(error: unknown): SectionTabKey | null {
   if (!error || typeof error !== 'object' || !('errorFields' in error)) return null;
   const errorFields = (error as { errorFields?: Array<{ name: Array<string | number> }> }).errorFields;
   const first = errorFields?.[0]?.name?.[0];
-  if (first === 'slug') return 'seo';
+  if (first === 'slug' || first === 'categoryId') return 'hero';
   if (first === 'stats') return 'stats';
+  if (first === 'productParams') return 'params';
+  if (first === 'tags') return 'tags';
   if (first === 'seoTitle' || first === 'seoDescription') return 'seo-meta';
-  if (first === 'heroTitle' || first === 'heroSlogan' || first === 'heroLead') return 'hero';
+  if (first === 'heroTitle' || first === 'heroSlogan' || first === 'heroLead' || first === 'badgeText') return 'hero';
   return 'hero';
 }
 
@@ -180,7 +225,7 @@ function mergeActiveFormIntoDrafts(
   };
 }
 
-function normalizeStatRow(row: unknown): { label: string; value: string } {
+function normalizePairRow(row: unknown): { label: string; value: string } {
   if (!row || typeof row !== 'object') return { label: '', value: '' };
   const record = row as { label?: unknown; value?: unknown };
   return {
@@ -189,24 +234,24 @@ function normalizeStatRow(row: unknown): { label: string; value: string } {
   };
 }
 
-function serializeStatsText(stats: LocaleDraft['stats']): string {
-  return (stats ?? [])
+function serializePairText(rows: Array<{ label: string; value: string }>): string {
+  return (rows ?? [])
     .map((row) => `${row.label?.trim() ?? ''}|||${row.value?.trim() ?? ''}`)
     .filter((line) => line !== '|||')
     .join('\n');
 }
 
-function deserializeStatsText(text: string): LocaleDraft['stats'] {
+function deserializePairText(text: string): Array<{ label: string; value: string }> {
   const trimmed = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
   if (!trimmed) return [];
 
   try {
     const parsed = JSON.parse(trimmed) as unknown;
     if (Array.isArray(parsed)) {
-      return parsed.map(normalizeStatRow).filter((row) => row.label.trim() || row.value.trim());
+      return parsed.map(normalizePairRow).filter((row) => row.label.trim() || row.value.trim());
     }
     if (typeof parsed === 'string' && parsed.trim() && parsed.trim() !== trimmed) {
-      return deserializeStatsText(parsed);
+      return deserializePairText(parsed);
     }
   } catch {
     // 按行解析 LABEL|||VALUE
@@ -224,30 +269,49 @@ function deserializeStatsText(text: string): LocaleDraft['stats'] {
     .filter((row) => row.label || row.value);
 }
 
-export function BrandNarrativeEditorModal({
+function serializeTagsText(tags: string[]): string {
+  return (tags ?? []).map((tag) => tag.trim()).filter(Boolean).join('\n');
+}
+
+function deserializeTagsText(text: string): string[] {
+  const trimmed = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+  if (!trimmed) return [];
+  try {
+    const parsed = JSON.parse(trimmed) as unknown;
+    if (Array.isArray(parsed)) {
+      return parsed.map((item) => String(item).trim()).filter(Boolean);
+    }
+  } catch {
+    // 按行解析
+  }
+  return trimmed.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+}
+
+export function SolutionEditorModal({
   open,
   detail,
   activeLanguages,
+  categoryTree,
   onClose,
   onSaved,
-}: BrandNarrativeEditorModalProps) {
+}: SolutionEditorModalProps) {
   const [form] = Form.useForm<LocaleFormValues>();
   const [sharedForm] = Form.useForm<SharedFormValues>();
   const [activeLocale, setActiveLocale] = useState(activeLanguages[0]?.code ?? 'zh');
   const [sectionTab, setSectionTab] = useState<SectionTabKey>('hero');
   const [drafts, setDrafts] = useState<Record<string, LocaleDraft>>({});
-  const [blocks, setBlocks] = useState<BrandNarrativeBlockDraft[]>([]);
-  const [editingBlock, setEditingBlock] = useState<BrandNarrativeBlockDraft | null>(null);
+  const [blocks, setBlocks] = useState<SolutionBlockDraft[]>([]);
+  const [editingBlock, setEditingBlock] = useState<SolutionBlockDraft | null>(null);
   const [isPending, startTransition] = useTransition();
-  const blocksRef = useRef<BrandNarrativeBlockDraft[]>([]);
-  const blockEditorRef = useRef<BrandNarrativeBlockEditorHandle>(null);
+  const blocksRef = useRef<SolutionBlockDraft[]>([]);
+  const blockEditorRef = useRef<SolutionBlockEditorHandle>(null);
   const isCreate = !detail;
   const isArchived = detail?.status === 'archived';
   const isPublished = detail?.status === 'published';
   const isReadOnly = isArchived;
 
   const translationByLocale = useMemo(() => {
-    const map = new Map<string, AdminBrandNarrativeTranslation>();
+    const map = new Map<string, AdminSolutionTranslation>();
     detail?.translations.forEach((translation) => map.set(translation.locale, translation));
     return map;
   }, [detail]);
@@ -262,51 +326,58 @@ export function BrandNarrativeEditorModal({
   function getDefaultSourceFields(): Record<string, string> {
     const draft = getMergedDrafts()[defaultLocale] ?? emptyDraft();
     const saved = translationByLocale.get(defaultLocale);
-    const savedStats = saved?.stats ?? [];
     const stats = draft.stats.some((row) => row.label?.trim() || row.value?.trim())
       ? draft.stats
-      : savedStats;
+      : (saved?.stats ?? []);
+    const productParams = draft.productParams.some((row) => row.label?.trim() || row.value?.trim())
+      ? draft.productParams
+      : (saved?.productParams ?? []);
+    const tags = draft.tags.some((tag) => tag.trim()) ? draft.tags : (saved?.tags ?? []);
     return {
       heroTitle: draft.heroTitle,
       heroSlogan: draft.heroSlogan,
       heroLead: draft.heroLead,
+      badgeText: draft.badgeText,
       seoTitle: draft.seoTitle,
       seoDescription: draft.seoDescription,
-      statsText: serializeStatsText(stats),
+      statsText: serializePairText(stats),
+      productParamsText: serializePairText(productParams),
+      tagsText: serializeTagsText(tags),
     };
   }
 
   function hasTargetLocaleContent() {
     const draft = getMergedDrafts()[activeLocale] ?? emptyDraft();
-    return Boolean(
-      draft.heroTitle.trim()
-      || draft.heroSlogan.trim()
-      || draft.heroLead.trim()
-      || draft.stats.some((row) => row.label?.trim() || row.value?.trim()),
-    );
+    return hasSolutionDraftContent(draft);
   }
 
   function handleTranslated(fields: Record<string, string>) {
     const merged = getMergedDrafts();
     const current = merged[activeLocale] ?? emptyDraft();
-    const sourceStats = merged[defaultLocale]?.stats ?? [];
-    const { statsText, stats: statsField, ...plainFields } = fields;
+    const source = merged[defaultLocale] ?? emptyDraft();
+    const {
+      statsText,
+      stats: statsField,
+      productParamsText,
+      tagsText,
+      ...plainFields
+    } = fields;
     const nextDraft = applyNonemptyTranslatedFields(current, plainFields);
-    const translatedStats = deserializeStatsText(statsText || statsField || '');
-    nextDraft.stats = (translatedStats.length ? translatedStats : sourceStats).map((row) => ({
+    const translatedStats = deserializePairText(statsText || statsField || '');
+    nextDraft.stats = (translatedStats.length ? translatedStats : source.stats).map((row) => ({
       label: row.label ?? '',
       value: row.value ?? '',
     }));
+    const translatedParams = deserializePairText(productParamsText || '');
+    nextDraft.productParams = (translatedParams.length ? translatedParams : source.productParams).map((row) => ({
+      label: row.label ?? '',
+      value: row.value ?? '',
+    }));
+    const translatedTags = deserializeTagsText(tagsText || '');
+    nextDraft.tags = translatedTags.length ? translatedTags : source.tags;
     const nextDrafts = { ...merged, [activeLocale]: nextDraft };
     setDrafts(nextDrafts);
-    form.setFieldsValue({
-      heroTitle: nextDraft.heroTitle,
-      heroSlogan: nextDraft.heroSlogan,
-      heroLead: nextDraft.heroLead,
-      seoTitle: nextDraft.seoTitle,
-      seoDescription: nextDraft.seoDescription,
-    });
-    form.setFieldValue('stats', nextDraft.stats);
+    form.setFieldsValue(draftToFormValues(nextDraft));
   }
 
   useEffect(() => {
@@ -319,9 +390,13 @@ export function BrandNarrativeEditorModal({
     setBlocks(detail?.blocks ?? []);
     setEditingBlock(null);
     blocksRef.current = detail?.blocks ?? [];
-    form.setFieldsValue(nextDrafts[firstLocale] ?? emptyDraft());
-    sharedForm.setFieldsValue({ coverImage: detail?.coverImage ?? '', slug: detail?.slug ?? '' });
-    // 只在打开弹窗时初始化；保存后父组件刷新 detail 不应丢掉区块草稿。
+    form.setFieldsValue(draftToFormValues(nextDrafts[firstLocale] ?? emptyDraft()));
+    sharedForm.setFieldsValue({
+      coverImage: detail?.coverImage ?? '',
+      slug: detail?.slug ?? '',
+      categoryId: detail?.categoryId ?? '',
+      materials: detail?.materials ?? [],
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -330,7 +405,7 @@ export function BrandNarrativeEditorModal({
     const nextDrafts = { ...drafts, [activeLocale]: readLocaleDraft(currentValues) };
     setDrafts(nextDrafts);
     setActiveLocale(locale);
-    form.setFieldsValue(nextDrafts[locale] ?? emptyDraft());
+    form.setFieldsValue(draftToFormValues(nextDrafts[locale] ?? emptyDraft()));
   }
 
   function persist(mode: PersistMode) {
@@ -344,6 +419,12 @@ export function BrandNarrativeEditorModal({
         const defaultDraft = mergedDrafts[defaultLocale] ?? emptyDraft();
         const slugSourceTitle = defaultDraft.heroTitle.trim() || readLocaleDraft(values).heroTitle.trim();
         let resolvedSlug = detail?.slug ?? '';
+        const categoryId = sharedValues.categoryId?.trim() ?? '';
+
+        if (!categoryId) {
+          message.error('请选择所属分类');
+          return;
+        }
 
         if (isCreate) {
           const slugCheck = validateSourceThenAutoSlug({
@@ -355,7 +436,7 @@ export function BrandNarrativeEditorModal({
           });
           if (!slugCheck.ok) {
             setActiveLocale(defaultLocale || activeLocale);
-            form.setFieldsValue(mergedDrafts[defaultLocale] ?? emptyDraft());
+            form.setFieldsValue(draftToFormValues(mergedDrafts[defaultLocale] ?? emptyDraft()));
             setSectionTab('hero');
             message.error(slugCheck.message);
             return;
@@ -377,7 +458,7 @@ export function BrandNarrativeEditorModal({
 
         if (!defaultDraft.heroTitle.trim()) {
           setActiveLocale(defaultLocale);
-          form.setFieldsValue(defaultDraft);
+          form.setFieldsValue(draftToFormValues(defaultDraft));
           setSectionTab('hero');
           message.error('请输入标题');
           return;
@@ -392,7 +473,7 @@ export function BrandNarrativeEditorModal({
             locale: target.locale,
             defaultLocale,
             primaryText: target.draft.heroTitle,
-          }) || (target.locale !== defaultLocale && hasNarrativeDraftContent(target.draft)));
+          }) || (target.locale !== defaultLocale && hasSolutionDraftContent(target.draft)));
 
         const status = resolveTargetStatus(mode, detail?.status);
         const flushedBlock = editingBlock ? (blockEditorRef.current?.flush() ?? null) : null;
@@ -405,12 +486,13 @@ export function BrandNarrativeEditorModal({
         })();
 
         const coverImage = sharedValues.coverImage?.trim() ?? '';
+        const materials = (sharedValues.materials ?? []).filter((item) => item.url?.trim());
 
-        async function upsertTranslation(narrativeId: string, locale: string, draft: LocaleDraft) {
+        async function upsertTranslation(solutionId: string, locale: string, draft: LocaleDraft) {
           const saveDraft = draft.heroTitle.trim()
             ? draft
             : { ...draft, heroTitle: defaultDraft.heroTitle };
-          const response = await fetch(`/api/admin/brand-narratives/${narrativeId}/translations`, {
+          const response = await fetch(`/api/admin/solutions/${solutionId}/translations`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(buildTranslationBody(saveDraft, locale)),
@@ -421,17 +503,18 @@ export function BrandNarrativeEditorModal({
           }
         }
 
-        let narrativeId = detail?.id;
+        let solutionId = detail?.id;
 
         if (!detail) {
-          const response = await fetch('/api/admin/brand-narratives', {
+          const response = await fetch('/api/admin/solutions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               slug: resolvedSlug,
-
+              categoryId,
               status,
               coverImage,
+              materials,
               blocks: blocksToSave,
               translation: buildTranslationBody(defaultDraft, defaultLocale),
             }),
@@ -440,30 +523,37 @@ export function BrandNarrativeEditorModal({
             const errorBody = await response.json().catch(() => null);
             throw new Error(errorBody?.message ?? '创建失败');
           }
-          const created = (await response.json()) as AdminBrandNarrativeDetail;
-          narrativeId = created.id;
+          const created = (await response.json()) as AdminSolutionDetail;
+          solutionId = created.id;
         }
 
-        if (!narrativeId) throw new Error('保存失败');
+        if (!solutionId) throw new Error('保存失败');
 
         for (const target of targets) {
           if (!detail && target.locale === defaultLocale) continue;
-          await upsertTranslation(narrativeId, target.locale, target.draft);
+          await upsertTranslation(solutionId, target.locale, target.draft);
         }
 
-        const statusResponse = await fetch(`/api/admin/brand-narratives/${narrativeId}`, {
+        const statusResponse = await fetch(`/api/admin/solutions/${solutionId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status, blocks: blocksToSave, slug: resolvedSlug, coverImage }),
+          body: JSON.stringify({
+            status,
+            blocks: blocksToSave,
+            slug: resolvedSlug,
+            coverImage,
+            categoryId,
+            materials,
+          }),
         });
         if (!statusResponse.ok) {
           const errorBody = await statusResponse.json().catch(() => null);
           throw new Error(errorBody?.message ?? '保存失败');
         }
 
-        const detailResponse = await fetch(`/api/admin/brand-narratives/${narrativeId}`);
+        const detailResponse = await fetch(`/api/admin/solutions/${solutionId}`);
         if (!detailResponse.ok) throw new Error('刷新详情失败');
-        const refreshed = (await detailResponse.json()) as AdminBrandNarrativeDetail;
+        const refreshed = (await detailResponse.json()) as AdminSolutionDetail;
         blocksRef.current = refreshed.blocks ?? [];
         setBlocks(blocksRef.current);
         onSaved(refreshed);
@@ -489,20 +579,20 @@ export function BrandNarrativeEditorModal({
     />
   );
 
-  function saveEditingBlock(next: BrandNarrativeBlockDraft) {
+  function saveEditingBlock(next: SolutionBlockDraft) {
     const nextBlocks = blocksRef.current.map((item) => (item.id === next.id ? next : item));
     blocksRef.current = nextBlocks;
     setBlocks(nextBlocks);
     setEditingBlock(next);
 
     if (!detail) {
-      message.success('区块已更新，请保存叙事');
+      message.success('区块已更新，请保存解决方案');
       return;
     }
 
     startTransition(async () => {
       try {
-        const response = await fetch(`/api/admin/brand-narratives/${detail.id}`, {
+        const response = await fetch(`/api/admin/solutions/${detail.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ blocks: nextBlocks }),
@@ -520,7 +610,7 @@ export function BrandNarrativeEditorModal({
 
   const modalTitle = (
     <Space wrap>
-      <span>{detail ? `编辑企业叙事 · ${detail.slug}` : '新建企业叙事'}</span>
+      <span>{detail ? `编辑解决方案 · ${detail.slug}` : '新建解决方案'}</span>
       {isArchived ? <Tag color="red">已归档</Tag> : null}
     </Space>
   );
@@ -551,7 +641,7 @@ export function BrandNarrativeEditorModal({
                 rules={[{ required: true, message: '请填写 Slug' }]}
               >
                 <Input
-                  placeholder="about"
+                  placeholder="v-clamp"
                   onBlur={() => {
                     if (!isCreate) return;
                     const slug = sharedForm.getFieldValue('slug');
@@ -563,17 +653,32 @@ export function BrandNarrativeEditorModal({
                 />
               </Form.Item>
               <Form.Item
+                name="categoryId"
+                label="所属分类"
+                rules={[{ required: true, message: '请选择所属分类' }]}
+                getValueFromEvent={(value: string) => value ?? ''}
+              >
+                <CategoryPickerField mode="single" categoryTree={categoryTree} />
+              </Form.Item>
+              <Form.Item
                 name="coverImage"
                 label="封面图（各语言共用）"
                 getValueFromEvent={(value: string | null) => value ?? ''}
               >
-                <CoverImageField folder="brand-narratives/covers" />
+                <CoverImageField folder="solutions/covers" />
+              </Form.Item>
+              <Form.Item
+                name="materials"
+                label="产品资料"
+                getValueFromEvent={(value: SolutionMaterial[]) => value ?? []}
+              >
+                <SolutionMaterialsField folder="solutions/materials" />
               </Form.Item>
             </Form>
           </div>
 
           <div className="content-editor-shared-section">
-            <BrandNarrativeBlockList
+            <SolutionBlockList
               blocks={blocks}
               onChange={(next) => {
                 blocksRef.current = next;
@@ -583,12 +688,7 @@ export function BrandNarrativeEditorModal({
             />
           </div>
 
-          <Form
-            form={form}
-            layout="vertical"
-            preserve
-            disabled={isReadOnly}
-          >
+          <Form form={form} layout="vertical" preserve disabled={isReadOnly}>
             <div className="content-editor-layout">
               <div className="content-editor-locale-nav">
                 {activeLanguages.map((language) => (
@@ -610,11 +710,13 @@ export function BrandNarrativeEditorModal({
                     items={[
                       { key: 'hero', label: '看板' },
                       { key: 'stats', label: '数据指标' },
+                      { key: 'params', label: '产品参数' },
+                      { key: 'tags', label: '标签' },
                       { key: 'seo-meta', label: 'SEO' },
                     ]}
                   />
                   <ContentTranslateButton
-                    contentType="brandNarrative"
+                    contentType="solution"
                     defaultLocale={defaultLocale}
                     activeLocale={activeLocale}
                     disabled={isPending || isReadOnly}
@@ -648,6 +750,9 @@ export function BrandNarrativeEditorModal({
                   <Form.Item name="heroLead" label="描述">
                     <Input.TextArea rows={3} placeholder="选填" />
                   </Form.Item>
+                  <Form.Item name="badgeText" label="角标文案">
+                    <Input placeholder="如 Flagship Product" />
+                  </Form.Item>
                 </div>
 
                 <div style={{ display: sectionTab === 'stats' ? 'block' : 'none' }}>
@@ -673,6 +778,49 @@ export function BrandNarrativeEditorModal({
                   </Form.List>
                 </div>
 
+                <div style={{ display: sectionTab === 'params' ? 'block' : 'none' }}>
+                  <Form.List name="productParams">
+                    {(fields, { add, remove }) => (
+                      <Space orientation="vertical" size="small" style={{ width: '100%' }}>
+                        {fields.map((field) => (
+                          <div key={field.key} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                            <Form.Item name={[field.name, 'label']} style={{ flex: 1, marginBottom: 0 }}>
+                              <Input placeholder="参数" />
+                            </Form.Item>
+                            <Form.Item name={[field.name, 'value']} style={{ flex: 1, marginBottom: 0 }}>
+                              <Input placeholder="规格" />
+                            </Form.Item>
+                            <Button type="text" danger icon={<DeleteOutlined />} onClick={() => remove(field.name)} />
+                          </div>
+                        ))}
+                        <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />}>
+                          添加参数
+                        </Button>
+                      </Space>
+                    )}
+                  </Form.List>
+                </div>
+
+                <div style={{ display: sectionTab === 'tags' ? 'block' : 'none' }}>
+                  <Form.List name="tags">
+                    {(fields, { add, remove }) => (
+                      <Space orientation="vertical" size="small" style={{ width: '100%' }}>
+                        {fields.map((field) => (
+                          <div key={field.key} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                            <Form.Item name={[field.name, 'name']} style={{ flex: 1, marginBottom: 0 }}>
+                              <Input placeholder="标签名" />
+                            </Form.Item>
+                            <Button type="text" danger icon={<DeleteOutlined />} onClick={() => remove(field.name)} />
+                          </div>
+                        ))}
+                        <Button type="dashed" onClick={() => add({ name: '' })} icon={<PlusOutlined />}>
+                          添加标签
+                        </Button>
+                      </Space>
+                    )}
+                  </Form.List>
+                </div>
+
                 <div style={{ display: sectionTab === 'seo-meta' ? 'block' : 'none' }}>
                   <Form.Item name="seoTitle" label="SEO 标题">
                     <Input placeholder="留空则使用页面标题" />
@@ -688,7 +836,7 @@ export function BrandNarrativeEditorModal({
         </Space>
       </Modal>
 
-      <BrandNarrativeBlockEditorModal
+      <SolutionBlockEditorModal
         ref={blockEditorRef}
         open={Boolean(editingBlock)}
         block={editingBlock}
