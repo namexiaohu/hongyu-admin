@@ -55,6 +55,8 @@ const iconByKey: Record<string, React.ReactNode> = {
   'content-management': <BarsOutlined />,
   '/admin/solutions': <AppstoreOutlined />,
   '/admin/brand-narratives': <FileTextOutlined />,
+  '/admin/surgeons': <TeamOutlined />,
+  '/admin/partner-centers': <GlobalOutlined />,
   '/admin/editorial/boards': <AppstoreOutlined />,
   '/admin/faq': <FileTextOutlined />,
   '/admin/editorial': <FileTextOutlined />,

@@ -1350,3 +1350,100 @@ export const solutionContents = pgTable(
     solutionIdUnique: uniqueIndex('solution_contents_solution_id_unique').on(table.solutionId),
   }),
 );
+
+/* ───── Certified Surgeons (认证术者) ───── */
+
+export const surgeonGradeKeyEnum = pgEnum('surgeon_grade_key', ['platinum', 'gold', 'silver']);
+
+export const surgeons = pgTable(
+  'surgeons',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    slug: varchar('slug', { length: 64 }).notNull(),
+    avatar: text('avatar').notNull().default(''),
+    gradeKey: surgeonGradeKeyEnum('grade_key').notNull().default('silver'),
+    sortOrder: integer('sort_order').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    slugUnique: uniqueIndex('surgeons_slug_unique').on(table.slug),
+    sortIdx: index('surgeons_sort_idx').on(table.sortOrder),
+  }),
+);
+
+export const surgeonTranslations = pgTable(
+  'surgeons_i18n',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    surgeonId: uuid('surgeon_id').notNull().references(() => surgeons.id, { onDelete: 'cascade' }),
+    locale: varchar('locale', { length: 16 }).notNull(),
+    name: varchar('name', { length: 120 }).notNull().default(''),
+    position: varchar('position', { length: 200 }).notNull().default(''),
+    institution: varchar('institution', { length: 200 }).notNull().default(''),
+    expertise: varchar('expertise', { length: 300 }).notNull().default(''),
+    experience: varchar('experience', { length: 300 }).notNull().default(''),
+    gradeTitle: varchar('grade_title', { length: 120 }).notNull().default(''),
+    tags: jsonb('tags').$type<string[]>().notNull().default([]),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    surgeonLocaleUnique: uniqueIndex('surgeons_i18n_surgeon_locale_unique').on(table.surgeonId, table.locale),
+    surgeonIdIdx: index('surgeons_i18n_surgeon_id_idx').on(table.surgeonId),
+  }),
+);
+
+/* ───── Partner Centers (合作中心) ───── */
+
+export const centerRegionEnum = pgEnum('center_region', [
+  'asia-pacific',
+  'europe',
+  'north-america',
+  'latin-america',
+  'middle-east-africa',
+  'oceania',
+]);
+
+export const partnerCenters = pgTable(
+  'partner_centers',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    slug: varchar('slug', { length: 64 }).notNull(),
+    region: centerRegionEnum('region').notNull().default('asia-pacific'),
+    coverImage: text('cover_image').notNull().default(''),
+    logo: text('logo').notNull().default(''),
+    sortOrder: integer('sort_order').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    slugUnique: uniqueIndex('partner_centers_slug_unique').on(table.slug),
+    regionIdx: index('partner_centers_region_idx').on(table.region),
+    sortIdx: index('partner_centers_sort_idx').on(table.sortOrder),
+  }),
+);
+
+export const partnerCenterTranslations = pgTable(
+  'partner_centers_i18n',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    centerId: uuid('center_id').notNull().references(() => partnerCenters.id, { onDelete: 'cascade' }),
+    locale: varchar('locale', { length: 16 }).notNull(),
+    name: varchar('name', { length: 200 }).notNull().default(''),
+    description: text('description').notNull().default(''),
+    location: varchar('location', { length: 300 }).notNull().default(''),
+    badgeText: varchar('badge_text', { length: 120 }).notNull().default(''),
+    address: varchar('address', { length: 400 }).notNull().default(''),
+    businessHours: varchar('business_hours', { length: 200 }).notNull().default(''),
+    contact: varchar('contact', { length: 200 }).notNull().default(''),
+    website: varchar('website', { length: 300 }).notNull().default(''),
+    tags: jsonb('tags').$type<string[]>().notNull().default([]),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    centerLocaleUnique: uniqueIndex('partner_centers_i18n_center_locale_unique').on(table.centerId, table.locale),
+    centerIdIdx: index('partner_centers_i18n_center_id_idx').on(table.centerId),
+  }),
+);
