@@ -87,8 +87,13 @@ export function AdminShell({
   panelSubtitle,
 }: PropsWithChildren<{ siteUrl: string; panelTitle: string; panelSubtitle: string }>) {
   const pathname = usePathname();
+  const isLoginPage = pathname === '/admin/login' || pathname.startsWith('/admin/login/');
   const pageTitle = getAdminPageTitle(pathname);
   const selected = getAdminNavSelectedKey(pathname);
+
+  if (isLoginPage) {
+    return <>{children}</>;
+  }
 
   return (
     <Layout style={{ minHeight: '100vh' }}>

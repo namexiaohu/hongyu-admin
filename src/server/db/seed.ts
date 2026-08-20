@@ -7,6 +7,7 @@ import { db } from '@/server/db';
 import { seedBrandNarratives } from '@/server/db/seed-brand-narratives';
 import {
   addresses,
+  admins,
   brandTranslations,
   brands,
   cartItems,
@@ -27,11 +28,25 @@ import {
 } from '@/server/db/schema';
 
 async function main() {
-  const [existingAdmin] = await db.select().from(users).where(eq(users.email, 'admin@lianchuan.local')).limit(1);
+  const adminEmail = 'admin@lianchuan.local';
+  const adminPasswordHash = md5Hash('Admin123456');
+
+  const [existingAdminAccount] = await db.select().from(admins).where(eq(admins.email, adminEmail)).limit(1);
+  if (!existingAdminAccount) {
+    await db.insert(admins).values({
+      email: adminEmail,
+      passwordHash: adminPasswordHash,
+      name: 'Admin User',
+      role: 'super_admin',
+      status: 'active',
+    });
+  }
+
+  const [existingAdmin] = await db.select().from(users).where(eq(users.email, adminEmail)).limit(1);
   if (!existingAdmin) {
     await db.insert(users).values({
-      email: 'admin@lianchuan.local',
-      passwordHash: md5Hash('Admin123456'),
+      email: adminEmail,
+      passwordHash: adminPasswordHash,
       firstName: 'Site',
       lastName: 'Admin',
       role: 'admin',
@@ -39,7 +54,7 @@ async function main() {
     });
   }
 
-  const [adminUser] = await db.select().from(users).where(eq(users.email, 'admin@lianchuan.local')).limit(1);
+  const [adminUser] = await db.select().from(users).where(eq(users.email, adminEmail)).limit(1);
   if (!adminUser) {
     throw new Error('Admin user could not be created');
   }

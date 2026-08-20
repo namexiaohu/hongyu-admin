@@ -13,20 +13,7 @@ export type AdminAuthRecord = {
   status: 'active' | 'disabled';
 };
 
-const LOCAL_DEV_ADMIN: AdminAuthRecord = {
-  id: '00000000-0000-4000-8000-000000000001',
-  email: 'admin@lianchuan.local',
-  passwordHash: '',
-  name: 'Admin User',
-  role: 'super_admin',
-  status: 'active',
-};
-
 export async function getAdminById(id: string): Promise<AdminAuthRecord | null> {
-  if (process.env.NODE_ENV !== 'production' && id === LOCAL_DEV_ADMIN.id) {
-    return LOCAL_DEV_ADMIN;
-  }
-
   const [row] = await db.select().from(admins).where(eq(admins.id, id)).limit(1);
   if (!row) return null;
 
@@ -43,12 +30,7 @@ export async function getAdminById(id: string): Promise<AdminAuthRecord | null> 
 export async function getAdminByEmail(email: string): Promise<AdminAuthRecord | null> {
   const normalized = email.trim().toLowerCase();
   const [row] = await db.select().from(admins).where(eq(admins.email, normalized)).limit(1);
-  if (!row) {
-    if (process.env.NODE_ENV !== 'production' && normalized === LOCAL_DEV_ADMIN.email) {
-      return LOCAL_DEV_ADMIN;
-    }
-    return null;
-  }
+  if (!row) return null;
 
   return {
     id: row.id,
@@ -61,9 +43,6 @@ export async function getAdminByEmail(email: string): Promise<AdminAuthRecord | 
 }
 
 export function verifyAdminPassword(admin: AdminAuthRecord, password: string) {
-  if (process.env.NODE_ENV !== 'production' && admin.email === LOCAL_DEV_ADMIN.email && password === 'Admin123456') {
-    return true;
-  }
   return compareMd5(password, admin.passwordHash);
 }
 
