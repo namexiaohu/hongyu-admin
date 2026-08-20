@@ -30,12 +30,23 @@ export type StorefrontCategory = {
   featuredOrder?: number;
 };
 
+export type StorefrontSeriesProduct = {
+  id: string;
+  name: string;
+  slug: string;
+  badgeText?: string;
+  extraText?: string;
+  coverImage?: StorefrontImage | string | null;
+};
+
 export type StorefrontProductCard = {
   id: string;
   name: string;
   slug: string;
   spu: string;
   shortDescription?: string | null;
+  badgeText?: string;
+  extraText?: string;
   coverImage?: StorefrontImage | null;
   price: {
     currency: string;
@@ -90,6 +101,9 @@ export type StorefrontProductDetail = StorefrontProductCard & {
   attributes: Array<{ group: string; value: string }>;
   attachments: StorefrontAttachment[];
   relatedProducts: StorefrontProductCard[];
+  seriesProducts?: StorefrontSeriesProduct[];
+  solution?: { slug: string; title: string } | null;
+  stats?: Array<{ label: string; value: string }>;
   compatibleGroups: StorefrontCompatibleGroup[];
   stockQuantity: number;
   seoTitle?: string | null;

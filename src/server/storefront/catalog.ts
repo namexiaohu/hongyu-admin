@@ -1,5 +1,6 @@
 import { and, asc, count, desc, eq, exists, ilike, inArray, or, sql as drizzleSql } from 'drizzle-orm';
 
+import type { SolutionBlockDraft } from '@/lib/solution-blocks';
 import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
 import { db } from '@/server/db';
 import {
@@ -17,9 +18,13 @@ import {
   productVariants,
   orderItems,
   orders,
+  solutionContents,
+  solutions,
+  solutionTranslations,
 } from '@/server/db/schema';
 
 import {
+  coverImageFromPayload,
   galleryFromPayload,
   loadProductTranslationsByProductIds,
   mergeGalleryWithCover,
@@ -32,7 +37,7 @@ import {
   footerCopyright,
   footerPaymentMethods,
 } from '@/server/storefront/site-shell';
-import type { HomeData, NavigationData, ProductListResult, ProductListSort, StorefrontCategory, StorefrontCompatibleGroup, StorefrontImage, StorefrontProductCard, StorefrontProductDetail } from './types';
+import type { HomeData, NavigationData, ProductListResult, ProductListSort, StorefrontCategory, StorefrontCompatibleGroup, StorefrontImage, StorefrontProductCard, StorefrontProductDetail, StorefrontSeriesProduct } from './types';
 import { brandNameSql, brandSlugSql } from '@/server/brands/resolve-brand-translation';
 import {
   DEFAULT_PRODUCT_LOCALE,
@@ -757,15 +762,143 @@ export async function getProductList(input: {
   }
 }
 
+function shuffleIds(ids: string[]): string[] {
+  const next = [...ids];
+  for (let i = next.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [next[i], next[j]] = [next[j]!, next[i]!];
+  }
+  return next;
+}
+
+function pickSolutionTranslationTitle(
+  rows: Array<{ locale: string; title: string }>,
+  locale: string,
+): string | null {
+  if (!rows.length) return null;
+  const normalized = locale.trim().toLowerCase();
+  const exact = rows.find((row) => row.locale.toLowerCase() === normalized);
+  if (exact?.title.trim()) return exact.title.trim();
+  const prefix = normalized.split('-')[0] ?? normalized;
+  const prefixMatch = rows.find((row) => {
+    const rowLocale = row.locale.toLowerCase();
+    return rowLocale === prefix || rowLocale.startsWith(`${prefix}-`);
+  });
+  if (prefixMatch?.title.trim()) return prefixMatch.title.trim();
+  const english = rows.find((row) => row.locale.toLowerCase().startsWith('en'));
+  return (english ?? rows[0])?.title.trim() || null;
+}
+
+export async function getSiblingProductsBySolution(
+  productId: string,
+  localeInput?: string | null,
+  limit = 3,
+): Promise<{
+  seriesProducts: StorefrontSeriesProduct[];
+  solution: { slug: string; title: string } | null;
+}> {
+  const locale = catalogLocale(localeInput);
+  const empty = { seriesProducts: [] as StorefrontSeriesProduct[], solution: null as { slug: string; title: string } | null };
+
+  try {
+    const contentRows = await db
+      .select({
+        solutionId: solutionContents.solutionId,
+        blocks: solutionContents.blocks,
+      })
+      .from(solutionContents);
+
+    let matchedSolutionId: string | null = null;
+    let siblingIds: string[] = [];
+
+    for (const row of contentRows) {
+      const blocks = (row.blocks ?? []) as SolutionBlockDraft[];
+      for (const block of blocks) {
+        if (block.type !== 'relatedProducts') continue;
+        const productIds = (block.productIds ?? []).filter(Boolean);
+        if (!productIds.includes(productId)) continue;
+        matchedSolutionId = row.solutionId;
+        siblingIds = productIds.filter((id) => id !== productId);
+        break;
+      }
+      if (matchedSolutionId) break;
+    }
+
+    let solution: { slug: string; title: string } | null = null;
+    if (matchedSolutionId) {
+      const [solutionRow] = await db
+        .select({
+          slug: solutions.slug,
+          status: solutions.status,
+        })
+        .from(solutions)
+        .where(eq(solutions.id, matchedSolutionId))
+        .limit(1);
+
+      if (solutionRow && solutionRow.status === 'published') {
+        const translationRows = await db
+          .select({
+            locale: solutionTranslations.locale,
+            title: solutionTranslations.title,
+          })
+          .from(solutionTranslations)
+          .where(eq(solutionTranslations.solutionId, matchedSolutionId));
+        const title = pickSolutionTranslationTitle(translationRows, locale);
+        if (title) {
+          solution = { slug: solutionRow.slug, title };
+        }
+      }
+    }
+
+    const selectedIds = shuffleIds(siblingIds).slice(0, Math.max(0, limit));
+    if (!selectedIds.length) {
+      return { seriesProducts: [], solution };
+    }
+
+    const activeRows = await db
+      .select({ id: products.id })
+      .from(products)
+      .where(and(inArray(products.id, selectedIds), eq(products.status, 'active')));
+    const activeIdSet = new Set(activeRows.map((row) => row.id));
+    const translationMap = await loadProductTranslationsByProductIds(
+      selectedIds.filter((id) => activeIdSet.has(id)),
+    );
+
+    const seriesProducts: StorefrontSeriesProduct[] = selectedIds.flatMap((id) => {
+      if (!activeIdSet.has(id)) return [];
+      const translation = pickProductTranslation(translationMap.get(id), locale);
+      if (!translation) return [];
+      return [{
+        id,
+        name: translation.name,
+        slug: translation.slug,
+        badgeText: translation.badgeText || undefined,
+        extraText: translation.extraText || undefined,
+        coverImage: coverImageFromPayload(id, translation.name, translation.payload),
+      }];
+    });
+
+    return { seriesProducts, solution };
+  } catch (error) {
+    console.error('getSiblingProductsBySolution DB error:', error);
+    return empty;
+  }
+}
+
 export async function getProductBySlug(slug: string, localeInput?: string | null): Promise<StorefrontProductDetail | null> {
   const locale = catalogLocale(localeInput);
   try {
-    const [product] = await db
+    // Slug is unique per locale; seed may only have `en`. Fall back like solution product cards.
+    const slugMatches = await db
       .select({
         id: products.id,
+        locale: productTranslations.locale,
         name: productTranslations.name,
         slug: productTranslations.slug,
         spu: products.spu,
+        badgeText: productTranslations.badgeText,
+        extraText: productTranslations.extraText,
+        stats: productTranslations.stats,
         shortDescription: productTranslations.shortDescription,
         description: productTranslations.description,
         purchaseMode: products.purchaseMode,
@@ -796,16 +929,18 @@ export async function getProductBySlug(slug: string, localeInput?: string | null
       .leftJoin(brands, eq(products.brandId, brands.id))
       .where(and(
         eq(productTranslations.slug, slug),
-        eq(productTranslations.locale, locale),
         eq(products.status, 'active'),
-      ))
-      .limit(1);
+      ));
+
+    const product = slugMatches.find((row) => row.locale === locale)
+      ?? slugMatches.find((row) => row.locale === DEFAULT_PRODUCT_LOCALE)
+      ?? slugMatches[0];
 
     if (!product) {
       return null;
     }
 
-    const [images, categoryRows, attachmentRows, featureRows, configurableFeatures, variantRows] = await Promise.all([
+    const [images, categoryRows, attachmentRows, featureRows, configurableFeatures, variantRows, siblingResult] = await Promise.all([
       db.select().from(productImages).where(eq(productImages.productId, product.id)).orderBy(asc(productImages.sortOrder)),
       db
         .select({
@@ -823,6 +958,7 @@ export async function getProductBySlug(slug: string, localeInput?: string | null
       getStorefrontProductFeatures(product.id, locale),
       getStorefrontProductFeatureOptions(product.id, locale),
       db.select().from(productVariants).where(eq(productVariants.productId, product.id)).orderBy(asc(productVariants.createdAt)),
+      getSiblingProductsBySolution(product.id, locale, 3),
     ]);
 
     const related = await getRelatedProducts(slug, categoryRows[0]?.slug ?? null, product.id, locale);
@@ -838,11 +974,32 @@ export async function getProductBySlug(slug: string, localeInput?: string | null
     const coverImage = resolveProductCoverImage(product.id, product.name, tableCover, product.payload);
     const baseGallery = tableGallery.length ? tableGallery : payloadGallery;
 
+    const tableAttachments = attachmentRows.map((item) => ({
+      id: item.id,
+      name: item.name,
+      url: resolveOssAssetUrl(item.url),
+      mimeType: item.mimeType,
+    }));
+    const payloadAttachments = (product.payload?.attachments ?? [])
+      .filter((item) => item.url?.trim())
+      .map((item, index) => ({
+        id: `${product.id}-att-${index}`,
+        name: item.name || `Attachment ${index + 1}`,
+        url: resolveOssAssetUrl(item.url),
+        mimeType: item.mimeType || 'application/octet-stream',
+      }));
+
+    const stats = (product.stats ?? [])
+      .filter((item) => item.label?.trim() && item.value?.trim())
+      .map((item) => ({ label: item.label, value: item.value }));
+
     return {
       id: product.id,
       name: product.name,
       slug: product.slug,
       spu: product.spu,
+      badgeText: product.badgeText || undefined,
+      extraText: product.extraText || undefined,
       shortDescription: product.shortDescription,
       description: product.description ?? '',
       coverImage,
@@ -875,13 +1032,11 @@ export async function getProductBySlug(slug: string, localeInput?: string | null
         image: item.imageUrl ? { id: `${item.id}-img`, url: resolveOssAssetUrl(item.imageUrl), alt: item.name ?? '' } : null,
       })),
       attributes: variantRows.flatMap((row) => row.attributes).slice(0, 8),
-      attachments: attachmentRows.map((item) => ({
-        id: item.id,
-        name: item.name,
-        url: item.url,
-        mimeType: item.mimeType,
-      })),
+      attachments: tableAttachments.length ? tableAttachments : payloadAttachments,
       relatedProducts: related,
+      seriesProducts: siblingResult.seriesProducts,
+      solution: siblingResult.solution,
+      stats,
       compatibleGroups,
       seoTitle: product.seoTitle,
       seoDescription: product.seoDescription,

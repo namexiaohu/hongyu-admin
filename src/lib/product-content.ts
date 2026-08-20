@@ -28,6 +28,11 @@ export type ProductAttachment = {
   mimeType: string;
 };
 
+export type ProductStat = {
+  label: string;
+  value: string;
+};
+
 export type AdminProductPayload = {
   coverUrl: string | null;
   coverAlt: string | null;
@@ -74,6 +79,9 @@ export type AdminProductTranslation = {
   locale: string;
   name: string;
   slug: string;
+  badgeText: string;
+  extraText: string;
+  stats: ProductStat[];
   shortDescription: string | null;
   description: string | null;
   seoTitle: string | null;

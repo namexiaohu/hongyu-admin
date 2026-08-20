@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { and, asc, eq, ne, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
 
 import type { SolutionBlockDraft, SolutionBlockLocaleCopy } from '@/lib/solution-blocks';
 import { isSummaryIcon, pickBlockLocaleCopy, summaryItemUsesCoverImage } from '@/lib/solution-blocks';
@@ -11,12 +11,18 @@ import { db } from '@/server/db';
 import {
   productCoverageBoards,
   productCoverageBoardTranslations,
+  products,
   solutionBoardLinks,
   solutionContents,
   solutionTranslations,
   solutions,
 } from '@/server/db/schema';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
+import {
+  coverImageFromPayload,
+  loadProductTranslationsByProductIds,
+  pickProductTranslation,
+} from '@/server/products/load-product-translations';
 
 export type StorefrontSolutionMaterial = {
   name: string;
@@ -187,7 +193,58 @@ function mapSpecSection(
   };
 }
 
-function mapBlocksToSections(
+async function mapRelatedProductsSection(
+  block: SolutionBlockDraft,
+  copy: SolutionBlockLocaleCopy,
+  locale: string,
+): Promise<StorefrontSolutionSection | null> {
+  const productIds = (block.productIds ?? []).filter(Boolean);
+  if (!productIds.length) return null;
+
+  const activeRows = await db
+    .select({ id: products.id })
+    .from(products)
+    .where(and(inArray(products.id, productIds), eq(products.status, 'active')));
+  const activeIdSet = new Set(activeRows.map((row) => row.id));
+  if (!activeIdSet.size) return null;
+
+  const translationMap = await loadProductTranslationsByProductIds(
+    productIds.filter((id) => activeIdSet.has(id)),
+  );
+
+  const productCards = productIds.flatMap((id) => {
+    if (!activeIdSet.has(id)) return [];
+    const translation = pickProductTranslation(translationMap.get(id), locale);
+    if (!translation) return [];
+    const cover = coverImageFromPayload(id, translation.name, translation.payload);
+    return [{
+      slug: translation.slug,
+      href: `/products/${translation.slug}`,
+      name: translation.name,
+      badgeText: translation.badgeText || undefined,
+      extraText: translation.extraText || undefined,
+      shortDescription: translation.shortDescription,
+      coverImage: cover?.url ?? '',
+    }];
+  });
+
+  if (!productCards.length) return null;
+
+  const eyebrow = text(copy.smallTitle);
+  const title = text(copy.largeTitle, eyebrow);
+  const body = text(copy.description);
+
+  return {
+    type: 'product-models',
+    id: block.id,
+    eyebrow: eyebrow || title,
+    title: title || eyebrow || ' ',
+    lead: body,
+    products: productCards,
+  };
+}
+
+async function mapBlocksToSections(
   blocks: SolutionBlockDraft[],
   locale: string,
   productParams: SolutionProductParam[],
@@ -207,6 +264,11 @@ function mapBlocksToSections(
     }
     if (block.type === 'specifications') {
       sections.push(mapSpecSection(block, copy, productParams));
+      continue;
+    }
+    if (block.type === 'relatedProducts') {
+      const section = await mapRelatedProductsSection(block, copy, locale);
+      if (section) sections.push(section);
       continue;
     }
     if (block.type === 'timeline' || block.type === 'course') {
@@ -317,7 +379,7 @@ export async function getStorefrontSolutionBySlug(
     stats: mapStats(translation.stats),
     materials: mapMaterials(row.materials as SolutionMaterial[]),
     productParams,
-    sections: mapBlocksToSections(blocks, requestedLocale, productParams),
+    sections: await mapBlocksToSections(blocks, requestedLocale, productParams),
     related,
   };
 }

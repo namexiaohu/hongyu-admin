@@ -3,7 +3,7 @@ import '@/lib/env';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { and, eq } from 'drizzle-orm';
+import { and, eq, notInArray } from 'drizzle-orm';
 
 import {
   createSolutionBlockItemId,
@@ -17,6 +17,8 @@ import { SOLUTION_SEED_RECORDS, type SolutionSeedRecord } from '@/lib/solution-s
 import { db } from '@/server/db';
 import {
   categoryTranslations,
+  productCoverageBoards,
+  solutionBoardLinks,
   solutionContents,
   solutionTranslations,
   solutions,
@@ -151,7 +153,7 @@ function buildBlocks(record: SolutionSeedRecord, imageKeys: Record<string, strin
   });
 }
 
-async function upsertSolution(record: SolutionSeedRecord, categoryId: string, imageKeys: Record<string, string>) {
+async function upsertSolution(record: SolutionSeedRecord, categoryId: string | null, imageKeys: Record<string, string>) {
   const blocks = buildBlocks(record, imageKeys);
   const coverImage = imageKeys[record.coverRole] ?? '';
   const now = new Date();
@@ -234,13 +236,43 @@ async function upsertSolution(record: SolutionSeedRecord, categoryId: string, im
   } else {
     await db.insert(solutionContents).values({ solutionId, blocks });
   }
+
+  await syncSolutionBoardLink(solutionId, record.slug);
+}
+
+async function syncSolutionBoardLink(solutionId: string, boardKey: string) {
+  const [board] = await db
+    .select({ id: productCoverageBoards.id })
+    .from(productCoverageBoards)
+    .where(eq(productCoverageBoards.boardKey, boardKey))
+    .limit(1);
+
+  await db.delete(solutionBoardLinks).where(eq(solutionBoardLinks.solutionId, solutionId));
+  if (!board) {
+    console.warn(`未找到看板 boardKey="${boardKey}"，跳过 solution_board_links`);
+    return;
+  }
+  await db.insert(solutionBoardLinks).values({ solutionId, boardId: board.id }).onConflictDoNothing();
+}
+
+async function pruneExtraSolutions() {
+  const keep = SOLUTION_SEED_RECORDS.map((record) => record.slug);
+  const stale = await db
+    .select({ slug: solutions.slug })
+    .from(solutions)
+    .where(notInArray(solutions.slug, keep));
+  if (!stale.length) return;
+  await db.delete(solutions).where(notInArray(solutions.slug, keep));
+  console.log(`已删除多余解决方案: ${stale.map((row) => row.slug).join(', ')}`);
 }
 
 async function main() {
+  await pruneExtraSolutions();
+
   for (const record of SOLUTION_SEED_RECORDS) {
     const categoryId = await findCategoryId(record.categorySlug);
     if (!categoryId) {
-      throw new Error(`Category not found for slug "${record.categorySlug}". Create it in admin first.`);
+      console.warn(`未找到分类 slug="${record.categorySlug}"，解决方案 categoryId 将留空。`);
     }
 
     const imageKeys: Record<string, string> = {};

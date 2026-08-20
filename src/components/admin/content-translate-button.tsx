@@ -8,6 +8,7 @@ import { createPortal } from 'react-dom';
 import {
   CONTENT_TRANSLATE_PROFILES,
   filterNonemptyTranslateFields,
+  mergePassthroughFromSource,
   pickTranslatePayload,
   validateDefaultTranslateSource,
   type ContentTranslateType,
@@ -87,8 +88,11 @@ export function ContentTranslateButton({
         return;
       }
 
-      onTranslated(filterNonemptyTranslateFields(contentType, data.fields ?? {}));
-      void message.success('已填入当前语言，版式继承默认语言，请校对后保存');
+      onTranslated(filterNonemptyTranslateFields(
+        contentType,
+        mergePassthroughFromSource(contentType, sourceFields, data.fields ?? {}),
+      ));
+      void message.success('已填入当前语言，版式与媒体继承默认语言，请校对后保存');
     } catch {
       void message.error('翻译服务暂不可用，请稍后重试');
     } finally {

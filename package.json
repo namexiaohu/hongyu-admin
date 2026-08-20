@@ -19,6 +19,7 @@
     "db:seed:brand-narratives": "tsx scripts/seed-brand-narratives.ts",
     "db:seed:insight-blogs": "tsx scripts/seed-insight-blogs.ts",
     "db:seed:solutions": "tsx scripts/seed-solutions.ts",
+    "db:seed:solution-products": "tsx scripts/seed-solution-products.ts",
     "db:seed:surgeons": "tsx scripts/seed-surgeons.ts",
     "db:seed:partner-centers": "tsx scripts/seed-partner-centers.ts",
     "db:seed:summits": "tsx scripts/seed-summits.ts",

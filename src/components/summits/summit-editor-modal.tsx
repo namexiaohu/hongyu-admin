@@ -132,8 +132,7 @@ export function SummitEditorModal({ open, detail, activeLanguages, onClose, onSa
     const source = merged[defaultLocale] ?? emptyDraft();
     const { speakersText, ...plainFields } = fields;
     const nextDraft = applyNonemptyTranslatedFields(current, plainFields);
-    const speakers = deserializeSpeakers(speakersText ?? '', source.speakers);
-    if (speakers.length) nextDraft.speakers = speakers;
+    nextDraft.speakers = deserializeSpeakers(speakersText ?? '', source.speakers);
     const nextDrafts = { ...merged, [activeLocale]: nextDraft };
     setDrafts(nextDrafts);
     localeForm.setFieldsValue(nextDraft);

@@ -28,6 +28,7 @@ import {
   productPurchaseModes,
   productStatuses,
   type ProductStatus,
+  type ProductStat,
 } from '@/lib/product-content';
 import { normalizeEntityKeyForSave } from '@/lib/admin-entity-key';
 import type { ProductListQuery } from '@/lib/product-list-query';
@@ -66,6 +67,11 @@ const payloadSchema = z.object({
   certifications: z.array(z.string().trim().min(1)).default([]),
 });
 
+const productStatSchema = z.object({
+  label: z.string().trim().default(''),
+  value: z.string().trim().default(''),
+});
+
 export const adminProductTranslationSchema = z.object({
   productId: z.string().uuid().optional(),
   locale: z.string().trim().min(2).default(DEFAULT_PRODUCT_LOCALE),
@@ -80,6 +86,9 @@ export const adminProductTranslationSchema = z.object({
   status: z.enum(productStatuses).optional(),
   name: z.string().trim().min(1),
   slug: z.string().trim().min(1).optional(),
+  badgeText: z.string().trim().max(120).optional(),
+  extraText: z.string().trim().max(255).optional(),
+  stats: z.array(productStatSchema).optional(),
   shortDescription: z.string().trim().nullable().optional(),
   description: z.string().trim().nullable().optional(),
   seoTitle: z.string().trim().nullable().optional(),
@@ -123,6 +132,16 @@ type TranslationRow = typeof productTranslations.$inferSelect;
 function normalizeText(value: string | null | undefined) {
   const normalized = value?.trim();
   return normalized ? normalized : null;
+}
+
+function normalizeProductStats(input: Array<{ label?: string; value?: string }> | undefined): ProductStat[] {
+  if (!input?.length) return [];
+  return input
+    .map((row) => ({
+      label: row.label?.trim() ?? '',
+      value: row.value?.trim() ?? '',
+    }))
+    .filter((row) => row.label || row.value);
 }
 
 function normalizeSeoText(value: string | null | undefined, maxLength: number) {
@@ -272,9 +291,12 @@ function sanitizeTranslationInput(input: TranslationCreateInput) {
     paidSampleEnabled: input.paidSampleEnabled ?? false,
     featured: input.featured ?? false,
     featuredSortOrder: input.featuredSortOrder ?? 0,
-    status: (input.status ?? 'inactive') as ProductStatus,
+    status: (input.status ?? 'active') as ProductStatus,
     name: normalizedName,
     slug: normalizedSlug || `product-${Date.now()}`,
+    badgeText: input.badgeText?.trim() ?? '',
+    extraText: input.extraText?.trim() ?? '',
+    stats: normalizeProductStats(input.stats),
     shortDescription: normalizeText(input.shortDescription),
     description: normalizeText(input.description),
     seoTitle: normalizeSeoText(input.seoTitle ?? normalizedName, 70),
@@ -305,6 +327,9 @@ function normalizeTranslationRow(product: ProductRow, translation: TranslationRo
     locale: translation.locale,
     name: translation.name,
     slug: translation.slug,
+    badgeText: translation.badgeText ?? '',
+    extraText: translation.extraText ?? '',
+    stats: normalizeProductStats(translation.stats as ProductStat[] | undefined),
     shortDescription: translation.shortDescription,
     description: translation.description,
     seoTitle: translation.seoTitle,
@@ -799,6 +824,9 @@ export async function createAdminProductTranslation(input: TranslationCreateInpu
       locale: next.locale,
       name: next.name,
       slug: next.slug,
+      badgeText: next.badgeText,
+      extraText: next.extraText,
+      stats: next.stats,
       shortDescription: next.shortDescription,
       description: next.description,
       seoTitle: next.seoTitle,
@@ -844,6 +872,9 @@ export async function updateAdminProductTranslation(translationId: string, input
     status: existing.status,
     name: existing.name,
     slug: existing.slug,
+    badgeText: existing.badgeText,
+    extraText: existing.extraText,
+    stats: existing.stats,
     shortDescription: existing.shortDescription,
     description: existing.description,
     seoTitle: existing.seoTitle,
@@ -894,6 +925,9 @@ export async function updateAdminProductTranslation(translationId: string, input
     .set({
       name: next.name,
       slug: next.slug,
+      badgeText: next.badgeText,
+      extraText: next.extraText,
+      stats: next.stats,
       shortDescription: next.shortDescription,
       description: next.description,
       seoTitle: next.seoTitle,

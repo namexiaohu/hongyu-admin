@@ -1,4 +1,4 @@
-export const solutionBlockTypes = ['split', 'summary', 'timeline', 'course', 'specifications'] as const;
+export const solutionBlockTypes = ['split', 'summary', 'timeline', 'course', 'specifications', 'relatedProducts'] as const;
 export type SolutionBlockType = (typeof solutionBlockTypes)[number];
 
 export const solutionSplitLayouts = ['image-left', 'image-right'] as const;
@@ -64,6 +64,7 @@ export type SolutionBlockDraft = {
   layout?: SolutionBlockLayout;
   carouselImages?: SolutionCarouselSlide[];
   href?: string;
+  productIds?: string[];
   locales: Record<string, SolutionBlockLocaleCopy>;
   items: SolutionBlockItemDraft[];
 };
@@ -74,6 +75,7 @@ export const solutionBlockTypeLabels: Record<SolutionBlockType, string> = {
   timeline: '时间节点',
   course: '课程',
   specifications: '产品参数',
+  relatedProducts: '关联产品',
 };
 
 export const solutionSplitLayoutLabels: Record<SolutionSplitLayout, string> = {
@@ -223,6 +225,9 @@ export function createSolutionBlock(type: SolutionBlockType): SolutionBlockDraft
   }
   if (type === 'summary') {
     block.layout = 'single-row';
+  }
+  if (type === 'relatedProducts') {
+    block.productIds = [];
   }
   return block;
 }

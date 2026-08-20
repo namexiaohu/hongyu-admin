@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { Form, Input, Modal, Space, Tabs } from 'antd';
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
@@ -243,10 +243,10 @@ export function SolutionBlockItemEditorModal({
             {hasLocaleFields ? (
               <Form form={form} layout="vertical" preserve>
                 <div style={{ display: sectionTab === 'content' ? 'block' : 'none' }}>
-                  <Form.Item name="smallTitle" label={mode === 'course' ? '标题' : '小标题'}>
+                  <Form.Item name="smallTitle" label="小标题">
                     <Input />
                   </Form.Item>
-                  <Form.Item name="largeTitle" label="大标题">
+                  <Form.Item name="largeTitle" label="标题">
                     <Input />
                   </Form.Item>
                   <Form.Item name="description" label="描述">

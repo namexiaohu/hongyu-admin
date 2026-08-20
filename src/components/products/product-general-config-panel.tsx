@@ -1,12 +1,12 @@
 'use client';
 
-import { Col, Form, Input, InputNumber, Row, Select, Switch } from 'antd';
+import { Col, Form, Input, Row, Switch } from 'antd';
 
 import { BrandPickerField } from '@/components/brands/brand-picker-field';
 import { CategoryPickerField } from '@/components/categories/category-picker-field';
 import { ProductBoardMultiSelect, type ProductBoardOption } from '@/components/products/product-board-multi-select';
 import type { AdminCategoryTreeNode } from '@/lib/category-content';
-import type { ProductPurchaseMode, ProductStatus } from '@/lib/product-content';
+import type { ProductStatus } from '@/lib/product-content';
 
 type ProductGeneralConfigPanelProps = {
   spu: string;
@@ -19,14 +19,6 @@ type ProductGeneralConfigPanelProps = {
   boardOptions: ProductBoardOption[];
   boardKeys: string[];
   onBoardKeysChange: (value: string[]) => void;
-  featured: boolean;
-  onFeaturedChange: (value: boolean) => void;
-  featuredSortOrder: number;
-  onFeaturedSortOrderChange: (value: number) => void;
-  purchaseMode: ProductPurchaseMode;
-  onPurchaseModeChange: (value: ProductPurchaseMode) => void;
-  paidSampleEnabled: boolean;
-  onPaidSampleEnabledChange: (value: boolean) => void;
   status: ProductStatus;
   onStatusChange: (nextStatus: ProductStatus) => void;
 };
@@ -44,14 +36,6 @@ export function ProductGeneralConfigPanel({
   boardOptions,
   boardKeys,
   onBoardKeysChange,
-  featured,
-  onFeaturedChange,
-  featuredSortOrder,
-  onFeaturedSortOrderChange,
-  purchaseMode,
-  onPurchaseModeChange,
-  paidSampleEnabled,
-  onPaidSampleEnabledChange,
   status,
   onStatusChange,
 }: ProductGeneralConfigPanelProps) {
@@ -90,39 +74,6 @@ export function ProductGeneralConfigPanel({
               value={boardKeys}
               onChange={onBoardKeysChange}
             />
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={6}>
-          <Form.Item label="推荐到首页" layout="vertical" style={fieldStyle}>
-            <Switch checked={featured} onChange={onFeaturedChange} />
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={6}>
-          <Form.Item label="首页展示顺序" layout="vertical" style={fieldStyle}>
-            <InputNumber
-              min={0}
-              style={{ width: '100%' }}
-              disabled={!featured}
-              value={featuredSortOrder}
-              onChange={(value) => onFeaturedSortOrderChange(Number(value ?? 0))}
-            />
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={6}>
-          <Form.Item label="购买模式" layout="vertical" style={fieldStyle}>
-            <Select
-              value={purchaseMode}
-              onChange={onPurchaseModeChange}
-              options={[
-                { value: 'buy', label: '直接下单' },
-                { value: 'inquiry', label: '询价模式' },
-              ]}
-            />
-          </Form.Item>
-        </Col>
-        <Col xs={24} md={6}>
-          <Form.Item label="付邮拿样" layout="vertical" style={fieldStyle}>
-            <Switch checked={paidSampleEnabled} onChange={onPaidSampleEnabledChange} />
           </Form.Item>
         </Col>
         <Col xs={24} md={6}>

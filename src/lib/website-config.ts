@@ -178,19 +178,19 @@ export function getDefaultWebsiteNavColumns(): NavColumn[] {
         },
         {
           id: 'nav-solutions-sports',
-          href: '/solutions?line=sports',
+          href: '/solutions/sports-medicine',
           name: '运动医学',
           locales: { en: { name: 'Sports Medicine' }, es: { name: 'Medicina deportiva' } },
         },
         {
           id: 'nav-solutions-cardio',
-          href: '/solutions?line=cardio',
+          href: '/solutions/pacemaker',
           name: '心脏起搏器',
           locales: { en: { name: 'Cardiac Pacemakers' }, es: { name: 'Marcapasos cardíacos' } },
         },
         {
           id: 'nav-solutions-pipeline',
-          href: '/solutions?line=pipeline',
+          href: '/solutions/in-research',
           name: '在研产品',
           locales: { en: { name: 'Pipeline' }, es: { name: 'Productos en desarrollo' } },
         },

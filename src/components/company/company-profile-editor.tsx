@@ -197,7 +197,7 @@ export function CompanyProfileEditor({ initialProfile, activeLanguages }: Compan
     const managers = deserializeTeamMembers(managersText ?? '');
     if (managers.length) nextDraft.managers = managers;
     const offices = deserializeOffices(officesText ?? '', source.offices);
-    if (offices.length) nextDraft.offices = offices;
+    nextDraft.offices = offices;
     const nextDrafts = { ...merged, [activeLocale]: nextDraft };
     setDrafts(nextDrafts);
     form.setFieldsValue(nextDraft);

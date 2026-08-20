@@ -89,26 +89,36 @@ export const CONTENT_TRANSLATE_PROFILES: Record<ContentTranslateType, ContentTra
   product: {
     sourceFields: [
       'name',
+      'badgeText',
+      'extraText',
       'shortDescription',
       'description',
+      'coverUrl',
       'coverAlt',
+      'galleryJson',
+      'attachmentsJson',
       'certificationsText',
       'tagsText',
       'seoTitle',
       'seoDescription',
+      'statsText',
     ],
     plainTextFields: [
       'name',
+      'badgeText',
+      'extraText',
       'shortDescription',
       'coverAlt',
       'certificationsText',
       'tagsText',
       'seoTitle',
       'seoDescription',
+      'statsText',
     ],
     htmlField: 'description',
+    passthroughFields: ['coverUrl', 'galleryJson', 'attachmentsJson'],
     serverLabel: 'catalog product',
-    tooltip: '将默认语言已保存的产品名称、描述、认证与 SEO 字段翻译到当前语言，并按汇率换算销售价与原价；Slug 不会翻译；详细描述保留排版结构',
+    tooltip: '将默认语言已保存的产品名称、角标、附加文案、描述、数据指标、认证与 SEO 字段翻译到当前语言，并按汇率换算销售价与原价；封面图、图集与附件直接沿用默认语言；Slug 不会翻译；详细描述保留排版结构',
   },
   feature: {
     sourceFields: ['name', 'unit', 'textOptionsText'],
@@ -129,11 +139,10 @@ export const CONTENT_TRANSLATE_PROFILES: Record<ContentTranslateType, ContentTra
     tooltip: '将默认语言已保存的看板名称与说明翻译到当前语言；Key 不会翻译',
   },
   brandNarrative: {
-    sourceFields: ['heroTitle', 'heroSlogan', 'heroLead', 'statsText', 'heroImage'],
+    sourceFields: ['heroTitle', 'heroSlogan', 'heroLead', 'statsText'],
     plainTextFields: ['heroTitle', 'heroSlogan', 'heroLead', 'statsText'],
-    passthroughFields: ['heroImage'],
     serverLabel: 'brand narrative page',
-    tooltip: '将默认语言已保存的看板与数据指标覆盖并翻译到当前语言；Slug 与封面图 URL 不会翻译，翻译后请校对',
+    tooltip: '将默认语言已保存的看板与数据指标覆盖并翻译到当前语言；Slug 与封面图不会翻译，翻译后请校对',
     translateNotes:
       'statsText has one metric per line as LABEL|||VALUE. Translate LABEL only. Keep VALUE exactly, including numbers, units, and +. Keep the same line count and the ||| separator. Do not return a JSON array.',
   },
@@ -173,7 +182,7 @@ export const CONTENT_TRANSLATE_PROFILES: Record<ContentTranslateType, ContentTra
     sourceFields: ['featuredPostsText'],
     plainTextFields: ['featuredPostsText'],
     serverLabel: 'social media featured posts',
-    tooltip: '将默认语言已保存的精选内容（角标、标题、描述）翻译到当前语言；封面图与链接不会翻译',
+    tooltip: '将默认语言已保存的精选内容（角标、标题、描述）翻译到当前语言；封面图与链接直接沿用默认语言',
     translateNotes:
       'featuredPostsText has one post per line as BADGE|||TITLE|||DESCRIPTION. Translate BADGE, TITLE, and DESCRIPTION only. Keep the same line count and the ||| separator. Do not return a JSON array.',
   },
@@ -207,7 +216,7 @@ export const CONTENT_TRANSLATE_PROFILES: Record<ContentTranslateType, ContentTra
       'officesText',
     ],
     serverLabel: 'company profile page',
-    tooltip: '将默认语言已保存的企业资料翻译到当前语言；办公地点封面图不会翻译',
+    tooltip: '将默认语言已保存的企业资料翻译到当前语言；办公地点封面图与公开文件直接沿用默认语言',
     translateNotes:
       'basicInfoText uses LABEL|||VALUE per line. executivesText and managersText use TITLE|||NAME per line. officesText uses NAME|||LOCATION|||PHONE|||CONTACT|||EMAIL per line. Translate human-readable text only; keep numbers, emails, and ||| separators.',
   },
@@ -243,7 +252,7 @@ export const CONTENT_TRANSLATE_PROFILES: Record<ContentTranslateType, ContentTra
       'educationText',
     ],
     serverLabel: 'homepage configuration',
-    tooltip: '将默认语言已保存的首页文案翻译到当前语言；轮播媒体与封面图不会翻译',
+    tooltip: '将默认语言已保存的首页文案翻译到当前语言；轮播媒体、资讯封面与链接直接沿用默认语言',
     translateNotes:
       'statsText uses TITLE|||SUBTITLE|||DESCRIPTION per line. educationText uses TITLE|||DESCRIPTION|||BADGE|||EXTRA per line. Keep line count and ||| separators. Do not translate URLs or image paths.',
   },
@@ -258,14 +267,14 @@ export const CONTENT_TRANSLATE_PROFILES: Record<ContentTranslateType, ContentTra
     sourceFields: ['name', 'badgeText', 'location', 'description', 'address', 'businessHours', 'contact', 'website', 'tagsText'],
     plainTextFields: ['name', 'badgeText', 'location', 'description', 'address', 'businessHours', 'contact', 'website', 'tagsText'],
     serverLabel: 'partner center profile',
-    tooltip: '将默认语言已保存的合作中心资料与标签翻译到当前语言；封面与 Logo 不会翻译',
+    tooltip: '将默认语言已保存的合作中心资料与标签翻译到当前语言；封面与 Logo 为各语言共用，无需翻译',
     translateNotes: 'tagsText has one tag per line. Keep the same line count.',
   },
   summit: {
     sourceFields: ['title', 'description', 'scale', 'duration', 'location', 'address', 'transportation', 'speakersText'],
     plainTextFields: ['title', 'description', 'scale', 'duration', 'location', 'address', 'transportation', 'speakersText'],
     serverLabel: 'industry summit page',
-    tooltip: '将默认语言已保存的峰会资料与嘉宾信息翻译到当前语言；头像不会翻译',
+    tooltip: '将默认语言已保存的峰会资料与嘉宾信息翻译到当前语言；封面与嘉宾头像直接沿用默认语言',
     translateNotes:
       'speakersText has one speaker per line as NAME|||BIO|||EXPERTISE. Translate NAME, BIO, and EXPERTISE only. Keep the same line count and ||| separator.',
   },
@@ -300,8 +309,10 @@ export function pickTranslatePayload(
   fields: Record<string, string>,
 ): Record<string, string> {
   const profile = CONTENT_TRANSLATE_PROFILES[contentType];
+  const passthrough = new Set(profile.passthroughFields ?? []);
   const payload: Record<string, string> = {};
   for (const key of profile.sourceFields) {
+    if (passthrough.has(key)) continue;
     const value = fields[key];
     if (!value?.trim()) continue;
     if (key === profile.htmlField) {
@@ -311,6 +322,21 @@ export function pickTranslatePayload(
     }
   }
   return payload;
+}
+
+/** 将无需翻译的透传字段（图片/文件 URL 等）从默认语言源值合并进翻译结果。 */
+export function mergePassthroughFromSource(
+  contentType: ContentTranslateType,
+  sourceFields: Record<string, string>,
+  translatedFields: Record<string, string>,
+): Record<string, string> {
+  const profile = CONTENT_TRANSLATE_PROFILES[contentType];
+  const next = { ...translatedFields };
+  for (const key of profile.passthroughFields ?? []) {
+    const value = sourceFields[key];
+    if (value?.trim()) next[key] = value;
+  }
+  return next;
 }
 
 /** 丢弃空字符串；富文本字段需有实质内容才保留。 */

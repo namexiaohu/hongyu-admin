@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import type { FormInstance } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
@@ -19,6 +19,7 @@ import {
   type SolutionMaterial,
   type SolutionStatus,
 } from '@/lib/solution-content';
+import type { AdminCategoryTreeNode } from '@/lib/category-content';
 import { applyNonemptyTranslatedFields } from '@/lib/content-translate-config';
 import { shouldPersistLocaleDraft } from '@/lib/locale-draft-persistence';
 import { resolveSlugForSave, textToSlug, validateSourceThenAutoSlug } from '@/lib/slug';
@@ -104,6 +105,7 @@ type SolutionEditorModalProps = {
   detail: AdminSolutionDetail | null;
   activeLanguages: AdminSiteLanguageRow[];
   boardOptions: ProductBoardOption[];
+  categoryTree: AdminCategoryTreeNode[];
   onClose: () => void;
   onSaved: (detail: AdminSolutionDetail) => void;
 };
@@ -291,6 +293,7 @@ export function SolutionEditorModal({
   detail,
   activeLanguages,
   boardOptions,
+  categoryTree,
   onClose,
   onSaved,
 }: SolutionEditorModalProps) {
@@ -838,6 +841,7 @@ export function SolutionEditorModal({
         open={Boolean(editingBlock)}
         block={editingBlock}
         activeLanguages={activeLanguages}
+        categoryTree={categoryTree}
         disabled={isReadOnly}
         saving={isPending}
         onChange={(next) => {

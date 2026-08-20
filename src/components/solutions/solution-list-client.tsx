@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Card, Input, Space, Table, Tag, Tooltip, Typography, message } from 'antd';
@@ -10,6 +10,7 @@ import { SolutionEditorModal } from '@/components/solutions/solution-editor-moda
 import { type ProductBoardOption } from '@/components/products/product-board-multi-select';
 import { formatAdminDate } from '@/lib/admin-display';
 import { buildAdminListRowIndexColumn } from '@/lib/admin-list-query';
+import type { AdminCategoryTreeNode } from '@/lib/category-content';
 import {
   type AdminSolutionDetail,
   type AdminSolutionListItem,
@@ -24,6 +25,7 @@ type SolutionListClientProps = {
   };
   activeLanguages: AdminSiteLanguageRow[];
   boardOptions: ProductBoardOption[];
+  categoryTree: AdminCategoryTreeNode[];
 };
 
 const narrativeStatusLabels: Record<SolutionStatus, string> = {
@@ -59,7 +61,7 @@ function toListItem(detail: AdminSolutionDetail): AdminSolutionListItem {
   };
 }
 
-export function SolutionListClient({ initialList, activeLanguages, boardOptions }: SolutionListClientProps) {
+export function SolutionListClient({ initialList, activeLanguages, boardOptions, categoryTree }: SolutionListClientProps) {
   const [items, setItems] = useState(initialList.items);
   const [keyword, setKeyword] = useState('');
   const [editorOpen, setEditorOpen] = useState(false);
@@ -262,6 +264,7 @@ export function SolutionListClient({ initialList, activeLanguages, boardOptions 
         detail={editingDetail}
         activeLanguages={activeLanguages}
         boardOptions={boardOptions}
+        categoryTree={categoryTree}
         onClose={() => {
           setEditorOpen(false);
           setEditingDetail(null);

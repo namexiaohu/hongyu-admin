@@ -1,6 +1,7 @@
 'use client';
 
-import { Button, Col, Empty, Form, Input, InputNumber, Modal, Row, Select, Space, Switch, Tabs, message } from 'antd';
+import { Button, Col, Empty, Form, Input, InputNumber, Modal, Row, Select, Space, Tabs, message } from 'antd';
+import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import Link from 'next/link';
@@ -19,6 +20,7 @@ import type { ProductBoardOption } from '@/components/products/product-board-mul
 import { productLifecycleOptions } from '@/lib/admin-display';
 import { confirmProductListingChange } from '@/lib/confirm-product-listing';
 import type { AdminCategoryTreeNode } from '@/lib/category-content';
+import { buildCategoryFlatIndex } from '@/lib/category-picker';
 import { getCommonCurrencyGroupedSelectOptions, getDefaultCurrencyForLanguage } from '@/lib/currencies';
 import {
   buildSnapshotFromConfig,
@@ -30,8 +32,8 @@ import {
   type AdminProductPayload,
   type AdminProductTranslation,
   type ProductPurchaseMode,
+  type ProductStat,
   type ProductStatus,
-  defaultProductPayload,
   resolveProductId,
 } from '@/lib/product-content';
 import { applyNonemptyTranslatedFields } from '@/lib/content-translate-config';
@@ -40,15 +42,18 @@ import { runDefaultLocaleSaveGate } from '@/lib/admin-default-locale-save';
 import { textToSlug, validateSourceThenAutoSlug } from '@/lib/slug';
 import type { AdminSiteLanguageRow } from '@/server/admin/languages';
 
-type SectionTabKey = 'content' | 'pricing' | 'manufacturing' | 'attachments' | 'seo';
+type SectionTabKey = 'content' | 'stats' | 'pricing' | 'attachments' | 'seo';
 
 type LocaleFormValues = {
   name: string;
+  badgeText: string;
+  extraText: string;
   shortDescription: string;
   description: string;
   coverUrl: string;
   coverAlt: string;
   gallery: AdminProductPayload['gallery'];
+  stats: ProductStat[];
   price: number;
   compareAtPrice: number | null;
   currencyCode: string;
@@ -87,14 +92,60 @@ function splitMultiline(value: string) {
   return value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
 }
 
+function normalizeStatRow(row: unknown): ProductStat {
+  const record = row as { label?: unknown; value?: unknown };
+  return {
+    label: typeof record.label === 'string' ? record.label : String(record.label ?? ''),
+    value: typeof record.value === 'string' ? record.value : String(record.value ?? ''),
+  };
+}
+
+function serializeStatsText(stats: ProductStat[]): string {
+  return (stats ?? [])
+    .map((row) => `${row.label?.trim() ?? ''}|||${row.value?.trim() ?? ''}`)
+    .filter((line) => line !== '|||')
+    .join('\n');
+}
+
+function deserializeStatsText(text: string): ProductStat[] {
+  const trimmed = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
+  if (!trimmed) return [];
+
+  try {
+    const parsed = JSON.parse(trimmed) as unknown;
+    if (Array.isArray(parsed)) {
+      return parsed.map(normalizeStatRow).filter((row) => row.label.trim() || row.value.trim());
+    }
+    if (typeof parsed === 'string' && parsed.trim() && parsed.trim() !== trimmed) {
+      return deserializeStatsText(parsed);
+    }
+  } catch {
+    // fall through to line parse
+  }
+
+  return trimmed
+    .split(/\r?\n/)
+    .map((line) => {
+      const [label, ...rest] = line.split('|||');
+      return {
+        label: (label ?? '').trim(),
+        value: rest.join('|||').trim(),
+      };
+    })
+    .filter((row) => row.label || row.value);
+}
+
 function createEmptyDraft(currencyCode = 'USD'): LocaleDraft {
   return {
     name: '',
+    badgeText: '',
+    extraText: '',
     shortDescription: '',
     description: '',
     coverUrl: '',
     coverAlt: '',
     gallery: [],
+    stats: [],
     price: 0,
     compareAtPrice: null,
     currencyCode,
@@ -121,11 +172,14 @@ function entryToDraft(entry: AdminProductTranslation): LocaleDraft {
   return {
     entryId: entry.id,
     name: entry.name,
+    badgeText: entry.badgeText ?? '',
+    extraText: entry.extraText ?? '',
     shortDescription: entry.shortDescription ?? '',
     description: entry.description ?? '',
     coverUrl: entry.payload.coverUrl ?? '',
     coverAlt: entry.payload.coverAlt ?? '',
     gallery: entry.payload.gallery ?? [],
+    stats: (entry.stats ?? []).map((stat) => ({ label: stat.label, value: stat.value })),
     price: Number(entry.price) || 0,
     compareAtPrice: entry.compareAtPrice == null ? null : Number(entry.compareAtPrice),
     currencyCode: entry.currencyCode,
@@ -183,6 +237,12 @@ function inheritDefaultLocaleMedia(draft: LocaleDraft, defaultDraft: LocaleDraft
   };
 }
 
+function generateRandomSpu() {
+  const stamp = Date.now().toString(36).toUpperCase();
+  const rand = Math.random().toString(36).slice(2, 8).toUpperCase();
+  return `SPU-${stamp}-${rand}`;
+}
+
 function buildPayload(draft: LocaleDraft): AdminProductPayload {
   return {
     coverUrl: draft.coverUrl.trim() || null,
@@ -210,7 +270,7 @@ export function ProductEditorModal({
   const [featuredSortOrder, setFeaturedSortOrder] = useState(0);
   const [purchaseMode, setPurchaseMode] = useState<ProductPurchaseMode>('buy');
   const [paidSampleEnabled, setPaidSampleEnabled] = useState(false);
-  const [status, setStatus] = useState<ProductStatus>('inactive');
+  const [status, setStatus] = useState<ProductStatus>('active');
   const [boardKeys, setBoardKeys] = useState<string[]>([]);
   const [boardOptions, setBoardOptions] = useState<ProductBoardOption[]>([]);
   const [activeLocale, setActiveLocale] = useState('');
@@ -288,14 +348,15 @@ export function ProductEditorModal({
 
     if (!editingEntry) {
       setProductId(undefined);
-      setSpu('');
+      setSpu(generateRandomSpu());
       setBrandId(null);
-      setCategoryIds([]);
+      const categoryNodes = buildCategoryFlatIndex(categoryTree);
+      setCategoryIds(categoryNodes.length === 1 && categoryNodes[0] ? [categoryNodes[0].id] : []);
       setFeatured(false);
       setFeaturedSortOrder(0);
       setPurchaseMode('buy');
       setPaidSampleEnabled(false);
-      setStatus('inactive');
+      setStatus('active');
       setBoardKeys([]);
       const emptyDrafts = Object.fromEntries(
         activeLanguages.map((language) => [language.code, makeEmptyDraft(language.code)]),
@@ -303,7 +364,21 @@ export function ProductEditorModal({
       setDrafts(emptyDrafts);
       form.setFieldsValue(makeEmptyDraft(nextDefaultLocale));
       setEditorRevision((value) => value + 1);
-      return;
+
+      let cancelled = false;
+      void fetch('/api/admin/brands/picker?page=1&page_size=2')
+        .then((response) => (response.ok ? response.json() : null))
+        .then((payload: { items?: Array<{ id: string }>; meta?: { total?: number } } | null) => {
+          if (cancelled) return;
+          if (payload?.meta?.total === 1 && payload.items?.[0]?.id) {
+            setBrandId(payload.items[0].id);
+          }
+        })
+        .catch(() => undefined);
+
+      return () => {
+        cancelled = true;
+      };
     }
 
     setProductId(editingEntry.id);
@@ -362,7 +437,7 @@ export function ProductEditorModal({
         setLoadingGroup(false);
       }
     })();
-  }, [open, editingEntry, activeLanguages, form, messageApi]);
+  }, [open, editingEntry, activeLanguages, categoryTree, form, messageApi]);
 
   function loadDraft(locale: string, source: Record<string, LocaleDraft>) {
     let draft = source[locale] ?? makeEmptyDraft(locale);
@@ -386,15 +461,24 @@ export function ProductEditorModal({
 
   function getDefaultSourceFields(): Record<string, string> {
     const draft = getMergedDrafts()[defaultLocale] ?? createEmptyDraft();
+    const stats = draft.stats.some((row) => row.label?.trim() || row.value?.trim())
+      ? draft.stats
+      : [];
     return {
       name: draft.name,
+      badgeText: draft.badgeText,
+      extraText: draft.extraText,
       shortDescription: draft.shortDescription,
       description: draft.description,
+      coverUrl: draft.coverUrl,
       coverAlt: draft.coverAlt,
+      galleryJson: JSON.stringify(draft.gallery ?? []),
+      attachmentsJson: JSON.stringify(draft.attachments ?? []),
       certificationsText: draft.certificationsText,
       tagsText: draft.tagsText,
       seoTitle: draft.seoTitle,
       seoDescription: draft.seoDescription,
+      statsText: serializeStatsText(stats),
     };
   }
 
@@ -402,22 +486,54 @@ export function ProductEditorModal({
     const draft = getMergedDrafts()[activeLocale] ?? createEmptyDraft();
     return Boolean(
       draft.name.trim()
+      || draft.badgeText.trim()
+      || draft.extraText.trim()
       || draft.shortDescription.trim()
       || hasMeaningfulHtmlBody(draft.description)
       || draft.coverAlt.trim()
       || draft.certificationsText.trim()
       || draft.tagsText.trim()
       || draft.seoTitle.trim()
-      || draft.seoDescription.trim(),
+      || draft.seoDescription.trim()
+      || draft.stats.some((row) => row.label?.trim() || row.value?.trim()),
     );
   }
 
   function handleTranslated(fields: Record<string, string>) {
     const merged = getMergedDrafts();
     const current = merged[activeLocale] ?? makeEmptyDraft(activeLocale);
-    const nextDraft = applyNonemptyTranslatedFields(current, fields);
+    const { galleryJson, attachmentsJson, coverUrl, statsText, stats: statsField, ...textFields } = fields;
+    const nextDraft = applyNonemptyTranslatedFields(current, textFields);
     const defaultDraft = merged[defaultLocale] ?? makeEmptyDraft(defaultLocale);
     const targetCurrency = resolveCurrencyForLocale(activeLocale);
+    const sourceStats = defaultDraft.stats ?? [];
+    const translatedStats = deserializeStatsText(statsText || statsField || '');
+    nextDraft.stats = (translatedStats.length ? translatedStats : sourceStats).map((row) => ({
+      label: row.label,
+      value: row.value,
+    }));
+
+    if (coverUrl?.trim()) {
+      nextDraft.coverUrl = coverUrl;
+    } else if (defaultDraft.coverUrl.trim()) {
+      nextDraft.coverUrl = defaultDraft.coverUrl;
+    }
+
+    try {
+      const gallery = galleryJson ? JSON.parse(galleryJson) as LocaleDraft['gallery'] : null;
+      if (Array.isArray(gallery) && gallery.length) nextDraft.gallery = gallery;
+      else if (defaultDraft.gallery.length) nextDraft.gallery = defaultDraft.gallery;
+    } catch {
+      if (defaultDraft.gallery.length) nextDraft.gallery = defaultDraft.gallery;
+    }
+
+    try {
+      const attachments = attachmentsJson ? JSON.parse(attachmentsJson) as LocaleDraft['attachments'] : null;
+      if (Array.isArray(attachments) && attachments.length) nextDraft.attachments = attachments;
+      else if (defaultDraft.attachments.length) nextDraft.attachments = defaultDraft.attachments;
+    } catch {
+      if (defaultDraft.attachments.length) nextDraft.attachments = defaultDraft.attachments;
+    }
 
     if (exchangeSnapshot) {
       const converted = convertProductPrices({
@@ -440,14 +556,20 @@ export function ProductEditorModal({
     setDrafts(nextDrafts);
     form.setFieldsValue({
       name: nextDraft.name,
+      badgeText: nextDraft.badgeText,
+      extraText: nextDraft.extraText,
       shortDescription: nextDraft.shortDescription,
       description: nextDraft.description,
       slug: nextDraft.slug,
+      coverUrl: nextDraft.coverUrl,
       coverAlt: nextDraft.coverAlt,
+      gallery: nextDraft.gallery,
+      attachments: nextDraft.attachments,
       certificationsText: nextDraft.certificationsText,
       tagsText: nextDraft.tagsText,
       seoTitle: nextDraft.seoTitle,
       seoDescription: nextDraft.seoDescription,
+      stats: nextDraft.stats,
       price: nextDraft.price,
       compareAtPrice: nextDraft.compareAtPrice,
       currencyCode: nextDraft.currencyCode,
@@ -485,6 +607,11 @@ export function ProductEditorModal({
       featuredSortOrder,
       status,
       name: draft.name.trim(),
+      badgeText: draft.badgeText.trim(),
+      extraText: draft.extraText.trim(),
+      stats: (draft.stats ?? [])
+        .map((row) => ({ label: row.label?.trim() ?? '', value: row.value?.trim() ?? '' }))
+        .filter((row) => row.label || row.value),
       slug: draft.slug.trim(),
       shortDescription: draft.shortDescription.trim() || null,
       description: draft.description.trim() || null,
@@ -522,13 +649,7 @@ export function ProductEditorModal({
     if (!gate.ok) {
       setDrafts(mergedDrafts);
       setActiveLocale(gate.validation.locale || defaultLocale);
-      setSectionTab(
-        gate.validation.message === '最短交期不能大于最长交期'
-          ? 'manufacturing'
-          : gate.validation.section === 'seo'
-            ? 'seo'
-            : 'content',
-      );
+      setSectionTab(gate.validation.section === 'seo' ? 'seo' : 'content');
       loadDraft(gate.validation.locale || defaultLocale, mergedDrafts);
       void messageApi.error(gate.validation.message);
       return;
@@ -563,13 +684,7 @@ export function ProductEditorModal({
       if (!validation.ok) {
         setDrafts(workingDrafts);
         setActiveLocale(validation.locale);
-        setSectionTab(
-          validation.message === '最短交期不能大于最长交期'
-            ? 'manufacturing'
-            : validation.section === 'seo'
-              ? 'seo'
-              : 'content',
-        );
+        setSectionTab(validation.section === 'seo' ? 'seo' : 'content');
         loadDraft(validation.locale, workingDrafts);
         const language = activeLanguages.find((item) => item.code === validation.locale);
         void messageApi.error(`${language?.nativeName ?? validation.locale}：${validation.message}`);
@@ -678,14 +793,6 @@ export function ProductEditorModal({
       boardOptions={boardOptions}
       boardKeys={boardKeys}
       onBoardKeysChange={setBoardKeys}
-      featured={featured}
-      onFeaturedChange={setFeatured}
-      featuredSortOrder={featuredSortOrder}
-      onFeaturedSortOrderChange={setFeaturedSortOrder}
-      purchaseMode={purchaseMode}
-      onPurchaseModeChange={setPurchaseMode}
-      paidSampleEnabled={paidSampleEnabled}
-      onPaidSampleEnabledChange={setPaidSampleEnabled}
       status={status}
       onStatusChange={(nextStatus) => {
         if (nextStatus === status) return;
@@ -765,6 +872,12 @@ export function ProductEditorModal({
                                 }
                               }} />
                             </Form.Item>
+                            <Form.Item label="角标文案" name="badgeText">
+                              <Input placeholder="非必填，如：热销 / New" maxLength={120} />
+                            </Form.Item>
+                            <Form.Item label="附加文案" name="extraText">
+                              <Input placeholder="非必填" maxLength={255} />
+                            </Form.Item>
                             <Form.Item label="简短描述" name="shortDescription"><Input.TextArea rows={3} /></Form.Item>
                             <Form.Item label="详细描述" name="description">
                               <RichTextEditor key={`${activeLocale}-${editorRevision}`} />
@@ -778,6 +891,32 @@ export function ProductEditorModal({
                             </Form.Item>
                             <Form.Item label="轮播图" name="gallery"><ProductGalleryField /></Form.Item>
                           </Space>
+                        ),
+                      },
+                      {
+                        key: 'stats',
+                        label: '数据指标',
+                        children: (
+                          <Form.List name="stats">
+                            {(fields, { add, remove }) => (
+                              <Space orientation="vertical" size="small" style={{ width: '100%' }}>
+                                {fields.map((field) => (
+                                  <div key={field.key} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                                    <Form.Item name={[field.name, 'label']} style={{ flex: 1, marginBottom: 0 }}>
+                                      <Input placeholder="指标名" />
+                                    </Form.Item>
+                                    <Form.Item name={[field.name, 'value']} style={{ flex: 1, marginBottom: 0 }}>
+                                      <Input placeholder="指标值，如 120+" />
+                                    </Form.Item>
+                                    <Button type="text" danger icon={<DeleteOutlined />} onClick={() => remove(field.name)} />
+                                  </div>
+                                ))}
+                                <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />}>
+                                  添加指标
+                                </Button>
+                              </Space>
+                            )}
+                          </Form.List>
                         ),
                       },
                       {
@@ -821,19 +960,6 @@ export function ProductEditorModal({
                                 return null;
                               }}
                             </Form.Item>
-                          </Row>
-                        ),
-                      },
-                      {
-                        key: 'manufacturing',
-                        label: '制造业',
-                        children: (
-                          <Row gutter={16}>
-                            <Col xs={24} md={8}><Form.Item label="最短交期" name="leadTimeMin"><InputNumber min={0} style={{ width: '100%' }} /></Form.Item></Col>
-                            <Col xs={24} md={8}><Form.Item label="最长交期" name="leadTimeMax"><InputNumber min={0} style={{ width: '100%' }} /></Form.Item></Col>
-                            <Col xs={24} md={8}><Form.Item label="交期单位" name="leadTimeUnit"><Select options={[{ value: 'business_days', label: '工作日' }, { value: 'calendar_days', label: '自然日' }, { value: 'weeks', label: '周' }]} /></Form.Item></Col>
-                            <Col xs={24} md={8}><Form.Item label="能效等级" name="efficiencyClass"><Input /></Form.Item></Col>
-                            <Col xs={24} md={16}><Form.Item label="认证" name="certificationsText" extra="每行一项"><Input.TextArea rows={4} /></Form.Item></Col>
                           </Row>
                         ),
                       },

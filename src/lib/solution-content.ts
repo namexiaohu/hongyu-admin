@@ -101,6 +101,7 @@ export const solutionBlockSchema = z.object({
     url: z.string(),
   })).optional(),
   href: z.string().optional(),
+  productIds: z.array(z.string().trim().min(1)).optional().default([]),
   locales: z.record(localeCopySchema).default({}),
   items: z.array(blockItemSchema).default([]),
 });

@@ -57,7 +57,15 @@ export function deserializeFeaturedPosts(
   text: string,
   sourcePosts: FeaturedPostTranslateSource[],
 ): FeaturedPostTranslateSource[] {
-  if (!text.trim()) return [];
+  if (!text.trim()) {
+    return sourcePosts.map((post) => ({
+      coverImage: post.coverImage ?? '',
+      url: post.url ?? '',
+      badgeText: post.badgeText ?? '',
+      title: post.title ?? '',
+      description: post.description ?? '',
+    }));
+  }
   return text.split('\n').map((line, index) => {
     const [badgeText = '', title = '', description = ''] = line.split(PAIR_SEP);
     const source = sourcePosts[index];
@@ -68,7 +76,7 @@ export function deserializeFeaturedPosts(
       title: title.trim(),
       description: description.trim(),
     };
-  }).filter((post) => post.badgeText || post.title || post.description);
+  }).filter((post) => post.badgeText || post.title || post.description || post.coverImage || post.url);
 }
 
 export type OfficeTranslateSource = {
@@ -94,7 +102,16 @@ export function serializeOffices(offices: OfficeTranslateSource[]): string {
 }
 
 export function deserializeOffices(text: string, sourceOffices: OfficeTranslateSource[]): OfficeTranslateSource[] {
-  if (!text.trim()) return [];
+  if (!text.trim()) {
+    return sourceOffices.map((office) => ({
+      coverImage: office.coverImage ?? '',
+      name: office.name ?? '',
+      location: office.location ?? '',
+      phone: office.phone ?? '',
+      contactPerson: office.contactPerson ?? '',
+      email: office.email ?? '',
+    }));
+  }
   return text.split('\n').map((line, index) => {
     const [name = '', location = '', phone = '', contactPerson = '', email = ''] = line.split(PAIR_SEP);
     const source = sourceOffices[index];
@@ -106,7 +123,7 @@ export function deserializeOffices(text: string, sourceOffices: OfficeTranslateS
       contactPerson: contactPerson.trim(),
       email: email.trim(),
     };
-  }).filter((office) => office.name || office.location || office.phone || office.contactPerson || office.email);
+  }).filter((office) => office.name || office.location || office.phone || office.contactPerson || office.email || office.coverImage);
 }
 
 export type SpeakerTranslateSource = {
@@ -125,7 +142,15 @@ export function serializeSpeakers(speakers: SpeakerTranslateSource[]): string {
 }
 
 export function deserializeSpeakers(text: string, sourceSpeakers: SpeakerTranslateSource[]): SpeakerTranslateSource[] {
-  if (!text.trim()) return [];
+  if (!text.trim()) {
+    return sourceSpeakers.map((speaker) => ({
+      id: speaker.id,
+      avatar: speaker.avatar ?? '',
+      name: speaker.name ?? '',
+      bio: speaker.bio ?? '',
+      expertise: speaker.expertise ?? '',
+    }));
+  }
   return text.split('\n').map((line, index) => {
     const [name = '', bio = '', expertise = ''] = line.split(PAIR_SEP);
     const source = sourceSpeakers[index];
@@ -136,5 +161,5 @@ export function deserializeSpeakers(text: string, sourceSpeakers: SpeakerTransla
       bio: bio.trim(),
       expertise: expertise.trim(),
     };
-  }).filter((speaker) => speaker.name || speaker.bio || speaker.expertise);
+  }).filter((speaker) => speaker.name || speaker.bio || speaker.expertise || speaker.avatar);
 }

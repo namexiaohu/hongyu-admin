@@ -127,7 +127,7 @@ export function SocialMediaEditor({ initialProfile, activeLanguages }: SocialMed
     const translatedPosts = deserializeFeaturedPosts(fields.featuredPostsText ?? '', sourcePosts);
     const nextDraft = {
       ...current,
-      featuredPosts: translatedPosts.length ? translatedPosts : current.featuredPosts,
+      featuredPosts: translatedPosts,
     };
     const nextDrafts = { ...merged, [activeLocale]: nextDraft };
     setDrafts(nextDrafts);

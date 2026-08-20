@@ -1,13 +1,15 @@
-﻿'use client';
+'use client';
 
 import { Button, Form, Input, Modal, Select, Space, Tabs, Tooltip, Typography } from 'antd';
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 
 import { ContentTranslateButton } from '@/components/admin/content-translate-button';
 import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
+import { ProductPickerField } from '@/components/products/product-picker-field';
 import { SolutionBlockItemEditorModal, type SolutionBlockItemEditorHandle } from '@/components/solutions/solution-block-item-editor-modal';
 import { SolutionBlockItemList } from '@/components/solutions/solution-block-item-list';
 import { ProductGalleryField } from '@/components/products/product-gallery-field';
+import type { AdminCategoryTreeNode } from '@/lib/category-content';
 import type { ProductGalleryImage } from '@/lib/product-content';
 import {
   solutionSplitLayoutLabels,
@@ -39,6 +41,7 @@ type SolutionBlockEditorModalProps = {
   open: boolean;
   block: SolutionBlockDraft | null;
   activeLanguages: AdminSiteLanguageRow[];
+  categoryTree: AdminCategoryTreeNode[];
   disabled?: boolean;
   saving?: boolean;
   onChange: (block: SolutionBlockDraft) => void;
@@ -60,6 +63,7 @@ export function SolutionBlockEditorModal({
   open,
   block,
   activeLanguages,
+  categoryTree,
   disabled = false,
   saving = false,
   onChange,
@@ -295,6 +299,19 @@ export function SolutionBlockEditorModal({
                   </Typography.Text>
                 ) : null}
 
+                {block.type === 'relatedProducts' ? (
+                  <div>
+                    <div style={{ marginBottom: 8 }}>指定商品</div>
+                    <ProductPickerField
+                      mode="multiple"
+                      categoryTree={categoryTree}
+                      value={block.productIds ?? []}
+                      onChange={(productIds) => patchShared({ productIds })}
+                      addButtonLabel="添加商品"
+                    />
+                  </div>
+                ) : null}
+
                 {showItemList ? (
                   <SolutionBlockItemList
                     items={block.items}
@@ -339,7 +356,7 @@ export function SolutionBlockEditorModal({
                   <Form.Item name="smallTitle" label="小标题">
                     <Input />
                   </Form.Item>
-                  <Form.Item name="largeTitle" label="大标题">
+                  <Form.Item name="largeTitle" label="标题">
                     <Input />
                   </Form.Item>
                   <Form.Item name="description" label="描述">

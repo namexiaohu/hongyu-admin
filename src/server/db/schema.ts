@@ -76,6 +76,7 @@ import type {
   SocialChannel,
 } from '@/lib/social-media';
 import type { AdminProductPayload } from '@/lib/product-content';
+import type { ProductStat } from '@/lib/product-content';
 import type { SolutionBlockDraft } from '@/lib/solution-blocks';
 import type { SolutionMaterial, SolutionProductParam, SolutionStat } from '@/lib/solution-content';
 import type { ProductCoverageBoard } from '@/lib/product-boards';
@@ -1320,10 +1321,13 @@ export const productTranslations = pgTable(
     locale: varchar('locale', { length: 16 }).notNull().default('en'),
     name: varchar('name', { length: 255 }).notNull(),
     slug: varchar('slug', { length: 255 }).notNull(),
+    badgeText: varchar('badge_text', { length: 120 }).notNull().default(''),
+    extraText: varchar('extra_text', { length: 255 }).notNull().default(''),
     shortDescription: text('short_description'),
     description: text('description'),
     seoTitle: varchar('seo_title', { length: 255 }),
     seoDescription: varchar('seo_description', { length: 500 }),
+    stats: jsonb('stats').$type<ProductStat[]>().notNull().default([]),
     price: numeric('price', { precision: 12, scale: 2 }).notNull().default('0'),
     compareAtPrice: numeric('compare_at_price', { precision: 12, scale: 2 }),
     currencyCode: varchar('currency_code', { length: 3 }).notNull().default('USD'),

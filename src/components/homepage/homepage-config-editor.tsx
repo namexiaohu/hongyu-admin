@@ -122,6 +122,16 @@ function serializeEducation(rows: HomepageEducationItem[]) {
 }
 
 function deserializeEducation(text: string, source: HomepageEducationItem[]): HomepageEducationItem[] {
+  if (!text.trim()) {
+    return source.map((item) => ({
+      title: item.title ?? '',
+      description: item.description ?? '',
+      badgeText: item.badgeText ?? '',
+      extraText: item.extraText ?? '',
+      href: item.href ?? '',
+      coverImage: item.coverImage ?? '',
+    }));
+  }
   const lines = text
     .split('\n')
     .map((line) => line.trim())
@@ -219,9 +229,8 @@ export function HomepageConfigEditor({ initialConfig, activeLanguages }: Homepag
     const { statsText, educationText, ...plainFields } = fields;
     const nextDraft = applyNonemptyTranslatedFields(current, plainFields);
     const stats = deserializeStats(statsText ?? '');
-    if (stats.length) nextDraft.stats = stats;
-    const educationItems = deserializeEducation(educationText ?? '', source.educationItems);
-    if (educationItems.length) nextDraft.educationItems = educationItems;
+    nextDraft.stats = stats.length ? stats : source.stats;
+    nextDraft.educationItems = deserializeEducation(educationText ?? '', source.educationItems);
     const nextDrafts = { ...merged, [activeLocale]: nextDraft };
     setDrafts(nextDrafts);
     form.setFieldsValue(nextDraft);
