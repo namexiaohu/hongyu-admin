@@ -1,4 +1,10 @@
 // Summit jsonb types
+export type AgendaItemLocaleCopy = {
+  title: string;
+  desc: string;
+  speaker: string;
+};
+
 export type AgendaItem = {
   id: string;
   startTime: string;
@@ -6,6 +12,12 @@ export type AgendaItem = {
   title: string;
   desc: string;
   speaker: string;
+  locales?: Record<string, AgendaItemLocaleCopy>;
+};
+
+export type AgendaGroupLocaleCopy = {
+  dayLabel: string;
+  groupTitle: string;
 };
 
 export type AgendaGroup = {
@@ -13,6 +25,7 @@ export type AgendaGroup = {
   dayLabel: string;
   groupTitle: string;
   items: AgendaItem[];
+  locales?: Record<string, AgendaGroupLocaleCopy>;
 };
 
 export type SpeakerItem = {
@@ -51,6 +64,11 @@ import type {
   CompanyPublicFile,
   CompanyTeamMember,
 } from '@/lib/company-profile';
+import type {
+  FeaturedPost,
+  OverseasContact,
+  SocialChannel,
+} from '@/lib/social-media';
 import type { AdminProductPayload } from '@/lib/product-content';
 import type { SolutionBlockDraft } from '@/lib/solution-blocks';
 import type { SolutionMaterial, SolutionProductParam, SolutionStat } from '@/lib/solution-content';
@@ -1590,6 +1608,30 @@ export const companyProfileTranslations = pgTable(
   (table) => ({
     profileLocaleUnique: uniqueIndex('company_profiles_i18n_profile_locale_unique').on(table.profileId, table.locale),
     profileIdIdx: index('company_profiles_i18n_profile_id_idx').on(table.profileId),
+  }),
+);
+
+export const socialMediaProfiles = pgTable('social_media_profiles', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  socialChannels: jsonb('social_channels').$type<SocialChannel[]>().notNull().default([]),
+  overseasContacts: jsonb('overseas_contacts').$type<OverseasContact[]>().notNull().default([]),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const socialMediaProfileTranslations = pgTable(
+  'social_media_profiles_i18n',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    profileId: uuid('profile_id').notNull().references(() => socialMediaProfiles.id, { onDelete: 'cascade' }),
+    locale: varchar('locale', { length: 16 }).notNull(),
+    featuredPosts: jsonb('featured_posts').$type<FeaturedPost[]>().notNull().default([]),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    profileLocaleUnique: uniqueIndex('social_media_profiles_i18n_profile_locale_unique').on(table.profileId, table.locale),
+    profileIdIdx: index('social_media_profiles_i18n_profile_id_idx').on(table.profileId),
   }),
 );
 

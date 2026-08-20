@@ -1,10 +1,12 @@
 'use client';
 
-import { Button, Form, Input, Modal, TimePicker } from 'antd';
+import { Button, Form, Input, Modal, Tabs, TimePicker } from 'antd';
 import dayjs from 'dayjs';
 import { useEffect, useTransition } from 'react';
 
 import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
+import { ContentTranslateButton } from '@/components/admin/content-translate-button';
+import { applyNonemptyTranslatedFields } from '@/lib/content-translate-config';
 import type { AgendaItem } from '@/lib/summit-content';
 import type { AdminSiteLanguageRow } from '@/server/admin/languages';
 
@@ -31,6 +33,11 @@ export function AgendaItemModal({ open, item, activeLanguages, activeLocale, onL
   const [sharedForm] = Form.useForm<SharedValues>();
   const [localeForm] = Form.useForm<LocaleItemDraft>();
   const [isPending, startTransition] = useTransition();
+  const defaultLocale = activeLanguages.find((language) => language.isDefault)?.code ?? activeLanguages[0]?.code ?? '';
+
+  function getMergedDrafts() {
+    return { ...drafts, [activeLocale]: localeForm.getFieldsValue(true) as LocaleItemDraft };
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -48,20 +55,48 @@ export function AgendaItemModal({ open, item, activeLanguages, activeLocale, onL
   }, [activeLocale]);
 
   function switchLocale(locale: string) {
-    const cur = localeForm.getFieldsValue(true) as LocaleItemDraft;
-    onDraftsChange({ ...drafts, [activeLocale]: cur });
+    const merged = getMergedDrafts();
+    onDraftsChange(merged);
     onLocaleChange(locale);
-    localeForm.setFieldsValue(drafts[locale] ?? emptyDraft());
+    localeForm.setFieldsValue(merged[locale] ?? emptyDraft());
+  }
+
+  function getDefaultSourceFields(): Record<string, string> {
+    const draft = getMergedDrafts()[defaultLocale] ?? emptyDraft();
+    return { title: draft.title, desc: draft.desc, speaker: draft.speaker };
+  }
+
+  function hasTargetLocaleContent() {
+    const draft = getMergedDrafts()[activeLocale] ?? emptyDraft();
+    return Boolean(draft.title.trim() || draft.desc.trim() || draft.speaker.trim());
+  }
+
+  function handleTranslated(fields: Record<string, string>) {
+    const merged = getMergedDrafts();
+    const current = merged[activeLocale] ?? emptyDraft();
+    const nextDraft = applyNonemptyTranslatedFields(current, fields);
+    const nextDrafts = { ...merged, [activeLocale]: nextDraft };
+    onDraftsChange(nextDrafts);
+    localeForm.setFieldsValue(nextDraft);
   }
 
   function handleSave() {
     startTransition(async () => {
       const shared = sharedForm.getFieldsValue(true) as SharedValues;
-      const cur = localeForm.getFieldsValue(true) as LocaleItemDraft;
-      const merged = { ...drafts, [activeLocale]: cur };
+      const merged = getMergedDrafts();
       onDraftsChange(merged);
-
-      const primaryDraft = merged[activeLanguages.find((l) => l.isDefault)?.code ?? activeLanguages[0]?.code ?? activeLocale] ?? cur;
+      const primaryDraft = merged[defaultLocale] ?? merged[activeLocale] ?? emptyDraft();
+      const locales: NonNullable<AgendaItem['locales']> = {};
+      for (const language of activeLanguages) {
+        const draft = merged[language.code] ?? emptyDraft();
+        if (draft.title.trim() || draft.desc.trim() || draft.speaker.trim()) {
+          locales[language.code] = {
+            title: draft.title.trim(),
+            desc: draft.desc.trim(),
+            speaker: draft.speaker.trim(),
+          };
+        }
+      }
 
       onSave({
         id: item?.id ?? crypto.randomUUID(),
@@ -70,6 +105,7 @@ export function AgendaItemModal({ open, item, activeLanguages, activeLocale, onL
         title: primaryDraft.title ?? '',
         desc: primaryDraft.desc ?? '',
         speaker: primaryDraft.speaker ?? '',
+        locales,
       });
     });
   }
@@ -89,7 +125,6 @@ export function AgendaItemModal({ open, item, activeLanguages, activeLocale, onL
           <Button type="primary" loading={isPending} onClick={handleSave}>保存</Button>
         </div>
 
-        {/* 通用区：时间 */}
         <div className="content-editor-shared-section">
           <Form form={sharedForm} layout="vertical">
             <div style={{ display: 'flex', gap: 12 }}>
@@ -113,21 +148,40 @@ export function AgendaItemModal({ open, item, activeLanguages, activeLocale, onL
           </Form>
         </div>
 
-        {/* 多语言区 */}
         <Form form={localeForm} layout="vertical" preserve>
           <div className="content-editor-layout">
             <div className="content-editor-locale-nav">
-              {activeLanguages.map((l) => (
+              {activeLanguages.map((language) => (
                 <ContentEditorLocaleTab
-                  key={l.code}
-                  language={l}
-                  isActive={l.code === activeLocale}
-                  persisted={Boolean(item)}
-                  onClick={() => switchLocale(l.code)}
+                  key={language.code}
+                  language={language}
+                  isActive={language.code === activeLocale}
+                  persisted={Boolean(item?.locales?.[language.code] || (language.code === defaultLocale && item))}
+                  onClick={() => switchLocale(language.code)}
                 />
               ))}
             </div>
             <div className="content-editor-main">
+              <div className="content-editor-section-toolbar">
+                <Tabs
+                  activeKey="content"
+                  className="content-editor-section-tabs"
+                  items={[{ key: 'content', label: '内容' }]}
+                />
+                <ContentTranslateButton
+                  contentType="summitAgendaItem"
+                  defaultLocale={defaultLocale}
+                  activeLocale={activeLocale}
+                  disabled={isPending}
+                  getDefaultSourceFields={getDefaultSourceFields}
+                  hasDefaultPersisted={() => {
+                    const draft = getMergedDrafts()[defaultLocale] ?? emptyDraft();
+                    return Boolean(draft.title.trim() || draft.desc.trim() || draft.speaker.trim());
+                  }}
+                  hasTargetContent={hasTargetLocaleContent}
+                  onTranslated={handleTranslated}
+                />
+              </div>
               <Form.Item name="title" label="标题"><Input /></Form.Item>
               <Form.Item name="desc" label="描述"><Input.TextArea rows={2} /></Form.Item>
               <Form.Item name="speaker" label="演讲人"><Input placeholder="如：张明远 · 主任医师" /></Form.Item>

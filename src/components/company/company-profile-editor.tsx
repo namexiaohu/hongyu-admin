@@ -5,9 +5,19 @@ import { Button, Form, Input, Space, Tabs, message } from 'antd';
 import { useEffect, useMemo, useState, useTransition } from 'react';
 
 import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
+import { ContentTranslateButton } from '@/components/admin/content-translate-button';
 import { CommercePageHeader } from '@/components/commerce/commerce-page-header';
 import { CompanyPublicFilesField } from '@/components/company/company-public-files-field';
 import { CoverImageField } from '@/components/editorial/cover-image-field';
+import { applyNonemptyTranslatedFields } from '@/lib/content-translate-config';
+import {
+  deserializeOffices,
+  deserializePairRows,
+  deserializeTeamMembers,
+  serializeOffices,
+  serializePairRows,
+  serializeTeamMembers,
+} from '@/lib/content-translate-serialize';
 import {
   type AdminCompanyProfile,
   type CompanyLabelValue,
@@ -141,6 +151,58 @@ export function CompanyProfileEditor({ initialProfile, activeLanguages }: Compan
     return { ...current, [locale]: readLocaleForm(form.getFieldsValue()) };
   }
 
+  function getMergedDrafts() {
+    return mergeActiveFormIntoDrafts(drafts, activeLocale);
+  }
+
+  function getDefaultSourceFields(): Record<string, string> {
+    const draft = getMergedDrafts()[defaultLocale] ?? emptyDraft();
+    return {
+      companyName: draft.companyName,
+      slogan: draft.slogan,
+      positioning: draft.positioning,
+      copyright: draft.copyright,
+      contactPhone: draft.contactPhone,
+      address: draft.address,
+      businessHours: draft.businessHours,
+      businessHotline: draft.businessHotline,
+      basicInfoText: serializePairRows(draft.basicInfo),
+      executivesText: serializeTeamMembers(draft.executives),
+      managersText: serializeTeamMembers(draft.managers),
+      officesText: serializeOffices(draft.offices),
+    };
+  }
+
+  function hasTargetLocaleContent() {
+    const draft = getMergedDrafts()[activeLocale] ?? emptyDraft();
+    return translationHasContent(draft);
+  }
+
+  function handleTranslated(fields: Record<string, string>) {
+    const merged = getMergedDrafts();
+    const current = merged[activeLocale] ?? emptyDraft();
+    const source = merged[defaultLocale] ?? emptyDraft();
+    const {
+      basicInfoText,
+      executivesText,
+      managersText,
+      officesText,
+      ...plainFields
+    } = fields;
+    const nextDraft = applyNonemptyTranslatedFields(current, plainFields);
+    const basicInfo = deserializePairRows(basicInfoText ?? '');
+    if (basicInfo.length) nextDraft.basicInfo = basicInfo;
+    const executives = deserializeTeamMembers(executivesText ?? '');
+    if (executives.length) nextDraft.executives = executives;
+    const managers = deserializeTeamMembers(managersText ?? '');
+    if (managers.length) nextDraft.managers = managers;
+    const offices = deserializeOffices(officesText ?? '', source.offices);
+    if (offices.length) nextDraft.offices = offices;
+    const nextDrafts = { ...merged, [activeLocale]: nextDraft };
+    setDrafts(nextDrafts);
+    form.setFieldsValue(nextDraft);
+  }
+
   function switchLocale(nextLocale: string) {
     if (nextLocale === activeLocale) return;
     const merged = mergeActiveFormIntoDrafts(drafts, activeLocale);
@@ -252,6 +314,16 @@ export function CompanyProfileEditor({ initialProfile, activeLanguages }: Compan
                   { key: 'team', label: '管理团队' },
                   { key: 'offices', label: '办公地点' },
                 ]}
+              />
+              <ContentTranslateButton
+                contentType="companyProfile"
+                defaultLocale={defaultLocale}
+                activeLocale={activeLocale}
+                disabled={isPending}
+                getDefaultSourceFields={getDefaultSourceFields}
+                hasDefaultPersisted={() => translationByLocale.has(defaultLocale)}
+                hasTargetContent={hasTargetLocaleContent}
+                onTranslated={handleTranslated}
               />
             </div>
 

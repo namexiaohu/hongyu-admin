@@ -6,7 +6,10 @@ import dayjs from 'dayjs';
 import { useEffect, useState, useTransition } from 'react';
 
 import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
+import { ContentTranslateButton } from '@/components/admin/content-translate-button';
 import { CoverImageField } from '@/components/editorial/cover-image-field';
+import { applyNonemptyTranslatedFields } from '@/lib/content-translate-config';
+import { deserializeSpeakers, serializeSpeakers } from '@/lib/content-translate-serialize';
 import { AgendaGroupDrawer } from '@/components/summits/agenda-group-drawer';
 import {
   type AdminSummitDetail,
@@ -102,6 +105,38 @@ export function SummitEditorModal({ open, detail, activeLanguages, onClose, onSa
 
   function getMergedDrafts() {
     return { ...drafts, [activeLocale]: localeForm.getFieldsValue(true) as LocaleDraft };
+  }
+
+  function getDefaultSourceFields(): Record<string, string> {
+    const draft = getMergedDrafts()[defaultLocale] ?? emptyDraft();
+    return {
+      title: draft.title,
+      description: draft.description,
+      scale: draft.scale,
+      duration: draft.duration,
+      location: draft.location,
+      address: draft.address,
+      transportation: draft.transportation,
+      speakersText: serializeSpeakers(draft.speakers),
+    };
+  }
+
+  function hasTargetLocaleContent() {
+    const draft = getMergedDrafts()[activeLocale] ?? emptyDraft();
+    return hasDraftContent(draft) || draft.speakers.some((speaker) => speaker.name?.trim() || speaker.bio?.trim() || speaker.expertise?.trim());
+  }
+
+  function handleTranslated(fields: Record<string, string>) {
+    const merged = getMergedDrafts();
+    const current = merged[activeLocale] ?? emptyDraft();
+    const source = merged[defaultLocale] ?? emptyDraft();
+    const { speakersText, ...plainFields } = fields;
+    const nextDraft = applyNonemptyTranslatedFields(current, plainFields);
+    const speakers = deserializeSpeakers(speakersText ?? '', source.speakers);
+    if (speakers.length) nextDraft.speakers = speakers;
+    const nextDrafts = { ...merged, [activeLocale]: nextDraft };
+    setDrafts(nextDrafts);
+    localeForm.setFieldsValue(nextDraft);
   }
 
   useEffect(() => {
@@ -332,16 +367,28 @@ export function SummitEditorModal({ open, detail, activeLanguages, onClose, onSa
                 ))}
               </div>
               <div className="content-editor-main">
-                <Tabs
-                  activeKey={sectionTab}
-                  onChange={(k) => setSectionTab(k as SectionTabKey)}
-                  className="content-editor-section-tabs"
-                  items={[
-                    { key: 'content', label: '内容' },
-                    { key: 'speakers', label: '嘉宾' },
-                    { key: 'venue', label: '会议配置' },
-                  ]}
-                />
+                <div className="content-editor-section-toolbar">
+                  <Tabs
+                    activeKey={sectionTab}
+                    onChange={(k) => setSectionTab(k as SectionTabKey)}
+                    className="content-editor-section-tabs"
+                    items={[
+                      { key: 'content', label: '内容' },
+                      { key: 'speakers', label: '嘉宾' },
+                      { key: 'venue', label: '会议配置' },
+                    ]}
+                  />
+                  <ContentTranslateButton
+                    contentType="summit"
+                    defaultLocale={defaultLocale}
+                    activeLocale={activeLocale}
+                    disabled={isPending}
+                    getDefaultSourceFields={getDefaultSourceFields}
+                    hasDefaultPersisted={() => Boolean(detail?.translations.some((t) => t.locale === defaultLocale))}
+                    hasTargetContent={hasTargetLocaleContent}
+                    onTranslated={handleTranslated}
+                  />
+                </div>
 
                 {/* 内容 Tab */}
                 <div style={{ display: sectionTab === 'content' ? 'block' : 'none' }}>

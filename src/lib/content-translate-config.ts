@@ -14,7 +14,14 @@ export type ContentTranslateType =
   | 'brandNarrativeBlockItem'
   | 'solution'
   | 'solutionBlock'
-  | 'solutionBlockItem';
+  | 'solutionBlockItem'
+  | 'socialMedia'
+  | 'companyProfile'
+  | 'surgeon'
+  | 'partnerCenter'
+  | 'summit'
+  | 'summitAgendaGroup'
+  | 'summitAgendaItem';
 
 type ContentTranslateProfile = {
   sourceFields: readonly string[];
@@ -159,6 +166,82 @@ export const CONTENT_TRANSLATE_PROFILES: Record<ContentTranslateType, ContentTra
     serverLabel: 'solution block item',
     tooltip: '将默认语言已填写的内容项标题与描述翻译到当前语言，翻译后请校对',
   },
+  socialMedia: {
+    sourceFields: ['featuredPostsText'],
+    plainTextFields: ['featuredPostsText'],
+    serverLabel: 'social media featured posts',
+    tooltip: '将默认语言已保存的精选内容（角标、标题、描述）翻译到当前语言；封面图与链接不会翻译',
+    translateNotes:
+      'featuredPostsText has one post per line as BADGE|||TITLE|||DESCRIPTION. Translate BADGE, TITLE, and DESCRIPTION only. Keep the same line count and the ||| separator. Do not return a JSON array.',
+  },
+  companyProfile: {
+    sourceFields: [
+      'companyName',
+      'slogan',
+      'positioning',
+      'copyright',
+      'contactPhone',
+      'address',
+      'businessHours',
+      'businessHotline',
+      'basicInfoText',
+      'executivesText',
+      'managersText',
+      'officesText',
+    ],
+    plainTextFields: [
+      'companyName',
+      'slogan',
+      'positioning',
+      'copyright',
+      'contactPhone',
+      'address',
+      'businessHours',
+      'businessHotline',
+      'basicInfoText',
+      'executivesText',
+      'managersText',
+      'officesText',
+    ],
+    serverLabel: 'company profile page',
+    tooltip: '将默认语言已保存的企业资料翻译到当前语言；办公地点封面图不会翻译',
+    translateNotes:
+      'basicInfoText uses LABEL|||VALUE per line. executivesText and managersText use TITLE|||NAME per line. officesText uses NAME|||LOCATION|||PHONE|||CONTACT|||EMAIL per line. Translate human-readable text only; keep numbers, emails, and ||| separators.',
+  },
+  surgeon: {
+    sourceFields: ['name', 'position', 'institution', 'expertise', 'experience', 'tagsText'],
+    plainTextFields: ['name', 'position', 'institution', 'expertise', 'experience', 'tagsText'],
+    serverLabel: 'certified surgeon profile',
+    tooltip: '将默认语言已保存的术者资料与标签翻译到当前语言，翻译后请校对',
+    translateNotes: 'tagsText has one tag per line. Keep the same line count.',
+  },
+  partnerCenter: {
+    sourceFields: ['name', 'badgeText', 'location', 'description', 'address', 'businessHours', 'contact', 'website', 'tagsText'],
+    plainTextFields: ['name', 'badgeText', 'location', 'description', 'address', 'businessHours', 'contact', 'website', 'tagsText'],
+    serverLabel: 'partner center profile',
+    tooltip: '将默认语言已保存的合作中心资料与标签翻译到当前语言；封面与 Logo 不会翻译',
+    translateNotes: 'tagsText has one tag per line. Keep the same line count.',
+  },
+  summit: {
+    sourceFields: ['title', 'description', 'scale', 'duration', 'location', 'address', 'transportation', 'speakersText'],
+    plainTextFields: ['title', 'description', 'scale', 'duration', 'location', 'address', 'transportation', 'speakersText'],
+    serverLabel: 'industry summit page',
+    tooltip: '将默认语言已保存的峰会资料与嘉宾信息翻译到当前语言；头像不会翻译',
+    translateNotes:
+      'speakersText has one speaker per line as NAME|||BIO|||EXPERTISE. Translate NAME, BIO, and EXPERTISE only. Keep the same line count and ||| separator.',
+  },
+  summitAgendaGroup: {
+    sourceFields: ['dayLabel', 'groupTitle'],
+    plainTextFields: ['dayLabel', 'groupTitle'],
+    serverLabel: 'summit agenda group',
+    tooltip: '将默认语言已填写的议程分组时间文案与标题翻译到当前语言，翻译后请校对',
+  },
+  summitAgendaItem: {
+    sourceFields: ['title', 'desc', 'speaker'],
+    plainTextFields: ['title', 'desc', 'speaker'],
+    serverLabel: 'summit agenda item',
+    tooltip: '将默认语言已填写的议程环节标题、描述与演讲人翻译到当前语言，翻译后请校对',
+  },
 };
 
 export function pickTranslatePayload(
@@ -229,6 +312,48 @@ export function validateDefaultTranslateSource(
   if (contentType === 'brandNarrative' || contentType === 'solution') {
     if (!fields.heroTitle?.trim()) {
       return '默认语言内容不完整，请先完善标题';
+    }
+    return null;
+  }
+
+  if (contentType === 'summit') {
+    if (!fields.title?.trim()) {
+      return '默认语言内容不完整，请先完善标题';
+    }
+    return null;
+  }
+
+  if (contentType === 'socialMedia') {
+    if (!fields.featuredPostsText?.trim()) {
+      return '默认语言内容不完整，请先完善精选内容';
+    }
+    return null;
+  }
+
+  if (contentType === 'companyProfile') {
+    if (!fields.companyName?.trim()) {
+      return '默认语言内容不完整，请先完善企业名称';
+    }
+    return null;
+  }
+
+  if (contentType === 'surgeon' || contentType === 'partnerCenter') {
+    if (!fields.name?.trim()) {
+      return '默认语言内容不完整，请先完善名称';
+    }
+    return null;
+  }
+
+  if (contentType === 'summitAgendaGroup') {
+    if (!fields.dayLabel?.trim() && !fields.groupTitle?.trim()) {
+      return '默认语言内容不完整，请先完善分组文案';
+    }
+    return null;
+  }
+
+  if (contentType === 'summitAgendaItem') {
+    if (!fields.title?.trim() && !fields.desc?.trim() && !fields.speaker?.trim()) {
+      return '默认语言内容不完整，请先完善环节文案';
     }
     return null;
   }

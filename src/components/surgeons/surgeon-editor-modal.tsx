@@ -5,7 +5,10 @@ import { Button, Form, Input, Modal, Radio, Space, Tabs, message } from 'antd';
 import { useEffect, useState, useTransition } from 'react';
 
 import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
+import { ContentTranslateButton } from '@/components/admin/content-translate-button';
 import { CoverImageField } from '@/components/editorial/cover-image-field';
+import { applyNonemptyTranslatedFields } from '@/lib/content-translate-config';
+import { deserializeLineList, serializeLineList } from '@/lib/content-translate-serialize';
 import type { AdminSurgeonDetail, AdminSurgeonTranslation, SurgeonGradeKey } from '@/lib/surgeon-content';
 import { surgeonGradeKeys } from '@/lib/surgeon-content';
 import { shouldPersistLocaleDraft } from '@/lib/locale-draft-persistence';
@@ -113,6 +116,36 @@ export function SurgeonEditorModal({ open, detail, activeLanguages, onClose, onS
     sharedForm.setFieldsValue({ avatar: detail?.avatar ?? '', slug: detail?.slug ?? '', gradeKey: detail?.gradeKey ?? 'silver' });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  function getDefaultSourceFields(): Record<string, string> {
+    const draft = getMergedDrafts()[defaultLocale] ?? emptyDraft();
+    return {
+      name: draft.name,
+      position: draft.position,
+      institution: draft.institution,
+      expertise: draft.expertise,
+      experience: draft.experience,
+      tagsText: serializeLineList(draft.tags),
+    };
+  }
+
+  function hasTargetLocaleContent() {
+    return hasDraftContent(getMergedDrafts()[activeLocale] ?? emptyDraft());
+  }
+
+  function handleTranslated(fields: Record<string, string>) {
+    const merged = getMergedDrafts();
+    const current = merged[activeLocale] ?? emptyDraft();
+    const source = merged[defaultLocale] ?? emptyDraft();
+    const { tagsText, ...plainFields } = fields;
+    const nextDraft = applyNonemptyTranslatedFields(current, plainFields);
+    const tags = deserializeLineList(tagsText ?? '');
+    if (tags.length) nextDraft.tags = tags;
+    else if (source.tags.length) nextDraft.tags = source.tags;
+    const nextDrafts = { ...merged, [activeLocale]: nextDraft };
+    setDrafts(nextDrafts);
+    form.setFieldsValue(draftToForm(nextDraft));
+  }
 
   function switchLocale(locale: string) {
     const next = { ...drafts, [activeLocale]: readDraft(form.getFieldsValue(true)) };
@@ -236,7 +269,19 @@ export function SurgeonEditorModal({ open, detail, activeLanguages, onClose, onS
               ))}
             </div>
             <div className="content-editor-main">
-              <Tabs activeKey={sectionTab} onChange={(k) => setSectionTab(k as SectionTabKey)} className="content-editor-section-tabs" items={[{ key: 'content', label: '内容' }, { key: 'tags', label: '标签' }]} />
+              <div className="content-editor-section-toolbar">
+                <Tabs activeKey={sectionTab} onChange={(k) => setSectionTab(k as SectionTabKey)} className="content-editor-section-tabs" items={[{ key: 'content', label: '内容' }, { key: 'tags', label: '标签' }]} />
+                <ContentTranslateButton
+                  contentType="surgeon"
+                  defaultLocale={defaultLocale}
+                  activeLocale={activeLocale}
+                  disabled={isPending}
+                  getDefaultSourceFields={getDefaultSourceFields}
+                  hasDefaultPersisted={() => Boolean(detail?.translations.some((t) => t.locale === defaultLocale))}
+                  hasTargetContent={hasTargetLocaleContent}
+                  onTranslated={handleTranslated}
+                />
+              </div>
 
               <div style={{ display: sectionTab === 'content' ? 'block' : 'none' }}>
                 <Form.Item name="name" label="姓名" rules={activeLocale === defaultLocale ? [{ required: true, message: '请输入姓名' }] : []}>

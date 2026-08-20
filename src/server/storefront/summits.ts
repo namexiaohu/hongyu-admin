@@ -4,7 +4,7 @@ import { asc, desc, eq, inArray } from 'drizzle-orm';
 
 import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
-import type { AgendaGroup, SpeakerItem, SummitStatus } from '@/lib/summit-content';
+import { localizeAgendaGroups, type AgendaGroup, type SpeakerItem, type SummitStatus } from '@/lib/summit-content';
 import { db } from '@/server/db';
 import { summits, summitTranslations } from '@/server/db/schema';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
@@ -153,6 +153,6 @@ export async function getStorefrontSummitDetail(input: { slug: string; locale: s
     address: display?.address ?? '',
     transportation: display?.transportation ?? '',
     speakers,
-    agenda: (row.agenda ?? []) as AgendaGroup[],
+    agenda: localizeAgendaGroups((row.agenda ?? []) as AgendaGroup[], input.locale),
   };
 }

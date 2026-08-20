@@ -1,30 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import type { ContentTranslateType } from '@/lib/content-translate-config';
+import { CONTENT_TRANSLATE_PROFILES, type ContentTranslateType } from '@/lib/content-translate-config';
 import { LlmConfigError, LlmRequestError } from '@/server/ai/chat-with-llm';
 import { HtmlStructureMismatchError, translateContentFields } from '@/server/ai/translate';
 
+const contentTranslateTypes = Object.keys(CONTENT_TRANSLATE_PROFILES) as ContentTranslateType[];
+
 const translateContentSchema = z.object({
-  contentType: z.enum([
-    'blog',
-    'faq',
-    'brand',
-    'category',
-    'product',
-    'feature',
-    'shippingMethod',
-    'editorialBoard',
-    'brandNarrative',
-    'brandNarrativeBlock',
-    'brandNarrativeBlockItem',
-  ]),
+  contentType: z.enum(contentTranslateTypes as [ContentTranslateType, ...ContentTranslateType[]]),
   sourceLocale: z.string().trim().min(1),
   targetLocale: z.string().trim().min(1),
   fields: z.record(z.string(), z.string()),
 });
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
     const body = await request.json();
     const parsed = translateContentSchema.safeParse(body);

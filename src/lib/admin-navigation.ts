@@ -55,6 +55,7 @@ export const adminNavItems: AdminNavItem[] = [
       { key: '/admin/partner-centers', title: '合作中心', href: '/admin/partner-centers' },
       { key: '/admin/summits', title: '行业峰会', href: '/admin/summits' },
       { key: '/admin/company', title: '企业信息', href: '/admin/company' },
+      { key: '/admin/social-media', title: '社交媒体', href: '/admin/social-media' },
     ],
   },
   {

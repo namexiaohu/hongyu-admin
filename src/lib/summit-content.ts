@@ -15,6 +15,12 @@ export const summitStatusLabels: Record<SummitStatus, string> = {
 
 // ── Zod schemas ──────────────────────────────────────────────
 
+const agendaItemLocaleCopySchema = z.object({
+  title: z.string().default(''),
+  desc: z.string().default(''),
+  speaker: z.string().default(''),
+});
+
 const agendaItemSchema = z.object({
   id: z.string(),
   startTime: z.string().default(''),
@@ -22,6 +28,12 @@ const agendaItemSchema = z.object({
   title: z.string().default(''),
   desc: z.string().default(''),
   speaker: z.string().default(''),
+  locales: z.record(z.string(), agendaItemLocaleCopySchema).optional(),
+});
+
+const agendaGroupLocaleCopySchema = z.object({
+  dayLabel: z.string().default(''),
+  groupTitle: z.string().default(''),
 });
 
 const agendaGroupSchema = z.object({
@@ -29,6 +41,7 @@ const agendaGroupSchema = z.object({
   dayLabel: z.string().default(''),
   groupTitle: z.string().default(''),
   items: z.array(agendaItemSchema).default([]),
+  locales: z.record(z.string(), agendaGroupLocaleCopySchema).optional(),
 });
 
 const speakerItemSchema = z.object({
@@ -116,4 +129,27 @@ export function resolveSummitDisplayTitle(
   fallback = '',
 ): string {
   return translation?.title?.trim() || fallback;
+}
+
+export function localizeAgendaGroups(agenda: AgendaGroup[], locale: string): AgendaGroup[] {
+  const code = locale.trim();
+  return agenda.map((group) => {
+    const groupCopy = group.locales?.[code];
+    return {
+      id: group.id,
+      dayLabel: groupCopy?.dayLabel?.trim() || group.dayLabel,
+      groupTitle: groupCopy?.groupTitle?.trim() || group.groupTitle,
+      items: group.items.map((item) => {
+        const itemCopy = item.locales?.[code];
+        return {
+          id: item.id,
+          startTime: item.startTime,
+          endTime: item.endTime,
+          title: itemCopy?.title?.trim() || item.title,
+          desc: itemCopy?.desc?.trim() || item.desc,
+          speaker: itemCopy?.speaker?.trim() || item.speaker,
+        };
+      }),
+    };
+  });
 }
