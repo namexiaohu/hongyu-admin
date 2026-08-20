@@ -1034,6 +1034,7 @@ export const inquiries = pgTable(
     terminatedBy: uuid('terminated_by').references(() => admins.id, { onDelete: 'set null' }),
     lastMessageAt: timestamp('last_message_at', { withTimezone: true }),
     sourcePageUrl: text('source_page_url'),
+    inquiryType: varchar('inquiry_type', { length: 80 }),
     handledBy: uuid('handled_by').references(() => users.id, { onDelete: 'set null' }),
     handledAt: timestamp('handled_at', { withTimezone: true }),
     internalNote: text('internal_note'),
@@ -1063,6 +1064,33 @@ export const inquiryMessages = pgTable(
   },
   (table) => ({
     inquiryCreatedIdx: index('inquiry_messages_inquiry_created_idx').on(table.inquiryId, table.createdAt),
+  }),
+);
+
+export const inquiryProfiles = pgTable(
+  'inquiry_profiles',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    inquiryId: uuid('inquiry_id').notNull().references(() => inquiries.id, { onDelete: 'cascade' }),
+    fullName: varchar('full_name', { length: 150 }).notNull().default(''),
+    email: varchar('email', { length: 320 }).notNull().default(''),
+    country: varchar('country', { length: 100 }).notNull().default(''),
+    phone: varchar('phone', { length: 50 }).notNull().default(''),
+    jobTitle: varchar('job_title', { length: 150 }).notNull().default(''),
+    companyName: varchar('company_name', { length: 150 }).notNull().default(''),
+    vat: varchar('vat', { length: 80 }).notNull().default(''),
+    companyWebsite: varchar('company_website', { length: 500 }).notNull().default(''),
+    companySize: varchar('company_size', { length: 80 }).notNull().default(''),
+    companyAddress: text('company_address').notNull().default(''),
+    projectName: varchar('project_name', { length: 200 }).notNull().default(''),
+    industry: varchar('industry', { length: 120 }).notNull().default(''),
+    projectStart: varchar('project_start', { length: 80 }).notNull().default(''),
+    annualTarget: varchar('annual_target', { length: 120 }).notNull().default(''),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    inquiryUnique: uniqueIndex('inquiry_profiles_inquiry_id_unique').on(table.inquiryId),
   }),
 );
 

@@ -30,9 +30,14 @@ export function InquiryActiveCard({ inquiry, listQuery }: InquiryActiveCardProps
       <article className="info-card inquiry-active-card">
         <div className="inquiry-active-card__header">
           <h2 className="inquiry-active-card__title">{title}</h2>
-          <span className="product-badge" data-color={queueColor}>
-            {queueLabel}
-          </span>
+          <div className="inquiry-active-card__tags">
+            {inquiry.inquiryType ? (
+              <span className="inquiry-active-card__type">{inquiry.inquiryType}</span>
+            ) : null}
+            <span className="product-badge" data-color={queueColor}>
+              {queueLabel}
+            </span>
+          </div>
         </div>
         <p className="inquiry-active-card__meta">{contactLine}</p>
         <div className="inquiry-active-card__footer">

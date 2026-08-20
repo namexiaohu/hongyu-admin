@@ -14,7 +14,7 @@ import {
   inquiryStatusLabels,
 } from '@/lib/admin-display';
 import { formatInquirySalesStatus, INQUIRY_SALES_STATUS_OPTIONS, type InquirySalesStatus } from '@/lib/inquiry-sales-status';
-import type { InquiryRfqPayload } from '@/lib/inquiry-rfq';
+import type { InquiryProfile, InquiryRfqPayload } from '@/lib/inquiry-rfq';
 import { isContactInquiry } from '@/lib/inquiry-rfq';
 
 type InquiryMessageItem = {
@@ -53,7 +53,9 @@ type InquiryDetail = {
   productSpu: string;
   productId?: string | null;
   handledByEmail: string | null;
+  inquiryType: string | null;
   rfqPayload: InquiryRfqPayload | null;
+  profile: InquiryProfile;
   quotedLines: InquiryQuotedLine[] | null;
   messages: InquiryMessageItem[];
 };
@@ -112,6 +114,7 @@ export function InquiryDetailClient({
     status: inquiry.status,
   });
   const contactInquiry = isContactInquiry(inquiry.rfqPayload);
+  const showQuote = Boolean(inquiry.rfqPayload) && !contactInquiry;
 
   function saveQuote() {
     startTransition(async () => {
@@ -226,6 +229,11 @@ export function InquiryDetailClient({
         <div className="inquiry-status-card__grid">
           <InquiryStatusField label="询盘阶段" value={inquiryStatusLabels[inquiry.status]} />
           <InquiryStatusField
+            label="询盘类型"
+            value={inquiry.inquiryType?.trim() || '—'}
+            muted={!inquiry.inquiryType?.trim()}
+          />
+          <InquiryStatusField
             label="待办原因"
             value={inquiry.queueKind ? inquiryQueueKindLabels[inquiry.queueKind] : '—'}
             muted={!inquiry.queueKind}
@@ -254,10 +262,13 @@ export function InquiryDetailClient({
       <section className="inquiry-detail-body">
         <div>
           <h2 className="inquiry-detail-workspace__heading">客户 RFQ</h2>
-          <InquiryRfqPayloadPanel rfqPayload={inquiry.rfqPayload} fallbackMessage={inquiry.message} />
+          <InquiryRfqPayloadPanel
+            profile={inquiry.profile}
+            rfqPayload={inquiry.rfqPayload}
+          />
         </div>
 
-        {!contactInquiry ? (
+        {showQuote ? (
         <article className="info-card inquiry-detail-quote-card">
           <div className="inquiry-detail-section-head">
             <h2 className="inquiry-detail-section-title">报价单</h2>
@@ -375,12 +386,12 @@ export function InquiryDetailClient({
             </button>
           </div>
         </article>
-        ) : (
+        ) : contactInquiry ? (
           <article className="info-card inquiry-detail-quote-card">
             <h2 className="inquiry-detail-section-title">报价单</h2>
             <p className="inquiry-detail-quote-card__desc">通用联系询盘无需填写商品价格，请通过下方对话回复客户。</p>
           </article>
-        )}
+        ) : null}
       </section>
 
       <article className="info-card" style={{ display: 'grid', gap: 12 }}>

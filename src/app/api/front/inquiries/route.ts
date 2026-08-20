@@ -80,6 +80,10 @@ const inquirySchema = z.object({
   company: z.string().optional(),
   country: z.string().optional(),
   message: z.string().min(1).optional(),
+  inquiryType: z.string().max(80).nullable().optional(),
+  jobTitle: z.string().max(150).optional(),
+  companyWebsite: z.string().max(500).optional(),
+  companySize: z.string().max(80).optional(),
   rfqPayload: z.union([productRfqPayloadSchema, contactRfqPayloadSchema]).optional(),
 }).superRefine((data, ctx) => {
   if (data.rfqPayload?.kind === 'contact') {
@@ -104,14 +108,6 @@ const inquirySchema = z.object({
     return;
   }
 
-  if (!data.productId) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'productId is required for legacy inquiries.',
-      path: ['productId'],
-    });
-  }
-
   if (!data.message?.trim()) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -126,72 +122,87 @@ export async function OPTIONS() {
 }
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const parsed = inquirySchema.safeParse(body);
+  try {
+    const body = await request.json();
+    const parsed = inquirySchema.safeParse(body);
 
-  if (!parsed.success) {
-    return NextResponse.json(
-      { code: 'VALIDATION_ERROR', message: 'Invalid inquiry payload', details: parsed.error.flatten() },
-      { status: 400, headers: frontCorsHeaders() },
-    );
-  }
+    if (!parsed.success) {
+      return NextResponse.json(
+        { code: 'VALIDATION_ERROR', message: 'Invalid inquiry payload', details: parsed.error.flatten() },
+        { status: 400, headers: frontCorsHeaders() },
+      );
+    }
 
-  const userId = await getCurrentUserId(request);
-  const rfqPayload = parsed.data.rfqPayload ? await normalizeRfqPayloadAsync(parsed.data.rfqPayload) : null;
-  const country = rfqPayload?.contact.country ?? parsed.data.country ?? null;
-  const message = parsed.data.message?.trim()
-    ?? (rfqPayload ? await buildRfqMessageTextAsync(rfqPayload) : '');
+    const userId = await getCurrentUserId(request);
+    const rfqPayload = parsed.data.rfqPayload ? await normalizeRfqPayloadAsync(parsed.data.rfqPayload) : null;
+    const country = rfqPayload?.contact.country ?? parsed.data.country ?? null;
+    const message = parsed.data.message?.trim()
+      ?? (rfqPayload ? await buildRfqMessageTextAsync(rfqPayload) : '');
 
-  if (!message && !rfqPayload) {
-    return NextResponse.json(
-      { code: 'VALIDATION_ERROR', message: 'Message or rfqPayload is required' },
-      { status: 400, headers: frontCorsHeaders() },
-    );
-  }
+    if (!message && !rfqPayload) {
+      return NextResponse.json(
+        { code: 'VALIDATION_ERROR', message: 'Message or rfqPayload is required' },
+        { status: 400, headers: frontCorsHeaders() },
+      );
+    }
 
-  const created = await createStorefrontInquiry({
-    productId: parsed.data.productId ?? null,
-    userId,
-    fullName: parsed.data.fullName,
-    email: parsed.data.email,
-    phone: parsed.data.phone ?? null,
-    company: parsed.data.company ?? null,
-    country,
-    message,
-    sourcePageUrl: request.headers.get('referer') ?? null,
-    rfqPayload,
-  });
-
-  if (!created) {
-    return NextResponse.json(
-      { code: 'INQUIRY_CREATE_FAILED', message: 'Unable to submit your inquiry right now.' },
-      { status: 400, headers: frontCorsHeaders() },
-    );
-  }
-
-  const quoteNumber = created.quoteNumber ?? created.id;
-  const redirectPath = `/account/quotes/${quoteNumber}`;
-
-  const response = NextResponse.json(
-    {
-      id: created.id,
-      quoteNumber: created.quoteNumber,
-      fullName: created.fullName,
-      email: created.email,
-      redirectPath,
-    },
-    { status: 201, headers: frontCorsHeaders() },
-  );
-
-  if (!userId && created.guestAccessToken) {
-    response.cookies.set(getGuestInquiryAccessCookieName(created.id), created.guestAccessToken, {
-      httpOnly: true,
-      sameSite: 'lax',
-      path: '/',
+    const created = await createStorefrontInquiry({
+      productId: parsed.data.productId ?? null,
+      userId,
+      fullName: parsed.data.fullName,
+      email: parsed.data.email,
+      phone: parsed.data.phone ?? null,
+      company: parsed.data.company ?? null,
+      country,
+      message,
+      sourcePageUrl: request.headers.get('referer') ?? null,
+      inquiryType: parsed.data.inquiryType,
+      jobTitle: parsed.data.jobTitle ?? null,
+      companyWebsite: parsed.data.companyWebsite ?? null,
+      companySize: parsed.data.companySize ?? null,
+      rfqPayload,
     });
-  }
 
-  return response;
+    if (!created) {
+      return NextResponse.json(
+        { code: 'INQUIRY_CREATE_FAILED', message: 'Unable to submit your inquiry right now.' },
+        { status: 400, headers: frontCorsHeaders() },
+      );
+    }
+
+    const quoteNumber = created.quoteNumber ?? created.id;
+    const redirectPath = `/account/quotes/${quoteNumber}`;
+
+    const response = NextResponse.json(
+      {
+        id: created.id,
+        quoteNumber: created.quoteNumber,
+        fullName: created.fullName,
+        email: created.email,
+        redirectPath,
+      },
+      { status: 201, headers: frontCorsHeaders() },
+    );
+
+    if (!userId && created.guestAccessToken) {
+      response.cookies.set(getGuestInquiryAccessCookieName(created.id), created.guestAccessToken, {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+      });
+    }
+
+    return response;
+  } catch (error) {
+    console.error('[front/inquiries] create failed', error);
+    return NextResponse.json(
+      {
+        code: 'INQUIRY_CREATE_FAILED',
+        message: error instanceof Error ? error.message : 'Unable to submit your inquiry right now.',
+      },
+      { status: 500, headers: frontCorsHeaders() },
+    );
+  }
 }
 
 export async function GET(request: NextRequest) {

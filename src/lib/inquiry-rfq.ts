@@ -23,8 +23,117 @@ export type InquiryRfqContact = {
   country: string;
   phone: string;
   vat: string;
+  jobTitle?: string;
+  website?: string;
+  companySize?: string;
+  companyAddress?: string;
   createAccount: boolean;
 };
+
+export type InquiryProfile = {
+  fullName: string;
+  email: string;
+  country: string;
+  phone: string;
+  jobTitle: string;
+  companyName: string;
+  vat: string;
+  companyWebsite: string;
+  companySize: string;
+  companyAddress: string;
+  projectName: string;
+  industry: string;
+  projectStart: string;
+  annualTarget: string;
+};
+
+export function emptyInquiryProfile(): InquiryProfile {
+  return {
+    fullName: '',
+    email: '',
+    country: '',
+    phone: '',
+    jobTitle: '',
+    companyName: '',
+    vat: '',
+    companyWebsite: '',
+    companySize: '',
+    companyAddress: '',
+    projectName: '',
+    industry: '',
+    projectStart: '',
+    annualTarget: '',
+  };
+}
+
+function textValue(value: unknown) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+export function buildInquiryProfile(input: {
+  fullName?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  company?: string | null;
+  country?: string | null;
+  jobTitle?: string | null;
+  companyWebsite?: string | null;
+  companySize?: string | null;
+  rfqPayload?: InquiryRfqPayload | null;
+}): InquiryProfile {
+  const contact = input.rfqPayload?.contact;
+  const project = input.rfqPayload?.project;
+  return {
+    fullName: textValue(contact?.fullName) || textValue(input.fullName),
+    email: textValue(contact?.email) || textValue(input.email),
+    country: textValue(contact?.country) || textValue(input.country),
+    phone: textValue(contact?.phone) || textValue(input.phone),
+    jobTitle: textValue(contact?.jobTitle) || textValue(input.jobTitle),
+    companyName: textValue(contact?.company) || textValue(input.company),
+    vat: textValue(contact?.vat),
+    companyWebsite: textValue(contact?.website) || textValue(input.companyWebsite),
+    companySize: textValue(contact?.companySize) || textValue(input.companySize),
+    companyAddress: textValue(contact?.companyAddress),
+    projectName: textValue(project?.projectName),
+    industry: textValue(project?.industry),
+    projectStart: textValue(project?.targetStartDate),
+    annualTarget: textValue(project?.annualVolumeEstimate),
+  };
+}
+
+export function mapInquiryProfileFromRow(row: {
+  fullName?: string | null;
+  email?: string | null;
+  country?: string | null;
+  phone?: string | null;
+  jobTitle?: string | null;
+  companyName?: string | null;
+  vat?: string | null;
+  companyWebsite?: string | null;
+  companySize?: string | null;
+  companyAddress?: string | null;
+  projectName?: string | null;
+  industry?: string | null;
+  projectStart?: string | null;
+  annualTarget?: string | null;
+}): InquiryProfile {
+  return {
+    fullName: textValue(row.fullName),
+    email: textValue(row.email),
+    country: textValue(row.country),
+    phone: textValue(row.phone),
+    jobTitle: textValue(row.jobTitle),
+    companyName: textValue(row.companyName),
+    vat: textValue(row.vat),
+    companyWebsite: textValue(row.companyWebsite),
+    companySize: textValue(row.companySize),
+    companyAddress: textValue(row.companyAddress),
+    projectName: textValue(row.projectName),
+    industry: textValue(row.industry),
+    projectStart: textValue(row.projectStart),
+    annualTarget: textValue(row.annualTarget),
+  };
+}
 
 export type InquiryRfqCompliance = {
   unrestrictedUseConfirmed: boolean;
@@ -57,9 +166,17 @@ export function isContactInquiry(payload: InquiryRfqPayload | null | undefined):
   return payload?.kind === 'contact';
 }
 
+export function normalizeInquiryType(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  return trimmed.slice(0, 80);
+}
+
 export function getInquiryDisplayTitle(
   payload: InquiryRfqPayload | null | undefined,
   productName?: string | null,
+  inquiryType?: string | null,
 ): string {
   const projectName = payload?.project?.projectName?.trim();
   if (projectName) {
@@ -68,6 +185,11 @@ export function getInquiryDisplayTitle(
 
   if (isContactInquiry(payload)) {
     return 'Contact';
+  }
+
+  const typeLabel = inquiryType?.trim();
+  if (typeLabel) {
+    return typeLabel;
   }
 
   return productName?.trim() || 'Inquiry';

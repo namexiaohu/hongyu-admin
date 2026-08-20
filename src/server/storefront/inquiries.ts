@@ -5,14 +5,16 @@ import { and, asc, count, desc, eq, gt, ilike } from 'drizzle-orm';
 import {
   type InquiryQuotedLine,
   type InquiryRfqPayload,
+  buildInquiryProfile,
   getInquiryDisplayTitle,
   getInquiryValueLabel,
   isContactInquiry,
+  normalizeInquiryType,
 } from '@/lib/inquiry-rfq';
 import { buildRfqMessageTextAsync } from '@/lib/inquiry-rfq-server';
 import { productNameSql, productSlugSql } from '@/server/products/resolve-product-translation';
 import { db } from '@/server/db';
-import { admins, inquiries, inquiryMessages, products, verificationTokens } from '@/server/db/schema';
+import { admins, inquiries, inquiryMessages, inquiryProfiles, products, verificationTokens } from '@/server/db/schema';
 
 export type InquiryStatus = 'new' | 'contacted' | 'quoted' | 'closed';
 
@@ -34,6 +36,10 @@ type InquiryInput = {
   country?: string | null;
   message: string;
   sourcePageUrl?: string | null;
+  inquiryType?: string | null;
+  jobTitle?: string | null;
+  companyWebsite?: string | null;
+  companySize?: string | null;
   rfqPayload?: InquiryRfqPayload | null;
 };
 
@@ -233,6 +239,7 @@ export async function createStorefrontInquiry(input: InquiryInput): Promise<Inqu
       queueKind: 'new_inquiry',
       lastMessageAt: now,
       sourcePageUrl: input.sourcePageUrl ?? null,
+      inquiryType: normalizeInquiryType(input.inquiryType),
       quoteNumber,
       rfqPayload: input.rfqPayload ?? null,
     })
@@ -249,7 +256,23 @@ export async function createStorefrontInquiry(input: InquiryInput): Promise<Inqu
     createdAt: now,
   });
 
-  if (input.userId) {
+  const profile = buildInquiryProfile({
+    fullName: created.fullName,
+    email: created.email,
+    phone: created.phone,
+    company: created.company,
+    country: created.country,
+    jobTitle: input.jobTitle,
+    companyWebsite: input.companyWebsite,
+    companySize: input.companySize,
+    rfqPayload: input.rfqPayload ?? null,
+  });
+  await db.insert(inquiryProfiles).values({
+    inquiryId: created.id,
+    ...profile,
+  });
+
+  if (input.userId || !input.rfqPayload) {
     return toInquiryReceipt(created);
   }
 
@@ -346,6 +369,7 @@ export async function getStorefrontInquiriesByUser(userId: string, locale = 'en'
       country: inquiries.country,
       message: inquiries.message,
       rfqPayload: inquiries.rfqPayload,
+      inquiryType: inquiries.inquiryType,
       quotedLines: inquiries.quotedLines,
       expiresAt: inquiries.expiresAt,
       createdAt: inquiries.createdAt,
@@ -362,7 +386,7 @@ export async function getStorefrontInquiriesByUser(userId: string, locale = 'en'
     const payload = row.rfqPayload as InquiryRfqPayload | null;
     const quotedLines = (row.quotedLines ?? null) as InquiryQuotedLine[] | null;
     const lineCount = isContactInquiry(payload) ? 0 : (payload?.lines?.length ?? 0);
-    const projectName = getInquiryDisplayTitle(payload, row.productName);
+    const projectName = getInquiryDisplayTitle(payload, row.productName, row.inquiryType);
 
     return {
       id: row.id,

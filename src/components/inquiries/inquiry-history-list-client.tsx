@@ -146,6 +146,14 @@ export function InquiryHistoryListClient({ initialList, initialQuery }: InquiryH
       ...adminTableNowrapHeader(),
     },
     {
+      title: '询盘类型',
+      dataIndex: 'inquiryType',
+      width: 120,
+      ellipsis: true,
+      render: (value: string | null) => value?.trim() || '—',
+      ...adminTableNowrapHeader(),
+    },
+    {
       title: '客户',
       key: 'customer',
       width: 220,

@@ -17,14 +17,17 @@ import { type AdminListPageSize, normalizePageSize } from '@/lib/admin-list-quer
 import type { InquiryActiveListQuery, InquiryHistoryListQuery } from '@/lib/inquiry-list-query';
 import { getVolumePricingForQuantity } from '@/lib/volume-pricing';
 import { db } from '@/server/db';
-import { admins, inquiries, inquiryMessages, productTranslations, products, users } from '@/server/db/schema';
+import { admins, inquiries, inquiryMessages, inquiryProfiles, productTranslations, products, users } from '@/server/db/schema';
 import { getCommerceConfig } from '@/server/commerce/config';
 import { DEFAULT_PRODUCT_LOCALE, productNameSql, productSlugSql } from '@/server/products/resolve-product-translation';
 import {
+  buildInquiryProfile,
   getInquiryDisplayTitle,
   hasUnsetQuotedUnitPrice,
   isContactInquiry,
+  mapInquiryProfileFromRow,
   normalizeInquiryQuotedLines,
+  type InquiryProfile,
   type InquiryQuotedLine,
   type InquiryRfqKind,
   type InquiryRfqPayload,
@@ -62,6 +65,7 @@ export type AdminInquiryListItem = {
   productSpu: string;
   projectName: string | null;
   inquiryKind: InquiryRfqKind | null;
+  inquiryType: string | null;
 };
 
 export type AdminInquiryDetail = AdminInquiryListItem & {
@@ -73,6 +77,7 @@ export type AdminInquiryDetail = AdminInquiryListItem & {
   handledByEmail: string | null;
   productId: string | null;
   rfqPayload: InquiryRfqPayload | null;
+  profile: InquiryProfile;
   quotedLines: InquiryQuotedLine[] | null;
   expiresAt: Date | null;
   messages: AdminInquiryMessage[];
@@ -147,6 +152,7 @@ function mapListRow(row: {
   productName: string | null;
   productSlug: string | null;
   productSpu: string | null;
+  inquiryType?: string | null;
 }): AdminInquiryListItem {
   const payload = row.rfqPayload as InquiryRfqPayload | null;
   const inquiryKind = payload?.kind ?? (payload?.lines?.length ? 'rfq' : null);
@@ -170,8 +176,9 @@ function mapListRow(row: {
     productName: displayProductName,
     productSlug: row.productSlug ?? '',
     productSpu: row.productSpu ?? '',
-    projectName: getInquiryDisplayTitle(payload, row.productName),
+    projectName: getInquiryDisplayTitle(payload, row.productName, row.inquiryType),
     inquiryKind,
+    inquiryType: row.inquiryType ?? null,
   };
 }
 
@@ -187,6 +194,7 @@ const inquiryListSelect = {
   company: inquiries.company,
   country: inquiries.country,
   rfqPayload: inquiries.rfqPayload,
+  inquiryType: inquiries.inquiryType,
   createdAt: inquiries.createdAt,
   lastMessageAt: inquiries.lastMessageAt,
   resolvedAt: inquiries.resolvedAt,
@@ -483,10 +491,12 @@ export async function getAdminInquiryDetail(id: string): Promise<AdminInquiryDet
       handledAt: inquiries.handledAt,
       productId: inquiries.productId,
       handledByEmail: users.email,
+      profile: inquiryProfiles,
     })
     .from(inquiries)
     .leftJoin(products, eq(products.id, inquiries.productId))
     .leftJoin(users, eq(users.id, inquiries.handledBy))
+    .leftJoin(inquiryProfiles, eq(inquiryProfiles.inquiryId, inquiries.id))
     .where(eq(inquiries.id, id))
     .limit(1);
 
@@ -498,6 +508,15 @@ export async function getAdminInquiryDetail(id: string): Promise<AdminInquiryDet
     rfqPayload,
     row.quotedLines,
   );
+  const fallbackProfile = buildInquiryProfile({
+    fullName: row.fullName,
+    email: row.email,
+    phone: row.phone,
+    company: row.company,
+    country: row.country,
+    rfqPayload,
+  });
+  const profile = row.profile?.inquiryId ? mapInquiryProfileFromRow(row.profile) : fallbackProfile;
 
   return {
     ...mapListRow(row),
@@ -509,6 +528,7 @@ export async function getAdminInquiryDetail(id: string): Promise<AdminInquiryDet
     handledByEmail: row.handledByEmail,
     productId: row.productId,
     rfqPayload,
+    profile,
     quotedLines,
     expiresAt: row.expiresAt,
     messages,

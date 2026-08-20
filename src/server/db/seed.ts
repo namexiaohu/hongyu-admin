@@ -16,6 +16,7 @@ import {
   categoryTranslations,
   contentBlocks,
   inquiries,
+  inquiryProfiles,
   orderItems,
   orderRefundRequests,
   orders,
@@ -397,7 +398,7 @@ async function main() {
 
   const [existingInquiry] = await db.select().from(inquiries).where(eq(inquiries.userId, adminUser.id)).limit(1);
   if (!existingInquiry) {
-    await db.insert(inquiries).values({
+    const [seededInquiry] = await db.insert(inquiries).values({
       productId: p3.id,
       userId: adminUser.id,
       fullName: 'Site Admin',
@@ -411,7 +412,18 @@ async function main() {
       handledBy: adminUser.id,
       handledAt: new Date(),
       internalNote: 'Demo RFQ seeded for admin review flow.',
-    });
+    }).returning({ id: inquiries.id });
+
+    if (seededInquiry) {
+      await db.insert(inquiryProfiles).values({
+        inquiryId: seededInquiry.id,
+        fullName: 'Site Admin',
+        email: adminUser.email,
+        phone: '+1-415-555-0102',
+        companyName: 'Lianchuan Motion',
+        country: 'United States',
+      });
+    }
   }
 
   const demoOrderNumber = 'LC-DEMO-0001';
