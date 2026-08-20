@@ -1,6 +1,6 @@
 import { resolveStorefrontAssetUrl } from '@/lib/storefront-asset-url';
 
-const LOCAL_PUBLIC_PATH = /^\/(images|hero|media)\//i;
+const LOCAL_PUBLIC_PATH = /^\/(images|hero|media|files)\//i;
 
 export function getPublicOssDomain() {
   const raw = (

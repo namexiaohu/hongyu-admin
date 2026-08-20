@@ -2,6 +2,7 @@
 
 import {
   AppstoreOutlined,
+  BankOutlined,
   BarsOutlined,
   CalendarOutlined,
   CommentOutlined,
@@ -59,6 +60,7 @@ const iconByKey: Record<string, React.ReactNode> = {
   '/admin/surgeons': <TeamOutlined />,
   '/admin/partner-centers': <GlobalOutlined />,
   '/admin/summits': <CalendarOutlined />,
+  '/admin/company': <BankOutlined />,
   '/admin/editorial/boards': <AppstoreOutlined />,
   '/admin/faq': <FileTextOutlined />,
   '/admin/editorial': <FileTextOutlined />,

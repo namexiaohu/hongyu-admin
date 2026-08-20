@@ -45,6 +45,12 @@ import type { EditorialContentPayload } from '@/lib/editorial-content';
 import type { VerificationDocument } from '@/lib/customer-profile';
 import type { BrandNarrativeBlockDraft } from '@/lib/brand-narrative-blocks';
 import type { BrandNarrativeStat } from '@/lib/brand-narrative-content';
+import type {
+  CompanyLabelValue,
+  CompanyOffice,
+  CompanyPublicFile,
+  CompanyTeamMember,
+} from '@/lib/company-profile';
 import type { AdminProductPayload } from '@/lib/product-content';
 import type { SolutionBlockDraft } from '@/lib/solution-blocks';
 import type { SolutionMaterial, SolutionProductParam, SolutionStat } from '@/lib/solution-content';
@@ -1546,6 +1552,44 @@ export const partnerCenters = pgTable(
     slugUnique: uniqueIndex('partner_centers_slug_unique').on(table.slug),
     regionIdx: index('partner_centers_region_idx').on(table.region),
     sortIdx: index('partner_centers_sort_idx').on(table.sortOrder),
+  }),
+);
+
+export const companyProfiles = pgTable('company_profiles', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  companyEmail: varchar('company_email', { length: 255 }).notNull().default(''),
+  businessEmail: varchar('business_email', { length: 255 }).notNull().default(''),
+  website: varchar('website', { length: 300 }).notNull().default(''),
+  icpNumber: varchar('icp_number', { length: 120 }).notNull().default(''),
+  publicFiles: jsonb('public_files').$type<CompanyPublicFile[]>().notNull().default([]),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const companyProfileTranslations = pgTable(
+  'company_profiles_i18n',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    profileId: uuid('profile_id').notNull().references(() => companyProfiles.id, { onDelete: 'cascade' }),
+    locale: varchar('locale', { length: 16 }).notNull(),
+    companyName: varchar('company_name', { length: 255 }).notNull().default(''),
+    slogan: varchar('slogan', { length: 255 }).notNull().default(''),
+    positioning: text('positioning').notNull().default(''),
+    copyright: varchar('copyright', { length: 255 }).notNull().default(''),
+    contactPhone: varchar('contact_phone', { length: 120 }).notNull().default(''),
+    address: varchar('address', { length: 400 }).notNull().default(''),
+    businessHours: varchar('business_hours', { length: 200 }).notNull().default(''),
+    businessHotline: varchar('business_hotline', { length: 120 }).notNull().default(''),
+    basicInfo: jsonb('basic_info').$type<CompanyLabelValue[]>().notNull().default([]),
+    executives: jsonb('executives').$type<CompanyTeamMember[]>().notNull().default([]),
+    managers: jsonb('managers').$type<CompanyTeamMember[]>().notNull().default([]),
+    offices: jsonb('offices').$type<CompanyOffice[]>().notNull().default([]),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    profileLocaleUnique: uniqueIndex('company_profiles_i18n_profile_locale_unique').on(table.profileId, table.locale),
+    profileIdIdx: index('company_profiles_i18n_profile_id_idx').on(table.profileId),
   }),
 );
 

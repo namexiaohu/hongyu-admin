@@ -54,6 +54,7 @@ export const adminNavItems: AdminNavItem[] = [
       { key: '/admin/surgeons', title: '认证术者', href: '/admin/surgeons' },
       { key: '/admin/partner-centers', title: '合作中心', href: '/admin/partner-centers' },
       { key: '/admin/summits', title: '行业峰会', href: '/admin/summits' },
+      { key: '/admin/company', title: '企业信息', href: '/admin/company' },
     ],
   },
   {
