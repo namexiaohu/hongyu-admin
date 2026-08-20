@@ -29,11 +29,11 @@ export type UpdateSiteLanguageInput = {
   currencyCode?: string;
 };
 
-const initialLanguageCodes = ['en', 'de', 'es'];
+const initialLanguageCodes = ['zh-CN', 'en', 'es'];
 
 const initialLanguageCurrencies: Record<string, string> = {
+  'zh-CN': 'CNY',
   en: 'USD',
-  de: 'EUR',
   es: 'EUR',
 };
 
@@ -60,7 +60,7 @@ async function seedDatabaseLanguages() {
         countryCodes: language.countryCodes ?? [],
         currencyCode: initialLanguageCurrencies[code] ?? getDefaultCurrencyForLanguage(code),
         status: 'active' as SiteLanguageStatus,
-        isDefault: code === 'en',
+        isDefault: code === 'zh-CN' || code === 'zh',
         sortOrder: index,
       };
     })

@@ -25,6 +25,7 @@
     "db:seed:company": "tsx scripts/seed-company-profile.ts",
     "db:seed:social-media": "tsx scripts/seed-social-media.ts",
     "db:migrate-social-media-r2": "tsx scripts/migrate-social-media-images-to-r2.ts",
+    "db:migrate-homepage-r2": "tsx scripts/migrate-homepage-media-to-r2.ts",
     "db:migrate-oss-keys": "tsx scripts/migrate-images-to-oss-keys.ts",
     "db:test:brand-narratives": "tsx --tsconfig tsconfig.test.json scripts/test-brand-narratives.ts"
   },

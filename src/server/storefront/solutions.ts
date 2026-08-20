@@ -327,11 +327,13 @@ export async function getStorefrontSolutionsList(input: {
   page?: number;
   pageSize?: number;
   board?: string | null;
+  sort?: 'sortOrder' | 'createdAt';
 }): Promise<StorefrontSolutionListResponse> {
   const locale = input.locale?.trim() || (await getDefaultSiteLanguageCode());
   const page = Math.max(1, input.page ?? 1);
   const pageSize = Math.min(50, Math.max(1, input.pageSize ?? 4));
   const boardKey = input.board?.trim() || null;
+  const sortByCreatedAt = input.sort === 'createdAt';
 
   // Fetch all published solutions with their board links and translations
   const rows = await db
@@ -351,7 +353,11 @@ export async function getStorefrontSolutionsList(input: {
       eq(productCoverageBoardTranslations.boardId, productCoverageBoards.id),
     )
     .where(eq(solutions.status, 'published'))
-    .orderBy(asc(solutions.sortOrder), asc(solutions.slug));
+    .orderBy(
+      ...(sortByCreatedAt
+        ? [asc(solutions.createdAt), asc(solutions.slug)]
+        : [asc(solutions.sortOrder), asc(solutions.slug)]),
+    );
 
   type BoardEntry = { key: string; translations: Array<{ locale: string; name: string }> };
   const grouped = new Map<string, {
@@ -411,6 +417,21 @@ export async function getStorefrontSolutionsList(input: {
 
   if (boardKey && boardKey !== 'all') {
     items = items.filter((entry) => entry.boardKeys.includes(boardKey));
+  }
+
+  if (sortByCreatedAt) {
+    const createdAtBySlug = new Map(
+      [...grouped.values()].map((entry) => [
+        entry.solution.slug,
+        entry.solution.createdAt?.getTime() ?? 0,
+      ]),
+    );
+    items = [...items].sort((a, b) => {
+      const left = createdAtBySlug.get(a.item.slug) ?? 0;
+      const right = createdAtBySlug.get(b.item.slug) ?? 0;
+      if (left !== right) return left - right;
+      return a.item.slug.localeCompare(b.item.slug);
+    });
   }
 
   const total = items.length;

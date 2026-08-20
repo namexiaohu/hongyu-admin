@@ -10,12 +10,15 @@ export async function GET(request: NextRequest) {
   const board = (searchParams.get('board') ?? searchParams.get('category')) || undefined;
   const page = Number.parseInt(searchParams.get('page') ?? '1', 10);
   const pageSize = Number.parseInt(searchParams.get('pageSize') ?? '4', 10);
+  const sortParam = searchParams.get('sort');
+  const sort = sortParam === 'createdAt' ? 'createdAt' as const : 'sortOrder' as const;
 
   const payload = await getStorefrontSolutionsList({
     board,
     locale,
     page: Number.isFinite(page) ? page : 1,
     pageSize: Number.isFinite(pageSize) ? pageSize : 4,
+    sort,
   });
 
   return NextResponse.json(payload, { headers: frontCorsHeaders() });

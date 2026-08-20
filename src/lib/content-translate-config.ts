@@ -17,11 +17,14 @@ export type ContentTranslateType =
   | 'solutionBlockItem'
   | 'socialMedia'
   | 'companyProfile'
+  | 'homepageConfig'
   | 'surgeon'
   | 'partnerCenter'
   | 'summit'
   | 'summitAgendaGroup'
-  | 'summitAgendaItem';
+  | 'summitAgendaItem'
+  | 'websiteNavColumn'
+  | 'websiteNavItem';
 
 type ContentTranslateProfile = {
   sourceFields: readonly string[];
@@ -208,6 +211,42 @@ export const CONTENT_TRANSLATE_PROFILES: Record<ContentTranslateType, ContentTra
     translateNotes:
       'basicInfoText uses LABEL|||VALUE per line. executivesText and managersText use TITLE|||NAME per line. officesText uses NAME|||LOCATION|||PHONE|||CONTACT|||EMAIL per line. Translate human-readable text only; keep numbers, emails, and ||| separators.',
   },
+  homepageConfig: {
+    sourceFields: [
+      'bannerTitle',
+      'bannerSubtitle',
+      'bannerDescription',
+      'solutionsTitle',
+      'solutionsDescription',
+      'aboutTitle',
+      'aboutDescription',
+      'globalTitle',
+      'globalDescription',
+      'educationTitle',
+      'educationDescription',
+      'statsText',
+      'educationText',
+    ],
+    plainTextFields: [
+      'bannerTitle',
+      'bannerSubtitle',
+      'bannerDescription',
+      'solutionsTitle',
+      'solutionsDescription',
+      'aboutTitle',
+      'aboutDescription',
+      'globalTitle',
+      'globalDescription',
+      'educationTitle',
+      'educationDescription',
+      'statsText',
+      'educationText',
+    ],
+    serverLabel: 'homepage configuration',
+    tooltip: '将默认语言已保存的首页文案翻译到当前语言；轮播媒体与封面图不会翻译',
+    translateNotes:
+      'statsText uses TITLE|||SUBTITLE|||DESCRIPTION per line. educationText uses TITLE|||DESCRIPTION|||BADGE|||EXTRA per line. Keep line count and ||| separators. Do not translate URLs or image paths.',
+  },
   surgeon: {
     sourceFields: ['name', 'position', 'institution', 'expertise', 'experience', 'tagsText'],
     plainTextFields: ['name', 'position', 'institution', 'expertise', 'experience', 'tagsText'],
@@ -241,6 +280,18 @@ export const CONTENT_TRANSLATE_PROFILES: Record<ContentTranslateType, ContentTra
     plainTextFields: ['title', 'desc', 'speaker'],
     serverLabel: 'summit agenda item',
     tooltip: '将默认语言已填写的议程环节标题、描述与演讲人翻译到当前语言，翻译后请校对',
+  },
+  websiteNavColumn: {
+    sourceFields: ['name'],
+    plainTextFields: ['name'],
+    serverLabel: 'website navigation column',
+    tooltip: '将默认语言已填写的导航栏目标题翻译到当前语言，翻译后请校对',
+  },
+  websiteNavItem: {
+    sourceFields: ['name'],
+    plainTextFields: ['name'],
+    serverLabel: 'website navigation item',
+    tooltip: '将默认语言已填写的导航条目标题翻译到当前语言，翻译后请校对',
   },
 };
 
@@ -337,6 +388,13 @@ export function validateDefaultTranslateSource(
     return null;
   }
 
+  if (contentType === 'homepageConfig') {
+    if (!fields.bannerTitle?.trim() && !fields.solutionsTitle?.trim() && !fields.aboutTitle?.trim()) {
+      return '默认语言内容不完整，请先完善首页文案';
+    }
+    return null;
+  }
+
   if (contentType === 'surgeon' || contentType === 'partnerCenter') {
     if (!fields.name?.trim()) {
       return '默认语言内容不完整，请先完善名称';
@@ -354,6 +412,13 @@ export function validateDefaultTranslateSource(
   if (contentType === 'summitAgendaItem') {
     if (!fields.title?.trim() && !fields.desc?.trim() && !fields.speaker?.trim()) {
       return '默认语言内容不完整，请先完善环节文案';
+    }
+    return null;
+  }
+
+  if (contentType === 'websiteNavColumn' || contentType === 'websiteNavItem') {
+    if (!fields.name?.trim()) {
+      return '默认语言内容不完整，请先填写名称';
     }
     return null;
   }

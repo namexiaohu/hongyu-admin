@@ -29,6 +29,10 @@ function mimeFromExtension(ext: string) {
     case '.webp': return 'image/webp';
     case '.gif': return 'image/gif';
     case '.svg': return 'image/svg+xml';
+    case '.mp4': return 'video/mp4';
+    case '.webm': return 'video/webm';
+    case '.mov': return 'video/quicktime';
+    case '.avi': return 'video/x-msvideo';
     default: return 'image/jpeg';
   }
 }
@@ -62,7 +66,7 @@ async function loadImageBuffer(source: string) {
   };
 }
 
-/** 本地路径 / 外链 → R2 key；已是 key 则原样返回。 */
+/** 本地路径 / 外链 → R2 key；已是 key 则原样返回。支持图片与视频。 */
 export async function ensureOssImageKey(value: string, folder: string): Promise<string> {
   const trimmed = value.trim();
   if (!trimmed) return '';
@@ -95,6 +99,9 @@ export async function ensureOssImageKey(value: string, folder: string): Promise<
 
   return trimmed.replace(/^\//, '');
 }
+
+/** @deprecated alias — 与 ensureOssImageKey 相同，可处理视频。 */
+export const ensureOssMediaKey = ensureOssImageKey;
 
 export function isR2ReadyImageValue(value: string) {
   const trimmed = value.trim();

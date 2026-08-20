@@ -56,6 +56,8 @@ export const adminNavItems: AdminNavItem[] = [
       { key: '/admin/summits', title: '行业峰会', href: '/admin/summits' },
       { key: '/admin/company', title: '企业信息', href: '/admin/company' },
       { key: '/admin/social-media', title: '社交媒体', href: '/admin/social-media' },
+      { key: '/admin/homepage', title: '首页配置', href: '/admin/homepage' },
+      { key: '/admin/website-config', title: '网站配置', href: '/admin/website-config' },
     ],
   },
   {

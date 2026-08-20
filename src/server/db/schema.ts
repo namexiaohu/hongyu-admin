@@ -65,6 +65,12 @@ import type {
   CompanyTeamMember,
 } from '@/lib/company-profile';
 import type {
+  HomepageEducationItem,
+  HomepageMediaSlide,
+  HomepageStatItem,
+} from '@/lib/homepage-config';
+import type { NavColumn } from '@/lib/website-config';
+import type {
   FeaturedPost,
   OverseasContact,
   SocialChannel,
@@ -1638,6 +1644,49 @@ export const companyProfileTranslations = pgTable(
     profileIdIdx: index('company_profiles_i18n_profile_id_idx').on(table.profileId),
   }),
 );
+
+export const homepageConfigs = pgTable('homepage_configs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  bannerSlides: jsonb('banner_slides').$type<HomepageMediaSlide[]>().notNull().default([]),
+  aboutSlides: jsonb('about_slides').$type<HomepageMediaSlide[]>().notNull().default([]),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const homepageConfigTranslations = pgTable(
+  'homepage_configs_i18n',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    configId: uuid('config_id').notNull().references(() => homepageConfigs.id, { onDelete: 'cascade' }),
+    locale: varchar('locale', { length: 16 }).notNull(),
+    bannerTitle: text('banner_title').notNull().default(''),
+    bannerSubtitle: text('banner_subtitle').notNull().default(''),
+    bannerDescription: text('banner_description').notNull().default(''),
+    solutionsTitle: text('solutions_title').notNull().default(''),
+    solutionsDescription: text('solutions_description').notNull().default(''),
+    aboutTitle: text('about_title').notNull().default(''),
+    aboutDescription: text('about_description').notNull().default(''),
+    stats: jsonb('stats').$type<HomepageStatItem[]>().notNull().default([]),
+    globalTitle: text('global_title').notNull().default(''),
+    globalDescription: text('global_description').notNull().default(''),
+    educationTitle: text('education_title').notNull().default(''),
+    educationDescription: text('education_description').notNull().default(''),
+    educationItems: jsonb('education_items').$type<HomepageEducationItem[]>().notNull().default([]),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    configLocaleUnique: uniqueIndex('homepage_configs_i18n_config_locale_unique').on(table.configId, table.locale),
+    configIdIdx: index('homepage_configs_i18n_config_id_idx').on(table.configId),
+  }),
+);
+
+export const websiteConfigs = pgTable('website_configs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  navColumns: jsonb('nav_columns').$type<NavColumn[]>().notNull().default([]),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
 
 export const socialMediaProfiles = pgTable('social_media_profiles', {
   id: uuid('id').defaultRandom().primaryKey(),
