@@ -4,6 +4,7 @@ import { AdminShell } from '@/components/layout/admin-shell';
 import { getSiteUrl } from '@/lib/app-urls';
 import { getServerSitePreferences } from '@/lib/i18n-server';
 import { buildMetadata } from '@/lib/seo';
+import { ADMIN_PANEL_SUBTITLE, ADMIN_PANEL_TITLE } from '@/lib/site-config';
 
 /** Admin pages depend on live DB data — skip static prerender at build time. */
 export const dynamic = 'force-dynamic';
@@ -20,5 +21,13 @@ export async function generateMetadata() {
 }
 
 export default function AdminLayout({ children }: PropsWithChildren) {
-  return <AdminShell siteUrl={getSiteUrl()}>{children}</AdminShell>;
+  return (
+    <AdminShell
+      siteUrl={getSiteUrl()}
+      panelTitle={ADMIN_PANEL_TITLE}
+      panelSubtitle={ADMIN_PANEL_SUBTITLE}
+    >
+      {children}
+    </AdminShell>
+  );
 }

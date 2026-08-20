@@ -4,6 +4,10 @@ export const SITE_NAME = 'STEPMOTECH';
 export const SITE_LEGACY_NAME = 'VexMotor';
 export const SITE_URL = getSiteUrl();
 
+/** Admin sidebar branding (override via env) */
+export const ADMIN_PANEL_TITLE = process.env.ADMIN_PANEL_TITLE ?? 'VexMotor 管理后台';
+export const ADMIN_PANEL_SUBTITLE = process.env.ADMIN_PANEL_SUBTITLE ?? '工业运动控制电商运营中心';
+
 export const DEFAULT_SEO_TITLE = 'STEPMOTECH — Precision Stepper, BLDC & Servo Motors';
 export const DEFAULT_SEO_DESCRIPTION =
   'Engineering-grade motion components. Ship worldwide from US/EU/CN warehouses. Datasheets, CAD, tiered pricing.';

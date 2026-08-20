@@ -80,7 +80,12 @@ function toMenuItems(items: AdminNavItem[]): NonNullable<MenuProps['items']> {
 
 const menuItems = toMenuItems(adminNavItems);
 
-export function AdminShell({ children, siteUrl }: PropsWithChildren<{ siteUrl: string }>) {
+export function AdminShell({
+  children,
+  siteUrl,
+  panelTitle,
+  panelSubtitle,
+}: PropsWithChildren<{ siteUrl: string; panelTitle: string; panelSubtitle: string }>) {
   const pathname = usePathname();
   const pageTitle = getAdminPageTitle(pathname);
   const selected = getAdminNavSelectedKey(pathname);
@@ -90,10 +95,10 @@ export function AdminShell({ children, siteUrl }: PropsWithChildren<{ siteUrl: s
       <Sider width={240} theme="light" style={{ borderRight: '1px solid #e5e7eb' }}>
         <div style={{ padding: '20px 20px 8px' }}>
           <Typography.Title level={4} style={{ margin: 0 }}>
-            VexMotor 管理后台
+            {panelTitle}
           </Typography.Title>
           <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
-            工业运动控制电商运营中心
+            {panelSubtitle}
           </Typography.Paragraph>
         </div>
         <Menu
