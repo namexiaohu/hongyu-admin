@@ -23,6 +23,7 @@
     "db:seed:surgeons": "tsx scripts/seed-surgeons.ts",
     "db:seed:surgeon-profiles": "tsx scripts/seed-surgeon-profile-fields.ts",
     "db:seed:partner-centers": "tsx scripts/seed-partner-centers.ts",
+    "db:seed:partner-center-profiles": "tsx scripts/seed-partner-center-profiles.ts",
     "db:seed:partner-center-surgeons": "tsx scripts/seed-partner-center-surgeons.ts",
     "db:seed:summits": "tsx scripts/seed-summits.ts",
     "db:seed:company": "tsx scripts/seed-company-profile.ts",
