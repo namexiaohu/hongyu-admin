@@ -1343,6 +1343,7 @@ export const productTranslations = pgTable(
     payload: jsonb('payload').$type<AdminProductPayload>().notNull().default({
       coverUrl: null,
       coverAlt: null,
+      videoUrl: null,
       gallery: [],
       tags: [],
       attachments: [],

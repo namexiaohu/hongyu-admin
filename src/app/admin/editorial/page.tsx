@@ -3,6 +3,7 @@ import { Suspense } from 'react';
 import { AdminEditorialClient } from './editorial-client';
 
 import { parseAdminListQuery } from '@/lib/admin-list-query';
+import { resolveEnabledBoardKey } from '@/lib/editorial-content';
 import { getAdminEditorialContentListPaginated } from '@/server/admin/editorial-content';
 import { getAdminEditorialDashboard } from '@/server/admin/editorial';
 import { getActiveAdminSiteLanguages } from '@/server/admin/languages';
@@ -18,10 +19,9 @@ async function EditorialPageContent({ searchParams }: PageProps) {
     searchParams,
   ]);
 
-  const boardKeys = new Set(dashboard.coverage.map((board) => board.key));
-  const defaultBoard = dashboard.coverage[0]?.key ?? '';
+  const defaultBoard = resolveEnabledBoardKey(dashboard.coverage);
   const initialQuery = parseAdminListQuery(params, { defaultBoard });
-  const boardKey = initialQuery.board && boardKeys.has(initialQuery.board) ? initialQuery.board : defaultBoard;
+  const boardKey = resolveEnabledBoardKey(dashboard.coverage, initialQuery.board);
   const initialList = await getAdminEditorialContentListPaginated({
     contentModule: 'editorial',
     boardKey: boardKey || defaultBoard,

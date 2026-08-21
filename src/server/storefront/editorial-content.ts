@@ -6,7 +6,7 @@ import { resolveBlogCategorySlug } from '@/lib/blog-categories';
 import {
   type EditorialContentPayload,
 } from '@/lib/editorial-content';
-import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
+import { resolveOssAssetUrl, rewriteHtmlOssAssets } from '@/lib/oss-asset-url';
 import { db } from '@/server/db';
 import {
   editorialContentBoards,
@@ -107,7 +107,7 @@ export async function getStorefrontBoardFaqs(boardKeyInput: string, localeInput?
     return {
       id: content.id,
       title: picked.title,
-      body: payload.body,
+      body: rewriteHtmlOssAssets(payload.body, 'toPublicUrl'),
     };
   });
 

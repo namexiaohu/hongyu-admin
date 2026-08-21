@@ -18,6 +18,7 @@ import {
   resolveContentModuleByBoard,
 } from '@/lib/editorial-content';
 import { hasMeaningfulHtmlBody } from '@/lib/editorial-html';
+import { rewriteHtmlOssAssets, toOssStorageKey } from '@/lib/oss-asset-url';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import { extractSummaryFromHtmlBody } from '@/lib/editorial-summary';
 import { db } from '@/server/db';
@@ -175,7 +176,8 @@ function normalizeDateValue(value: Date | string | null | undefined) {
 }
 
 function normalizeCoverImage(value: string | null | undefined) {
-  return value?.trim() || '';
+  const trimmed = value?.trim() || '';
+  return trimmed ? toOssStorageKey(trimmed) : '';
 }
 
 function normalizeCoverStyle(value: number | null | undefined) {
@@ -187,7 +189,7 @@ function normalizeCoverStyle(value: number | null | undefined) {
 
 function normalizePayload(payload: EditorialContentPayload): EditorialContentPayload {
   return {
-    body: payload.body.trim(),
+    body: rewriteHtmlOssAssets(payload.body.trim(), 'toStorageKey'),
     coverStyle: normalizeCoverStyle(payload.coverStyle ?? null),
     tags: payload.tags.map((value) => value.trim()).filter(Boolean),
     relatedProductSlugs: payload.relatedProductSlugs.map(normalizeSlug).filter(Boolean),

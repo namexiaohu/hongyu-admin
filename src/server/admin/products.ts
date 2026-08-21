@@ -30,6 +30,7 @@ import {
   type ProductStatus,
   type ProductStat,
 } from '@/lib/product-content';
+import { rewriteHtmlOssAssets, toOssStorageKey } from '@/lib/oss-asset-url';
 import { normalizeEntityKeyForSave } from '@/lib/admin-entity-key';
 import type { ProductListQuery } from '@/lib/product-list-query';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
@@ -61,6 +62,7 @@ const attachmentSchema = z.array(z.object({
 const payloadSchema = z.object({
   coverUrl: z.string().trim().nullable().optional(),
   coverAlt: z.string().trim().nullable().optional(),
+  videoUrl: z.string().trim().nullable().optional(),
   gallery: gallerySchema.optional(),
   tags: z.array(z.string().trim().min(1)).default([]),
   attachments: attachmentSchema.optional(),
@@ -163,10 +165,11 @@ function parseDate(value: string | null | undefined) {
 function normalizePayload(payload: AdminProductPayload | undefined): AdminProductPayload {
   const base = payload ?? defaultProductPayload();
   return {
-    coverUrl: normalizeText(base.coverUrl),
+    coverUrl: normalizeText(base.coverUrl) ? toOssStorageKey(base.coverUrl!) : null,
     coverAlt: normalizeText(base.coverAlt),
+    videoUrl: normalizeText(base.videoUrl) ? toOssStorageKey(base.videoUrl!) : null,
     gallery: (base.gallery ?? []).map((item) => ({
-      url: item.url.trim(),
+      url: toOssStorageKey(item.url.trim()),
       alt: item.alt?.trim() ?? '',
       width: item.width ?? null,
       height: item.height ?? null,
@@ -174,7 +177,7 @@ function normalizePayload(payload: AdminProductPayload | undefined): AdminProduc
     tags: (base.tags ?? []).map((item) => item.trim()).filter(Boolean),
     attachments: (base.attachments ?? []).map((item) => ({
       name: item.name.trim(),
-      url: item.url.trim(),
+      url: toOssStorageKey(item.url.trim()),
       mimeType: item.mimeType.trim(),
     })).filter((item) => item.url),
     certifications: (base.certifications ?? []).map((item) => item.trim()).filter(Boolean),
@@ -298,7 +301,10 @@ function sanitizeTranslationInput(input: TranslationCreateInput) {
     extraText: input.extraText?.trim() ?? '',
     stats: normalizeProductStats(input.stats),
     shortDescription: normalizeText(input.shortDescription),
-    description: normalizeText(input.description),
+    description: (() => {
+      const text = normalizeText(input.description);
+      return text ? rewriteHtmlOssAssets(text, 'toStorageKey') : null;
+    })(),
     seoTitle: normalizeSeoText(input.seoTitle ?? normalizedName, 70),
     seoDescription: normalizeSeoText(input.seoDescription ?? input.shortDescription, 160),
     price: input.price,

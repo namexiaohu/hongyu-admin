@@ -1,7 +1,7 @@
 import { and, asc, count, desc, eq, exists, ilike, inArray, or, sql as drizzleSql } from 'drizzle-orm';
 
 import type { SolutionBlockDraft } from '@/lib/solution-blocks';
-import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
+import { resolveOssAssetUrl, rewriteHtmlOssAssets } from '@/lib/oss-asset-url';
 import { db } from '@/server/db';
 import {
   attachments,
@@ -1001,8 +1001,11 @@ export async function getProductBySlug(slug: string, localeInput?: string | null
       badgeText: product.badgeText || undefined,
       extraText: product.extraText || undefined,
       shortDescription: product.shortDescription,
-      description: product.description ?? '',
+      description: rewriteHtmlOssAssets(product.description ?? '', 'toPublicUrl'),
       coverImage,
+      videoUrl: product.payload?.videoUrl?.trim()
+        ? resolveOssAssetUrl(product.payload.videoUrl)
+        : null,
       gallery: mergeGalleryWithCover(baseGallery, coverImage),
       price: asMoney(product.price, product.currencyCode),
       compareAtPrice: product.compareAtPrice ? asMoney(product.compareAtPrice, product.currencyCode) : null,

@@ -36,6 +36,7 @@ export type ProductStat = {
 export type AdminProductPayload = {
   coverUrl: string | null;
   coverAlt: string | null;
+  videoUrl: string | null;
   gallery: ProductGalleryImage[];
   tags: string[];
   attachments: ProductAttachment[];
@@ -120,6 +121,7 @@ export function defaultProductPayload(): AdminProductPayload {
   return {
     coverUrl: null,
     coverAlt: null,
+    videoUrl: null,
     gallery: [],
     tags: [],
     attachments: [],

@@ -29,6 +29,19 @@ export function filterCoverageByModule<T extends { key: string }>(
   return boards.filter((board) => resolveContentModuleByBoard(board.key) === contentModule);
 }
 
+/** 选中看板若禁用或不存在，回退到第一个启用看板。 */
+export function resolveEnabledBoardKey<T extends { key: string; enabled?: boolean }>(
+  boards: T[],
+  preferredBoardKey?: string | null,
+) {
+  const preferred = preferredBoardKey?.trim() ?? '';
+  if (preferred) {
+    const matched = boards.find((board) => board.key === preferred);
+    if (matched && matched.enabled !== false) return matched.key;
+  }
+  return boards.find((board) => board.enabled !== false)?.key ?? '';
+}
+
 export type EditorialContentPayload = {
   body: string;
   coverStyle: number | null;

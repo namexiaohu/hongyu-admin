@@ -16,6 +16,7 @@ import {
   type SolutionMaterial,
   type SolutionStatus,
 } from '@/lib/solution-content';
+import { toOssStorageKey } from '@/lib/oss-asset-url';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import { normalizeSlug } from '@/lib/slug';
 import { db } from '@/server/db';
@@ -27,6 +28,17 @@ import {
   solutions,
 } from '@/server/db/schema';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
+
+function normalizeMaterials(materials: SolutionMaterial[] | undefined): SolutionMaterial[] {
+  if (!materials?.length) return [];
+  return materials
+    .map((item) => ({
+      name: item.name.trim(),
+      url: toOssStorageKey(item.url),
+      mimeType: item.mimeType?.trim() || 'application/octet-stream',
+    }))
+    .filter((item) => item.url);
+}
 
 function toIso(value: Date) {
   return value.toISOString();
@@ -265,8 +277,8 @@ export async function updateAdminSolution(id: string, input: unknown) {
       ...(parsed.slug !== undefined ? { slug: nextSlug } : {}),
       ...(parsed.status !== undefined ? { status: parsed.status } : {}),
       ...(parsed.sortOrder !== undefined ? { sortOrder: parsed.sortOrder } : {}),
-      ...(parsed.coverImage !== undefined ? { coverImage: parsed.coverImage } : {}),
-      ...(parsed.materials !== undefined ? { materials: parsed.materials } : {}),
+      ...(parsed.coverImage !== undefined ? { coverImage: toOssStorageKey(parsed.coverImage) } : {}),
+      ...(parsed.materials !== undefined ? { materials: normalizeMaterials(parsed.materials) } : {}),
       ...(parsed.status !== undefined || parsed.publishedAt !== undefined ? { publishedAt: nextPublishedAt } : {}),
       updatedAt: new Date(),
     })
@@ -388,8 +400,8 @@ export async function createAdminSolution(input: unknown) {
       categoryId: null,
       sortOrder: (maxSort?.sortOrder ?? 0) + 10,
       status: parsed.status ?? 'draft',
-      coverImage: parsed.coverImage ?? '',
-      materials: parsed.materials ?? [],
+      coverImage: toOssStorageKey(parsed.coverImage ?? ''),
+      materials: normalizeMaterials(parsed.materials),
       publishedAt: (parsed.status ?? 'draft') === 'published' ? new Date() : null,
     })
     .returning({ id: solutions.id });

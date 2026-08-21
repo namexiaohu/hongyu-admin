@@ -31,6 +31,7 @@ import {
   type AdminEditorialContentTranslation,
   type EditorialContentModule,
   type EditorialEntryStatus,
+  resolveEnabledBoardKey,
 } from '@/lib/editorial-content';
 import type { EditorialBoardOption } from '@/components/editorial/board-multi-select';
 import type { AdminEditorialDashboard } from '@/lib/editorial-automation';
@@ -136,10 +137,14 @@ export function BoardContentListClient({
   const initialMountRef = useRef(true);
   const hydratedPageSizeRef = useRef(false);
 
+  const resolvedInitialBoard = resolveEnabledBoardKey(initialDashboard.coverage, initialQuery.board)
+    || boards[0]?.key
+    || UNASSIGNED_BOARD_KEY;
+
   const [listState, setListState] = useState<BoardContentListState>(initialList);
-  const [query, setQuery] = useState<AdminListQuery>(initialQuery);
+  const [query, setQuery] = useState<AdminListQuery>({ ...initialQuery, board: resolvedInitialBoard });
   const [searchInput, setSearchInput] = useState(initialQuery.keyword);
-  const [activeBoardKey, setActiveBoardKey] = useState(initialQuery.board || boards[0]?.key || UNASSIGNED_BOARD_KEY);
+  const [activeBoardKey, setActiveBoardKey] = useState(resolvedInitialBoard);
   const [contentModalOpen, setContentModalOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<AdminEditorialContentListItem | null>(null);
   const [isListLoading, startListTransition] = useTransition();
@@ -158,9 +163,9 @@ export function BoardContentListClient({
     hydratedPageSizeRef.current = true;
     const stored = readStoredPageSize();
     if (!searchParams.get('page_size') && stored && stored !== initialQuery.pageSize) {
-      replaceUrl({ ...initialQuery, pageSize: stored, page: 1 });
+      replaceUrl({ ...initialQuery, board: resolvedInitialBoard, pageSize: stored, page: 1 });
     }
-  }, [searchParams, initialQuery, replaceUrl]);
+  }, [searchParams, initialQuery, replaceUrl, resolvedInitialBoard]);
 
   const reloadList = useCallback((nextQuery: AdminListQuery) => {
     startListTransition(async () => {
@@ -194,15 +199,19 @@ export function BoardContentListClient({
         storedPageSize: readStoredPageSize(),
       },
     );
+    const nextBoard = resolveEnabledBoardKey(initialDashboard.coverage, urlQuery.board)
+      || boards[0]?.key
+      || UNASSIGNED_BOARD_KEY;
+    const normalizedQuery: AdminListQuery = { ...urlQuery, board: nextBoard };
 
     if (searchParams.get('page_size')) {
-      writeStoredPageSize(urlQuery.pageSize);
+      writeStoredPageSize(normalizedQuery.pageSize);
     }
 
-    setSearchInput(urlQuery.keyword);
-    setActiveBoardKey(urlQuery.board);
-    reloadList(urlQuery);
-  }, [searchParams, boards, reloadList]);
+    setSearchInput(normalizedQuery.keyword);
+    setActiveBoardKey(normalizedQuery.board);
+    reloadList(normalizedQuery);
+  }, [searchParams, boards, reloadList, initialDashboard.coverage]);
 
   const summary = useMemo(() => ({
     documents: listState.total,

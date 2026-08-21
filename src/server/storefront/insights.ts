@@ -4,7 +4,7 @@ import { and, asc, desc, eq, inArray, ne, sql } from 'drizzle-orm';
 
 import { resolveBlogCategorySlug } from '@/lib/blog-categories';
 import { type EditorialContentPayload } from '@/lib/editorial-content';
-import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
+import { resolveOssAssetUrl, rewriteHtmlOssAssets } from '@/lib/oss-asset-url';
 import { normalizeSlug } from '@/lib/slug';
 import { db } from '@/server/db';
 import {
@@ -408,7 +408,7 @@ export async function getStorefrontInsightDetailBySlug(slugInput: string, locale
     id: content.id,
     title: picked.title,
     summary: picked.summary,
-    body: payload.body,
+    body: rewriteHtmlOssAssets(payload.body, 'toPublicUrl'),
     slug: picked.slug,
     boardKey,
     boardName,

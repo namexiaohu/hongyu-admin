@@ -97,6 +97,7 @@ export type StorefrontCompatibleGroup = {
 export type StorefrontProductDetail = StorefrontProductCard & {
   description: string;
   gallery: StorefrontImage[];
+  videoUrl?: string | null;
   categories: StorefrontCategory[];
   attributes: Array<{ group: string; value: string }>;
   attachments: StorefrontAttachment[];

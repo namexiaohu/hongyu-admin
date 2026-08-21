@@ -5,6 +5,7 @@ import { Button, Input, Space, Upload, message } from 'antd';
 
 import type { ProductAttachment } from '@/lib/product-content';
 import { uploadMediaFile } from '@/lib/media-upload';
+import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
 
 type ProductAttachmentsFieldProps = {
   value?: ProductAttachment[];
@@ -34,7 +35,9 @@ export function ProductAttachmentsField({ value = [], onChange, folder = 'produc
             value={item.name}
             onChange={(event) => updateItem(index, { name: event.target.value })}
           />
-          <a href={item.url} target="_blank" rel="noreferrer">查看</a>
+          {item.url ? (
+            <a href={resolveOssAssetUrl(item.url)} target="_blank" rel="noreferrer">查看</a>
+          ) : null}
           <Button danger icon={<DeleteOutlined />} onClick={() => removeItem(index)} />
         </div>
       ))}
@@ -45,7 +48,7 @@ export function ProductAttachmentsField({ value = [], onChange, folder = 'produc
             const uploaded = await uploadMediaFile(file as File, { folder, kind: 'document' });
             onChange?.([...items, {
               name: (file as File).name,
-              url: uploaded.url,
+              url: uploaded.key || uploaded.url,
               mimeType: uploaded.contentType ?? (file as File).type ?? 'application/octet-stream',
             }]);
             onSuccess?.(uploaded);

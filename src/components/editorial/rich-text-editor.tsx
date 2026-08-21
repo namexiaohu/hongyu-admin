@@ -4,6 +4,7 @@ import type { Editor as TinyMceEditor } from 'tinymce';
 import { Editor, type IAllProps } from '@tinymce/tinymce-react';
 import { useEffect, useMemo, useRef } from 'react';
 
+import { rewriteHtmlOssAssets } from '@/lib/oss-asset-url';
 import { buildRichTextEditorInit } from '@/lib/rich-text-editor-config';
 
 type RichTextEditorProps = {
@@ -27,6 +28,12 @@ export function RichTextEditor({
     [minHeight, maxHeight],
   );
 
+  // DB stores keys; TinyMCE needs public CDN URLs to render media.
+  const displayValue = useMemo(
+    () => rewriteHtmlOssAssets(value, 'toPublicUrl'),
+    [value],
+  );
+
   useEffect(() => {
     const editor = editorRef.current;
     if (!editor) return;
@@ -43,8 +50,10 @@ export function RichTextEditor({
           editorRef.current = editor;
           editor.mode.set(disabled ? 'readonly' : 'design');
         }}
-        value={value}
-        onEditorChange={(content) => onChange?.(content)}
+        value={displayValue}
+        onEditorChange={(content) => {
+          onChange?.(rewriteHtmlOssAssets(content, 'toStorageKey'));
+        }}
         init={editorInit as unknown as IAllProps['init']}
       />
     </div>

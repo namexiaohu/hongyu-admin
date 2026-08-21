@@ -257,6 +257,7 @@ async function main() {
         payload: {
           coverUrl: null,
           coverAlt: null,
+          videoUrl: null,
           gallery: [],
           tags: [],
           attachments: [],

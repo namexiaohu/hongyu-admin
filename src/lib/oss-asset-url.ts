@@ -1,6 +1,7 @@
 import { resolveStorefrontAssetUrl } from '@/lib/storefront-asset-url';
 
 const LOCAL_PUBLIC_PATH = /^\/(images|hero|media|files)\//i;
+const ABSOLUTE_URL = /^(https?:)?\/\//i;
 
 export function getPublicOssDomain() {
   const raw = (
@@ -30,6 +31,39 @@ function storageHostCandidates() {
   return hosts;
 }
 
+function isOssHostedAbsoluteUrl(value: string) {
+  if (isOssCdnUrl(value)) return true;
+  try {
+    const parsed = new URL(value.startsWith('//') ? `https:${value}` : value);
+    return storageHostCandidates().has(parsed.host);
+  } catch {
+    return false;
+  }
+}
+
+/** Whether a src/href should be treated as an OSS/local asset reference. */
+export function isRewritableOssAssetRef(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  if (
+    trimmed.startsWith('data:')
+    || trimmed.startsWith('blob:')
+    || trimmed.startsWith('mailto:')
+    || trimmed.startsWith('tel:')
+    || trimmed.startsWith('#')
+  ) {
+    return false;
+  }
+  if (ABSOLUTE_URL.test(trimmed)) {
+    return isOssHostedAbsoluteUrl(trimmed);
+  }
+  if (LOCAL_PUBLIC_PATH.test(trimmed) || trimmed.startsWith('/images/')) {
+    return true;
+  }
+  // bare storage key, e.g. products/covers/xxx.jpg
+  return !trimmed.includes('://') && !trimmed.startsWith('/');
+}
+
 /** 把完整对象存储 URL 收成库里存的 key；本地 /images 路径保持原样。 */
 export function toOssStorageKey(value: string) {
   const trimmed = value.trim();
@@ -44,7 +78,7 @@ export function toOssStorageKey(value: string) {
   }
 
   try {
-    const parsed = new URL(trimmed);
+    const parsed = new URL(trimmed.startsWith('//') ? `https:${trimmed}` : trimmed);
     if (storageHostCandidates().has(parsed.host)) {
       return parsed.pathname.replace(/^\//, '');
     }
@@ -70,4 +104,26 @@ export function resolveOssAssetUrl(value: string | undefined | null) {
   if (!key) return '';
   if (!domain) return key;
   return `${domain}/${key}`;
+}
+
+/**
+ * Rewrite src/href in HTML between storage keys and public CDN URLs.
+ * Only touches OSS-hosted absolute URLs, local public paths, and bare keys.
+ */
+export function rewriteHtmlOssAssets(html: string, mode: 'toStorageKey' | 'toPublicUrl') {
+  const source = html ?? '';
+  if (!source.trim()) return source;
+
+  return source.replace(
+    /(src|href)=(["'])([^"']*)\2/gi,
+    (full, attr: string, quote: string, rawValue: string) => {
+      const value = rawValue.trim();
+      if (!isRewritableOssAssetRef(value)) return full;
+      const next = mode === 'toStorageKey'
+        ? toOssStorageKey(value)
+        : resolveOssAssetUrl(value);
+      if (!next || next === value) return full;
+      return `${attr}=${quote}${next}${quote}`;
+    },
+  );
 }

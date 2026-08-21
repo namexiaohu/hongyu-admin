@@ -16,6 +16,7 @@ import { hasMeaningfulHtmlBody } from '@/lib/editorial-html';
 import { ProductAttachmentsField } from '@/components/products/product-attachments-field';
 import { ProductGalleryField } from '@/components/products/product-gallery-field';
 import { ProductGeneralConfigPanel } from '@/components/products/product-general-config-panel';
+import { ProductVideoField } from '@/components/products/product-video-field';
 import type { ProductBoardOption } from '@/components/products/product-board-multi-select';
 import { productLifecycleOptions } from '@/lib/admin-display';
 import { confirmProductListingChange } from '@/lib/confirm-product-listing';
@@ -52,6 +53,7 @@ type LocaleFormValues = {
   description: string;
   coverUrl: string;
   coverAlt: string;
+  videoUrl: string;
   gallery: AdminProductPayload['gallery'];
   stats: ProductStat[];
   price: number;
@@ -144,6 +146,7 @@ function createEmptyDraft(currencyCode = 'USD'): LocaleDraft {
     description: '',
     coverUrl: '',
     coverAlt: '',
+    videoUrl: '',
     gallery: [],
     stats: [],
     price: 0,
@@ -178,6 +181,7 @@ function entryToDraft(entry: AdminProductTranslation): LocaleDraft {
     description: entry.description ?? '',
     coverUrl: entry.payload.coverUrl ?? '',
     coverAlt: entry.payload.coverAlt ?? '',
+    videoUrl: entry.payload.videoUrl ?? '',
     gallery: entry.payload.gallery ?? [],
     stats: (entry.stats ?? []).map((stat) => ({ label: stat.label, value: stat.value })),
     price: Number(entry.price) || 0,
@@ -220,6 +224,7 @@ function mergeActiveFormIntoDrafts(
         : previous.description,
       coverUrl: values.coverUrl?.trim() ? values.coverUrl : previous.coverUrl,
       coverAlt: values.coverAlt?.trim() ? values.coverAlt : previous.coverAlt,
+      videoUrl: values.videoUrl?.trim() ? values.videoUrl : previous.videoUrl,
       gallery: values.gallery?.length ? values.gallery : previous.gallery,
       attachments: values.attachments?.length ? values.attachments : previous.attachments,
     },
@@ -232,6 +237,7 @@ function inheritDefaultLocaleMedia(draft: LocaleDraft, defaultDraft: LocaleDraft
     ...draft,
     coverUrl: draft.coverUrl.trim() ? draft.coverUrl : defaultDraft.coverUrl,
     coverAlt: draft.coverAlt.trim() ? draft.coverAlt : defaultDraft.coverAlt,
+    videoUrl: draft.videoUrl.trim() ? draft.videoUrl : defaultDraft.videoUrl,
     gallery: draft.gallery.length ? draft.gallery : defaultDraft.gallery,
     attachments: draft.attachments.length ? draft.attachments : defaultDraft.attachments,
   };
@@ -247,6 +253,7 @@ function buildPayload(draft: LocaleDraft): AdminProductPayload {
   return {
     coverUrl: draft.coverUrl.trim() || null,
     coverAlt: draft.coverAlt.trim() || null,
+    videoUrl: draft.videoUrl.trim() || null,
     gallery: draft.gallery ?? [],
     tags: splitMultiline(draft.tagsText),
     attachments: draft.attachments ?? [],
@@ -472,6 +479,7 @@ export function ProductEditorModal({
       description: draft.description,
       coverUrl: draft.coverUrl,
       coverAlt: draft.coverAlt,
+      videoUrl: draft.videoUrl,
       galleryJson: JSON.stringify(draft.gallery ?? []),
       attachmentsJson: JSON.stringify(draft.attachments ?? []),
       certificationsText: draft.certificationsText,
@@ -502,7 +510,7 @@ export function ProductEditorModal({
   function handleTranslated(fields: Record<string, string>) {
     const merged = getMergedDrafts();
     const current = merged[activeLocale] ?? makeEmptyDraft(activeLocale);
-    const { galleryJson, attachmentsJson, coverUrl, statsText, stats: statsField, ...textFields } = fields;
+    const { galleryJson, attachmentsJson, coverUrl, videoUrl, statsText, stats: statsField, ...textFields } = fields;
     const nextDraft = applyNonemptyTranslatedFields(current, textFields);
     const defaultDraft = merged[defaultLocale] ?? makeEmptyDraft(defaultLocale);
     const targetCurrency = resolveCurrencyForLocale(activeLocale);
@@ -517,6 +525,12 @@ export function ProductEditorModal({
       nextDraft.coverUrl = coverUrl;
     } else if (defaultDraft.coverUrl.trim()) {
       nextDraft.coverUrl = defaultDraft.coverUrl;
+    }
+
+    if (videoUrl?.trim()) {
+      nextDraft.videoUrl = videoUrl;
+    } else if (defaultDraft.videoUrl.trim()) {
+      nextDraft.videoUrl = defaultDraft.videoUrl;
     }
 
     try {
@@ -563,6 +577,7 @@ export function ProductEditorModal({
       slug: nextDraft.slug,
       coverUrl: nextDraft.coverUrl,
       coverAlt: nextDraft.coverAlt,
+      videoUrl: nextDraft.videoUrl,
       gallery: nextDraft.gallery,
       attachments: nextDraft.attachments,
       certificationsText: nextDraft.certificationsText,
@@ -890,6 +905,13 @@ export function ProductEditorModal({
                               <CoverImageField folder="products/covers" />
                             </Form.Item>
                             <Form.Item label="轮播图" name="gallery"><ProductGalleryField /></Form.Item>
+                            <Form.Item
+                              label="产品视频"
+                              name="videoUrl"
+                              getValueFromEvent={(value: string | null) => value ?? ''}
+                            >
+                              <ProductVideoField folder="products/videos" />
+                            </Form.Item>
                           </Space>
                         ),
                       },

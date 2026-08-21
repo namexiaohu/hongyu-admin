@@ -1,6 +1,7 @@
 import type { Editor as TinyMceEditor } from 'tinymce';
 
 import { uploadMediaFile } from '@/lib/media-upload';
+import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
 
 /** Applied to TinyMCE iframe body and Preview window for cms-article-content.css */
 export const CMS_ARTICLE_BODY_CLASS = 'cms-article-content';
@@ -80,7 +81,8 @@ export function buildRichTextEditorInit(options: RichTextEditorInitOptions = {})
     images_upload_handler: async (blobInfo: { blob: () => Blob; filename: () => string }) => {
       const file = new File([blobInfo.blob()], blobInfo.filename(), { type: blobInfo.blob().type || 'image/jpeg' });
       const result = await uploadMediaFile(file, { kind: 'image', folder: 'editorial/images' });
-      return result.url;
+      // Editor needs a loadable URL; RichTextEditor persists keys via rewriteHtmlOssAssets.
+      return resolveOssAssetUrl(result.key || result.url);
     },
     file_picker_types: 'image media',
     file_picker_callback: (
@@ -99,8 +101,9 @@ export function buildRichTextEditorInit(options: RichTextEditorInitOptions = {})
         void (async () => {
           try {
             const kind = file.type.startsWith('video/') ? 'video' : 'image';
-            const result = await uploadMediaFile(file, { kind });
-            callback(result.url, { title: file.name });
+            const folder = kind === 'video' ? 'editorial/videos' : 'editorial/images';
+            const result = await uploadMediaFile(file, { kind, folder });
+            callback(resolveOssAssetUrl(result.key || result.url), { title: file.name });
           } catch {
             // uploadMediaFile already surfaces errors via throw
           }
