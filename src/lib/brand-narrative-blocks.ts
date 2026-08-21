@@ -63,6 +63,7 @@ export type BrandNarrativeBlockDraft = {
   type: BrandNarrativeBlockType;
   layout?: BrandNarrativeBlockLayout;
   carouselImages?: BrandNarrativeCarouselSlide[];
+  videoUrl?: string;
   href?: string;
   locales: Record<string, BrandNarrativeBlockLocaleCopy>;
   items: BrandNarrativeBlockItemDraft[];
@@ -220,6 +221,7 @@ export function createBrandNarrativeBlock(type: BrandNarrativeBlockType): BrandN
   if (type === 'split') {
     block.layout = 'image-left';
     block.carouselImages = [];
+    block.videoUrl = '';
   }
   if (type === 'summary') {
     block.layout = 'single-row';

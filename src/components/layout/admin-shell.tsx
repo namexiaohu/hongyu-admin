@@ -26,7 +26,7 @@ import { Button, Layout, Menu, Space, Typography } from 'antd';
 import type { MenuProps } from 'antd';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { PropsWithChildren } from 'react';
+import { useEffect, type PropsWithChildren } from 'react';
 
 import {
   adminNavItems,
@@ -96,8 +96,12 @@ export function AdminShell({
 }: PropsWithChildren<{ siteUrl: string; panelTitle: string; panelSubtitle: string }>) {
   const pathname = usePathname();
   const isLoginPage = pathname === '/admin/login' || pathname.startsWith('/admin/login/');
-  const pageTitle = getAdminPageTitle(pathname);
+  const pageTitle = isLoginPage ? '登录' : getAdminPageTitle(pathname);
   const selected = getAdminNavSelectedKey(pathname);
+
+  useEffect(() => {
+    document.title = `${pageTitle} — VexMotor`;
+  }, [pageTitle]);
 
   if (isLoginPage) {
     return <>{children}</>;

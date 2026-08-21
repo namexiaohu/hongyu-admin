@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import type { PartnerCenterBackgroundMode } from '@/lib/partner-center-background-presets';
+import type { ProductGalleryImage } from '@/lib/product-content';
 
 export const centerRegions = [
   'asia-pacific',
@@ -36,6 +37,8 @@ export type AdminPartnerCenterListItem = {
   email: string;
   website: string;
   coverImage: string;
+  gallery: ProductGalleryImage[];
+  videoUrl: string;
   logo: string;
   /** @deprecated prefer backgroundMode/value; may still hold legacy key */
   backgroundImage: string;
@@ -98,12 +101,21 @@ export const adminPartnerCenterTranslationPatchSchema = adminPartnerCenterTransl
 
 const backgroundModeSchema = z.enum(['solid', 'preset', 'upload', '']);
 
+const galleryItemSchema = z.object({
+  url: z.string().trim().min(1),
+  alt: z.string().trim().default(''),
+  width: z.number().int().nullable().optional(),
+  height: z.number().int().nullable().optional(),
+});
+
 export const adminPartnerCenterPatchSchema = z.object({
   slug: z.string().trim().min(1).max(64).optional(),
   region: z.enum(centerRegions).optional(),
   email: z.string().optional(),
   website: z.string().optional(),
   coverImage: z.string().optional(),
+  gallery: z.array(galleryItemSchema).optional(),
+  videoUrl: z.string().optional(),
   logo: z.string().optional(),
   backgroundMode: backgroundModeSchema.optional(),
   backgroundValue: z.string().optional(),
@@ -118,6 +130,8 @@ export const adminPartnerCenterCreateSchema = z.object({
   email: z.string().optional().default(''),
   website: z.string().optional().default(''),
   coverImage: z.string().optional().default(''),
+  gallery: z.array(galleryItemSchema).optional().default([]),
+  videoUrl: z.string().optional().default(''),
   logo: z.string().optional().default(''),
   backgroundMode: backgroundModeSchema.optional().default(''),
   backgroundValue: z.string().optional().default(''),

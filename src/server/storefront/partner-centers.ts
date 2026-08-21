@@ -25,6 +25,8 @@ import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
 export type StorefrontCenterItem = {
   slug: string;
   coverImage: string;
+  gallery: Array<{ url: string; alt: string }>;
+  videoUrl: string;
   logo: string;
   backgroundMode: PartnerCenterBackgroundMode;
   backgroundImage: string;
@@ -138,6 +140,13 @@ function mapCenterItem(
   return {
     slug: row.slug,
     coverImage: resolveOssAssetUrl(row.coverImage),
+    gallery: ((row.gallery ?? []) as Array<{ url?: string; alt?: string }>)
+      .map((item) => ({
+        url: item.url?.trim() ? resolveOssAssetUrl(item.url) : '',
+        alt: item.alt?.trim() || display?.name || row.slug,
+      }))
+      .filter((item) => item.url),
+    videoUrl: row.videoUrl?.trim() ? resolveOssAssetUrl(row.videoUrl) : '',
     logo: resolveOssAssetUrl(row.logo),
     backgroundMode: bg.mode,
     backgroundImage: bg.imageUrl,

@@ -126,7 +126,7 @@ export function ProductGeneralConfigPanel({
       <Form.Item label="轮播图" layout="vertical" style={fieldStyle}>
         <ProductGalleryField value={gallery} onChange={(value) => onGalleryChange(value ?? [])} />
       </Form.Item>
-      <Form.Item label="产品视频" layout="vertical" style={fieldStyle}>
+      <Form.Item label="视频" layout="vertical" style={fieldStyle}>
         <ProductVideoField
           folder="products/videos"
           value={videoUrl || null}

@@ -75,8 +75,7 @@ import type {
   OverseasContact,
   SocialChannel,
 } from '@/lib/social-media';
-import type { AdminProductPayload } from '@/lib/product-content';
-import type { ProductStat } from '@/lib/product-content';
+import type { AdminProductPayload, ProductGalleryImage, ProductStat } from '@/lib/product-content';
 import type { SolutionBlockDraft } from '@/lib/solution-blocks';
 import type { SolutionMaterial, SolutionProductParam, SolutionStat } from '@/lib/solution-content';
 import type { PartnerCenterMetric } from '@/lib/partner-center-content';
@@ -1377,6 +1376,8 @@ export const brandNarratives = pgTable(
     status: cmsStatusEnum('status').notNull().default('draft'),
     publishedAt: timestamp('published_at', { withTimezone: true }),
     coverImage: text('cover_image').notNull().default(''),
+    gallery: jsonb('gallery').$type<ProductGalleryImage[]>().notNull().default([]),
+    videoUrl: text('video_url').notNull().default(''),
     /** @deprecated use backgroundMode + backgroundValue */
     backgroundImage: text('background_image').notNull().default(''),
     /** solid | preset | upload | '' */
@@ -1440,6 +1441,8 @@ export const solutions = pgTable(
     status: cmsStatusEnum('status').notNull().default('draft'),
     publishedAt: timestamp('published_at', { withTimezone: true }),
     coverImage: text('cover_image').notNull().default(''),
+    gallery: jsonb('gallery').$type<ProductGalleryImage[]>().notNull().default([]),
+    videoUrl: text('video_url').notNull().default(''),
     /** @deprecated use backgroundMode + backgroundValue */
     backgroundImage: text('background_image').notNull().default(''),
     /** solid | preset | upload | '' */
@@ -1648,6 +1651,8 @@ export const partnerCenters = pgTable(
     email: varchar('email', { length: 255 }).notNull().default(''),
     website: varchar('website', { length: 300 }).notNull().default(''),
     coverImage: text('cover_image').notNull().default(''),
+    gallery: jsonb('gallery').$type<ProductGalleryImage[]>().notNull().default([]),
+    videoUrl: text('video_url').notNull().default(''),
     logo: text('logo').notNull().default(''),
     /** @deprecated use backgroundMode + backgroundValue; kept for legacy/seed compatibility */
     backgroundImage: text('background_image').notNull().default(''),

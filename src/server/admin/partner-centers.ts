@@ -6,7 +6,7 @@ import {
   normalizeBackgroundWrite,
   resolveAdminBackgroundPreview,
 } from '@/lib/partner-center-background-presets';
-import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
+import { resolveOssAssetUrl, toOssStorageKey } from '@/lib/oss-asset-url';
 import {
   type AdminPartnerCenterDetail,
   type AdminPartnerCenterListItem,
@@ -19,6 +19,7 @@ import {
   normalizePartnerCenterMetrics,
   resolveCenterDisplayName,
 } from '@/lib/partner-center-content';
+import type { ProductGalleryImage } from '@/lib/product-content';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import { normalizeSlug } from '@/lib/slug';
 import { getAdminMediaAssetStorageKeys } from '@/server/admin/media-assets';
@@ -28,6 +29,23 @@ import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
 
 function toIso(value: Date) {
   return value.toISOString();
+}
+
+function normalizeGallery(gallery: ProductGalleryImage[] | undefined): ProductGalleryImage[] {
+  if (!gallery?.length) return [];
+  return gallery
+    .map((item) => ({
+      url: toOssStorageKey(item.url.trim()),
+      alt: item.alt?.trim() ?? '',
+      width: item.width ?? null,
+      height: item.height ?? null,
+    }))
+    .filter((item) => item.url);
+}
+
+function normalizeVideoUrl(value: string | undefined): string {
+  const trimmed = value?.trim() ?? '';
+  return trimmed ? toOssStorageKey(trimmed) : '';
 }
 
 function mapListItem(
@@ -51,6 +69,8 @@ function mapListItem(
     email: row.email ?? '',
     website: row.website ?? '',
     coverImage: row.coverImage,
+    gallery: (row.gallery ?? []) as ProductGalleryImage[],
+    videoUrl: row.videoUrl ?? '',
     logo: row.logo,
     backgroundImage: row.backgroundImage ?? '',
     backgroundMode: bg.mode,
@@ -187,8 +207,10 @@ export async function createAdminPartnerCenter(input: unknown) {
     region: parsed.region ?? 'asia-pacific',
     email: parsed.email?.trim() ?? '',
     website: parsed.website?.trim() ?? '',
-    coverImage: parsed.coverImage ?? '',
-    logo: parsed.logo ?? '',
+    coverImage: toOssStorageKey(parsed.coverImage ?? ''),
+    gallery: normalizeGallery(parsed.gallery),
+    videoUrl: normalizeVideoUrl(parsed.videoUrl),
+    logo: toOssStorageKey(parsed.logo ?? ''),
     backgroundMode: bg.backgroundMode,
     backgroundValue: bg.backgroundValue,
     backgroundImage,
@@ -242,8 +264,10 @@ export async function updateAdminPartnerCenter(id: string, input: unknown) {
     ...(parsed.region !== undefined ? { region: parsed.region } : {}),
     ...(parsed.email !== undefined ? { email: parsed.email.trim() } : {}),
     ...(parsed.website !== undefined ? { website: parsed.website.trim() } : {}),
-    ...(parsed.coverImage !== undefined ? { coverImage: parsed.coverImage } : {}),
-    ...(parsed.logo !== undefined ? { logo: parsed.logo } : {}),
+    ...(parsed.coverImage !== undefined ? { coverImage: toOssStorageKey(parsed.coverImage) } : {}),
+    ...(parsed.gallery !== undefined ? { gallery: normalizeGallery(parsed.gallery) } : {}),
+    ...(parsed.videoUrl !== undefined ? { videoUrl: normalizeVideoUrl(parsed.videoUrl) } : {}),
+    ...(parsed.logo !== undefined ? { logo: toOssStorageKey(parsed.logo) } : {}),
     ...bgPatch,
     ...(parsed.showCoverOnBackground !== undefined
       ? { showCoverOnBackground: parsed.showCoverOnBackground }

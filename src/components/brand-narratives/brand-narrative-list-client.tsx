@@ -49,6 +49,8 @@ function toListItem(detail: AdminBrandNarrativeDetail): AdminBrandNarrativeListI
     sortOrder: detail.sortOrder,
     status: detail.status,
     coverImage: detail.coverImage,
+    gallery: detail.gallery ?? [],
+    videoUrl: detail.videoUrl ?? '',
     backgroundMode: detail.backgroundMode,
     backgroundValue: detail.backgroundValue,
     backgroundImage: detail.backgroundImage,

@@ -8,6 +8,7 @@ import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale
 import { BrandNarrativeBlockItemEditorModal, type BrandNarrativeBlockItemEditorHandle } from '@/components/brand-narratives/brand-narrative-block-item-editor-modal';
 import { BrandNarrativeBlockItemList } from '@/components/brand-narratives/brand-narrative-block-item-list';
 import { ProductGalleryField } from '@/components/products/product-gallery-field';
+import { ProductVideoField } from '@/components/products/product-video-field';
 import type { ProductGalleryImage } from '@/lib/product-content';
 import {
   brandNarrativeSplitLayoutLabels,
@@ -198,6 +199,7 @@ export function BrandNarrativeBlockEditorModal({
   }
 
   const showItemList = block?.type === 'summary' || block?.type === 'timeline' || block?.type === 'course';
+  const itemLabel = block?.type === 'timeline' ? '节点' : block?.type === 'course' ? '课程' : '内容';
   const editingItemIndex = editingItem
     ? (block?.items.findIndex((item) => item.id === editingItem.id) ?? -1)
     : -1;
@@ -271,6 +273,14 @@ export function BrandNarrativeBlockEditorModal({
                         }}
                       />
                     </div>
+                    <div>
+                      <div style={{ marginBottom: 8 }}>视频</div>
+                      <ProductVideoField
+                        folder="brand-narratives/videos"
+                        value={block.videoUrl || null}
+                        onChange={(value) => patchShared({ videoUrl: value ?? '' })}
+                      />
+                    </div>
                   </>
                 ) : null}
 
@@ -303,6 +313,7 @@ export function BrandNarrativeBlockEditorModal({
                 {showItemList ? (
                   <BrandNarrativeBlockItemList
                     items={block.items}
+                    itemLabel={itemLabel}
                     onChange={(items) => patchShared({ items })}
                     onEdit={setEditingItem}
                   />
@@ -367,7 +378,7 @@ export function BrandNarrativeBlockEditorModal({
         open={Boolean(editingItem)}
         mode={block?.type === 'summary' ? 'summary' : block?.type === 'timeline' ? 'timeline' : block?.type === 'course' ? 'course' : 'stub'}
         media={block && (block.type === 'timeline' || block.type === 'course' || summaryItemUsesCoverImage(block)) ? 'cover' : 'icon'}
-        title={editingItemIndex >= 0 ? `编辑内容 · ${editingItemIndex + 1}` : '编辑内容'}
+        title={editingItemIndex >= 0 ? `编辑${itemLabel} · ${editingItemIndex + 1}` : `编辑${itemLabel}`}
         item={editingItem}
         activeLanguages={activeLanguages}
         onChange={block?.type === 'summary' || block?.type === 'timeline' || block?.type === 'course' ? handleItemChange : undefined}

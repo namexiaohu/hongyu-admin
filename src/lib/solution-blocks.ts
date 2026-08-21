@@ -63,6 +63,7 @@ export type SolutionBlockDraft = {
   type: SolutionBlockType;
   layout?: SolutionBlockLayout;
   carouselImages?: SolutionCarouselSlide[];
+  videoUrl?: string;
   href?: string;
   productIds?: string[];
   locales: Record<string, SolutionBlockLocaleCopy>;
@@ -222,6 +223,7 @@ export function createSolutionBlock(type: SolutionBlockType): SolutionBlockDraft
   if (type === 'split') {
     block.layout = 'image-left';
     block.carouselImages = [];
+    block.videoUrl = '';
   }
   if (type === 'summary') {
     block.layout = 'single-row';

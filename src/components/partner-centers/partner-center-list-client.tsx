@@ -44,6 +44,8 @@ function toListItem(d: AdminPartnerCenterDetail): AdminPartnerCenterListItem {
     email: d.email,
     website: d.website,
     coverImage: d.coverImage,
+    gallery: d.gallery ?? [],
+    videoUrl: d.videoUrl ?? '',
     logo: d.logo,
     backgroundImage: d.backgroundImage,
     backgroundMode: d.backgroundMode,

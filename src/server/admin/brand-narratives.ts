@@ -19,7 +19,8 @@ import {
   normalizeBackgroundWrite,
   resolveAdminBackgroundPreview,
 } from '@/lib/partner-center-background-presets';
-import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
+import { resolveOssAssetUrl, toOssStorageKey } from '@/lib/oss-asset-url';
+import type { ProductGalleryImage } from '@/lib/product-content';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import { normalizeSlug } from '@/lib/slug';
 import { getAdminMediaAssetStorageKeys } from '@/server/admin/media-assets';
@@ -29,6 +30,23 @@ import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
 
 function toIso(value: Date) {
   return value.toISOString();
+}
+
+function normalizeGallery(gallery: ProductGalleryImage[] | undefined): ProductGalleryImage[] {
+  if (!gallery?.length) return [];
+  return gallery
+    .map((item) => ({
+      url: toOssStorageKey(item.url.trim()),
+      alt: item.alt?.trim() ?? '',
+      width: item.width ?? null,
+      height: item.height ?? null,
+    }))
+    .filter((item) => item.url);
+}
+
+function normalizeVideoUrl(value: string | undefined): string {
+  const trimmed = value?.trim() ?? '';
+  return trimmed ? toOssStorageKey(trimmed) : '';
 }
 
 function mapListItem(
@@ -51,6 +69,8 @@ function mapListItem(
     sortOrder: row.sortOrder,
     status: row.status as BrandNarrativeStatus,
     coverImage: row.coverImage,
+    gallery: (row.gallery ?? []) as ProductGalleryImage[],
+    videoUrl: row.videoUrl ?? '',
     backgroundMode: bg.mode,
     backgroundValue: bg.value,
     backgroundImage: row.backgroundImage ?? '',
@@ -250,7 +270,9 @@ export async function updateAdminBrandNarrative(id: string, input: unknown) {
       ...(parsed.slug !== undefined ? { slug: nextSlug } : {}),
       ...(parsed.status !== undefined ? { status: parsed.status } : {}),
       ...(parsed.sortOrder !== undefined ? { sortOrder: parsed.sortOrder } : {}),
-      ...(parsed.coverImage !== undefined ? { coverImage: parsed.coverImage } : {}),
+      ...(parsed.coverImage !== undefined ? { coverImage: toOssStorageKey(parsed.coverImage) } : {}),
+      ...(parsed.gallery !== undefined ? { gallery: normalizeGallery(parsed.gallery) } : {}),
+      ...(parsed.videoUrl !== undefined ? { videoUrl: normalizeVideoUrl(parsed.videoUrl) } : {}),
       ...bgPatch,
       ...(parsed.showCoverOnBackground !== undefined
         ? { showCoverOnBackground: parsed.showCoverOnBackground }
@@ -271,6 +293,19 @@ export async function updateAdminBrandNarrative(id: string, input: unknown) {
 }
 
 async function upsertNarrativeBlocks(narrativeId: string, blocks: BrandNarrativeBlockDraft[]) {
+  const normalized = blocks.map((block) => ({
+    ...block,
+    videoUrl: block.videoUrl?.trim() ? toOssStorageKey(block.videoUrl) : block.videoUrl ?? '',
+    carouselImages: (block.carouselImages ?? []).map((slide) => ({
+      ...slide,
+      url: slide.url.trim() ? toOssStorageKey(slide.url) : slide.url,
+    })),
+    items: (block.items ?? []).map((item) => ({
+      ...item,
+      coverImage: item.coverImage?.trim() ? toOssStorageKey(item.coverImage) : item.coverImage,
+    })),
+  }));
+
   const [existing] = await db
     .select({ id: brandNarrativeContents.id })
     .from(brandNarrativeContents)
@@ -280,12 +315,12 @@ async function upsertNarrativeBlocks(narrativeId: string, blocks: BrandNarrative
   if (existing) {
     await db
       .update(brandNarrativeContents)
-      .set({ blocks: blocks as BrandNarrativeBlockDraft[], updatedAt: new Date() })
+      .set({ blocks: normalized as BrandNarrativeBlockDraft[], updatedAt: new Date() })
       .where(eq(brandNarrativeContents.narrativeId, narrativeId));
   } else {
     await db.insert(brandNarrativeContents).values({
       narrativeId,
-      blocks: blocks as BrandNarrativeBlockDraft[],
+      blocks: normalized as BrandNarrativeBlockDraft[],
     });
   }
 }
@@ -372,7 +407,9 @@ export async function createAdminBrandNarrative(input: unknown) {
       slug,
       sortOrder: (maxSort?.sortOrder ?? 0) + 10,
       status: parsed.status ?? 'draft',
-      coverImage: parsed.coverImage ?? '',
+      coverImage: toOssStorageKey(parsed.coverImage ?? ''),
+      gallery: normalizeGallery(parsed.gallery),
+      videoUrl: normalizeVideoUrl(parsed.videoUrl),
       backgroundMode: bg.backgroundMode,
       backgroundValue: bg.backgroundValue,
       backgroundImage,

@@ -7,6 +7,7 @@ import {
   brandNarrativeSummaryLayouts,
   type BrandNarrativeBlockDraft,
 } from '@/lib/brand-narrative-blocks';
+import type { ProductGalleryImage } from '@/lib/product-content';
 
 export const brandNarrativeSlugs = ['about', 'patents', 'history', 'training'] as const;
 export type BrandNarrativeSeedSlug = (typeof brandNarrativeSlugs)[number];
@@ -47,6 +48,8 @@ export type AdminBrandNarrativeListItem = {
   sortOrder: number;
   status: BrandNarrativeStatus;
   coverImage: string;
+  gallery: ProductGalleryImage[];
+  videoUrl: string;
   backgroundMode: '' | 'solid' | 'preset' | 'upload';
   backgroundValue: string;
   backgroundImage: string;
@@ -103,6 +106,7 @@ export const brandNarrativeBlockSchema = z.object({
     id: z.string().trim().min(1),
     url: z.string(),
   })).optional(),
+  videoUrl: z.string().optional(),
   href: z.string().optional(),
   locales: z.record(localeCopySchema).default({}),
   items: z.array(blockItemSchema).default([]),
@@ -129,11 +133,20 @@ export const adminBrandNarrativeTranslationPatchSchema = adminBrandNarrativeTran
 
 const backgroundModeSchema = z.enum(['solid', 'preset', 'upload', '']);
 
+const galleryItemSchema = z.object({
+  url: z.string().trim().min(1),
+  alt: z.string().trim().default(''),
+  width: z.number().int().nullable().optional(),
+  height: z.number().int().nullable().optional(),
+});
+
 export const adminBrandNarrativePatchSchema = z.object({
   slug: z.string().trim().min(1).max(64).optional(),
   status: z.enum(brandNarrativeStatuses).optional(),
   sortOrder: z.number().int().optional(),
   coverImage: z.string().optional(),
+  gallery: z.array(galleryItemSchema).optional(),
+  videoUrl: z.string().optional(),
   backgroundMode: backgroundModeSchema.optional(),
   backgroundValue: z.string().optional(),
   showCoverOnBackground: z.boolean().optional(),
@@ -145,6 +158,8 @@ export const adminBrandNarrativeCreateSchema = z.object({
   slug: z.string().trim().min(1).max(64),
   status: z.enum(brandNarrativeStatuses).optional(),
   coverImage: z.string().optional().default(''),
+  gallery: z.array(galleryItemSchema).optional().default([]),
+  videoUrl: z.string().optional().default(''),
   backgroundMode: backgroundModeSchema.optional().default(''),
   backgroundValue: z.string().optional().default(''),
   showCoverOnBackground: z.boolean().optional().default(true),

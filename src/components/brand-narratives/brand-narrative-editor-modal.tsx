@@ -12,6 +12,8 @@ import {
   PartnerCenterBackgroundField,
   type PartnerCenterBackgroundValue,
 } from '@/components/partner-centers/partner-center-background-field';
+import { ProductGalleryField } from '@/components/products/product-gallery-field';
+import { ProductVideoField } from '@/components/products/product-video-field';
 import { BrandNarrativeBlockEditorModal, type BrandNarrativeBlockEditorHandle } from '@/components/brand-narratives/brand-narrative-block-editor-modal';
 import { BrandNarrativeBlockList } from '@/components/brand-narratives/brand-narrative-block-list';
 import type { BrandNarrativeBlockDraft } from '@/lib/brand-narrative-blocks';
@@ -20,6 +22,7 @@ import {
   type AdminBrandNarrativeTranslation,
   type BrandNarrativeStatus,
 } from '@/lib/brand-narrative-content';
+import type { ProductGalleryImage } from '@/lib/product-content';
 import { MEDIA_ASSET_TYPE_BRAND_NARRATIVE_BACKGROUND } from '@/lib/partner-center-background-presets';
 import { applyNonemptyTranslatedFields } from '@/lib/content-translate-config';
 import { shouldPersistLocaleDraft } from '@/lib/locale-draft-persistence';
@@ -84,6 +87,8 @@ type LocaleDraft = Omit<LocaleFormValues, 'slug'>;
 /** 封面图和 slug 是主表字段，不随语言变化，单独管理 */
 type SharedFormValues = {
   coverImage: string;
+  gallery: ProductGalleryImage[];
+  videoUrl: string;
   slug: string;
   showCoverOnBackground: boolean;
   background: PartnerCenterBackgroundValue;
@@ -329,6 +334,8 @@ export function BrandNarrativeEditorModal({
     form.setFieldsValue(nextDrafts[firstLocale] ?? emptyDraft());
     sharedForm.setFieldsValue({
       coverImage: detail?.coverImage ?? '',
+      gallery: detail?.gallery ?? [],
+      videoUrl: detail?.videoUrl ?? '',
       slug: detail?.slug ?? '',
       showCoverOnBackground: detail?.showCoverOnBackground ?? true,
       background: {
@@ -421,10 +428,12 @@ export function BrandNarrativeEditorModal({
         })();
 
         const coverImage = sharedValues.coverImage?.trim() ?? '';
+        const gallery = (sharedValues.gallery ?? []).filter((item) => item.url?.trim());
+        const videoUrl = sharedValues.videoUrl?.trim() ?? '';
         const showCoverOnBackground = Boolean(sharedValues.showCoverOnBackground);
         const backgroundMode = sharedValues.background?.mode ?? '';
         const backgroundValue = sharedValues.background?.value?.trim() ?? '';
-        const sharedBgPayload = { showCoverOnBackground, backgroundMode, backgroundValue };
+        const sharedBgPayload = { showCoverOnBackground, backgroundMode, backgroundValue, gallery, videoUrl };
 
         async function upsertTranslation(narrativeId: string, locale: string, draft: LocaleDraft) {
           const saveDraft = draft.heroTitle.trim()
@@ -595,6 +604,20 @@ export function BrandNarrativeEditorModal({
                 getValueFromEvent={(value: string | null) => value ?? ''}
               >
                 <CoverImageField folder="brand-narratives/covers" />
+              </Form.Item>
+              <Form.Item
+                name="gallery"
+                label="轮播图"
+                getValueFromEvent={(value: ProductGalleryImage[] | undefined) => value ?? []}
+              >
+                <ProductGalleryField folder="brand-narratives/gallery" />
+              </Form.Item>
+              <Form.Item
+                name="videoUrl"
+                label="视频"
+                getValueFromEvent={(value: string | null) => value ?? ''}
+              >
+                <ProductVideoField folder="brand-narratives/videos" />
               </Form.Item>
               <Form.Item
                 name="showCoverOnBackground"

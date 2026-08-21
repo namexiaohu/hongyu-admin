@@ -12,6 +12,8 @@ import {
   PartnerCenterBackgroundField,
   type PartnerCenterBackgroundValue,
 } from '@/components/partner-centers/partner-center-background-field';
+import { ProductGalleryField } from '@/components/products/product-gallery-field';
+import { ProductVideoField } from '@/components/products/product-video-field';
 import { SurgeonPickerField } from '@/components/surgeons/surgeon-picker-field';
 import { applyNonemptyTranslatedFields } from '@/lib/content-translate-config';
 import { deserializeLineList, serializeLineList } from '@/lib/content-translate-serialize';
@@ -25,6 +27,7 @@ import {
   centerRegions,
   normalizePartnerCenterMetrics,
 } from '@/lib/partner-center-content';
+import type { ProductGalleryImage } from '@/lib/product-content';
 import { shouldPersistLocaleDraft } from '@/lib/locale-draft-persistence';
 import { resolveSlugForSave, textToSlug, validateSourceThenAutoSlug } from '@/lib/slug';
 import type { AdminSiteLanguageRow } from '@/server/admin/languages';
@@ -65,6 +68,8 @@ type SharedFormValues = {
   email: string;
   website: string;
   coverImage: string;
+  gallery: ProductGalleryImage[];
+  videoUrl: string;
   logo: string;
   showCoverOnBackground: boolean;
   background: PartnerCenterBackgroundValue;
@@ -287,6 +292,8 @@ export function PartnerCenterEditorModal({ open, detail, activeLanguages, onClos
       email: detail?.email ?? '',
       website: detail?.website ?? '',
       coverImage: detail?.coverImage ?? '',
+      gallery: detail?.gallery ?? [],
+      videoUrl: detail?.videoUrl ?? '',
       logo: detail?.logo ?? '',
       showCoverOnBackground: detail?.showCoverOnBackground ?? true,
       background: {
@@ -349,6 +356,8 @@ export function PartnerCenterEditorModal({ open, detail, activeLanguages, onClos
           email: shared.email?.trim() ?? '',
           website: shared.website?.trim() ?? '',
           coverImage: shared.coverImage?.trim() ?? '',
+          gallery: (shared.gallery ?? []).filter((item) => item.url?.trim()),
+          videoUrl: shared.videoUrl?.trim() ?? '',
           logo: shared.logo?.trim() ?? '',
           showCoverOnBackground: Boolean(shared.showCoverOnBackground),
           backgroundMode: shared.background?.mode ?? '',
@@ -451,6 +460,16 @@ export function PartnerCenterEditorModal({ open, detail, activeLanguages, onClos
             </Form.Item>
             <Form.Item name="coverImage" label="封面图（各语言共用）" getValueFromEvent={(v: string | null) => v ?? ''}>
               <CoverImageField folder="partner-centers/covers" />
+            </Form.Item>
+            <Form.Item
+              name="gallery"
+              label="轮播图"
+              getValueFromEvent={(value: ProductGalleryImage[] | undefined) => value ?? []}
+            >
+              <ProductGalleryField folder="partner-centers/gallery" />
+            </Form.Item>
+            <Form.Item name="videoUrl" label="视频" getValueFromEvent={(v: string | null) => v ?? ''}>
+              <ProductVideoField folder="partner-centers/videos" />
             </Form.Item>
             <Form.Item
               name="showCoverOnBackground"

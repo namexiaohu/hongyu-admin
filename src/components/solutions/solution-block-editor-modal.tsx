@@ -9,6 +9,7 @@ import { ProductPickerField } from '@/components/products/product-picker-field';
 import { SolutionBlockItemEditorModal, type SolutionBlockItemEditorHandle } from '@/components/solutions/solution-block-item-editor-modal';
 import { SolutionBlockItemList } from '@/components/solutions/solution-block-item-list';
 import { ProductGalleryField } from '@/components/products/product-gallery-field';
+import { ProductVideoField } from '@/components/products/product-video-field';
 import type { AdminCategoryTreeNode } from '@/lib/category-content';
 import type { ProductGalleryImage } from '@/lib/product-content';
 import {
@@ -202,6 +203,7 @@ export function SolutionBlockEditorModal({
   }
 
   const showItemList = block?.type === 'summary' || block?.type === 'timeline' || block?.type === 'course';
+  const itemLabel = block?.type === 'timeline' ? '节点' : block?.type === 'course' ? '课程' : '内容';
   const editingItemIndex = editingItem
     ? (block?.items.findIndex((item) => item.id === editingItem.id) ?? -1)
     : -1;
@@ -275,6 +277,14 @@ export function SolutionBlockEditorModal({
                         }}
                       />
                     </div>
+                    <div>
+                      <div style={{ marginBottom: 8 }}>视频</div>
+                      <ProductVideoField
+                        folder="solutions/videos"
+                        value={block.videoUrl || null}
+                        onChange={(value) => patchShared({ videoUrl: value ?? '' })}
+                      />
+                    </div>
                   </>
                 ) : null}
 
@@ -315,6 +325,7 @@ export function SolutionBlockEditorModal({
                 {showItemList ? (
                   <SolutionBlockItemList
                     items={block.items}
+                    itemLabel={itemLabel}
                     onChange={(items) => patchShared({ items })}
                     onEdit={setEditingItem}
                   />
@@ -374,7 +385,7 @@ export function SolutionBlockEditorModal({
         open={Boolean(editingItem)}
         mode={block?.type === 'summary' ? 'summary' : block?.type === 'timeline' ? 'timeline' : block?.type === 'course' ? 'course' : 'stub'}
         media={block && (block.type === 'timeline' || block.type === 'course' || summaryItemUsesCoverImage(block)) ? 'cover' : 'icon'}
-        title={editingItemIndex >= 0 ? `编辑内容 · ${editingItemIndex + 1}` : '编辑内容'}
+        title={editingItemIndex >= 0 ? `编辑${itemLabel} · ${editingItemIndex + 1}` : `编辑${itemLabel}`}
         item={editingItem}
         activeLanguages={activeLanguages}
         onChange={block?.type === 'summary' || block?.type === 'timeline' || block?.type === 'course' ? handleItemChange : undefined}

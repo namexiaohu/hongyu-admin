@@ -28,6 +28,8 @@ export type BrandNarrativePageData = {
     backgroundImage: string;
     backgroundSolidCss: string;
     showCoverOnBackground: boolean;
+    videoUrl: string;
+    gallery: Array<{ url: string; alt: string }>;
   };
   stats?: Array<{ value: string; label: string; suffix?: string }> | null;
   sections: Array<Record<string, unknown>>;
@@ -67,6 +69,13 @@ function mapSplitSection(
     body: body || ' ',
     image: resolveOssAssetUrl(block.carouselImages?.find((slide) => slide.url.trim())?.url ?? ''),
     imageAlt: title || eyebrow,
+    videoUrl: block.videoUrl?.trim() ? resolveOssAssetUrl(block.videoUrl) : '',
+    gallery: (block.carouselImages ?? [])
+      .map((slide) => ({
+        url: slide.url?.trim() ? resolveOssAssetUrl(slide.url) : '',
+        alt: title || eyebrow,
+      }))
+      .filter((item) => item.url),
   };
 }
 
@@ -329,6 +338,13 @@ function mapPageData(
       backgroundImage: bg.imageUrl,
       backgroundSolidCss: bg.solidCss,
       showCoverOnBackground: Boolean(row.showCoverOnBackground),
+      videoUrl: row.videoUrl?.trim() ? resolveOssAssetUrl(row.videoUrl) : '',
+      gallery: ((row.gallery ?? []) as Array<{ url?: string; alt?: string }>)
+        .map((item) => ({
+          url: item.url?.trim() ? resolveOssAssetUrl(item.url) : '',
+          alt: item.alt?.trim() || headline,
+        }))
+        .filter((item) => item.url),
     },
     stats: stats.length ? stats.map((item) => ({ label: item.label, value: item.value })) : null,
     sections: mapBlocksToSections(blocks, sectionLocale, row.slug),

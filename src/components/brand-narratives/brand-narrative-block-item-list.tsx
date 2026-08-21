@@ -10,11 +10,18 @@ import {
 
 type BrandNarrativeBlockItemListProps = {
   items: BrandNarrativeBlockItemDraft[];
+  /** 节点 | 课程 | 内容 */
+  itemLabel?: string;
   onChange: (items: BrandNarrativeBlockItemDraft[]) => void;
   onEdit: (item: BrandNarrativeBlockItemDraft) => void;
 };
 
-export function BrandNarrativeBlockItemList({ items, onChange, onEdit }: BrandNarrativeBlockItemListProps) {
+export function BrandNarrativeBlockItemList({
+  items,
+  itemLabel = '内容',
+  onChange,
+  onEdit,
+}: BrandNarrativeBlockItemListProps) {
   function moveItem(index: number, offset: number) {
     const nextIndex = index + offset;
     if (nextIndex < 0 || nextIndex >= items.length) return;
@@ -27,18 +34,18 @@ export function BrandNarrativeBlockItemList({ items, onChange, onEdit }: BrandNa
   return (
     <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-        <Typography.Text strong>内容</Typography.Text>
+        <Typography.Text strong>{itemLabel}</Typography.Text>
         <Button
           type="primary"
           icon={<PlusOutlined />}
           onClick={() => onChange([...items, createBrandNarrativeBlockItem()])}
         >
-          添加内容
+          添加{itemLabel}
         </Button>
       </div>
 
       {items.length === 0 ? (
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="尚未添加内容" />
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={`尚未添加${itemLabel}`} />
       ) : (
         <Space orientation="vertical" size="small" style={{ width: '100%' }}>
           {items.map((item, index) => (
@@ -55,7 +62,9 @@ export function BrandNarrativeBlockItemList({ items, onChange, onEdit }: BrandNa
                 background: '#fff',
               }}
             >
-              <Typography.Text>内容 {index + 1}</Typography.Text>
+              <Typography.Text>
+                {itemLabel} {index + 1}
+              </Typography.Text>
               <Space size={4}>
                 <Button
                   type="text"

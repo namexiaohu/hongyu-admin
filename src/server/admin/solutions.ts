@@ -45,6 +45,23 @@ function normalizeMaterials(materials: SolutionMaterial[] | undefined): Solution
     .filter((item) => item.url);
 }
 
+function normalizeGallery(gallery: Array<{ url: string; alt?: string; width?: number | null; height?: number | null }> | undefined) {
+  if (!gallery?.length) return [];
+  return gallery
+    .map((item) => ({
+      url: toOssStorageKey(item.url.trim()),
+      alt: item.alt?.trim() ?? '',
+      width: item.width ?? null,
+      height: item.height ?? null,
+    }))
+    .filter((item) => item.url);
+}
+
+function normalizeVideoUrl(value: string | undefined): string {
+  const trimmed = value?.trim() ?? '';
+  return trimmed ? toOssStorageKey(trimmed) : '';
+}
+
 function toIso(value: Date) {
   return value.toISOString();
 }
@@ -71,6 +88,8 @@ function mapListItem(
     sortOrder: row.sortOrder,
     status: row.status as SolutionStatus,
     coverImage: row.coverImage,
+    gallery: (row.gallery ?? []) as AdminSolutionListItem['gallery'],
+    videoUrl: row.videoUrl ?? '',
     backgroundMode: bg.mode,
     backgroundValue: bg.value,
     backgroundImage: row.backgroundImage ?? '',
@@ -328,6 +347,8 @@ export async function updateAdminSolution(id: string, input: unknown) {
       ...(parsed.status !== undefined ? { status: parsed.status } : {}),
       ...(parsed.sortOrder !== undefined ? { sortOrder: parsed.sortOrder } : {}),
       ...(parsed.coverImage !== undefined ? { coverImage: toOssStorageKey(parsed.coverImage) } : {}),
+      ...(parsed.gallery !== undefined ? { gallery: normalizeGallery(parsed.gallery) } : {}),
+      ...(parsed.videoUrl !== undefined ? { videoUrl: normalizeVideoUrl(parsed.videoUrl) } : {}),
       ...bgPatch,
       ...(parsed.showCoverOnBackground !== undefined
         ? { showCoverOnBackground: parsed.showCoverOnBackground }
@@ -353,6 +374,19 @@ export async function updateAdminSolution(id: string, input: unknown) {
 }
 
 async function upsertSolutionBlocks(solutionId: string, blocks: SolutionBlockDraft[]) {
+  const normalized = blocks.map((block) => ({
+    ...block,
+    videoUrl: block.videoUrl?.trim() ? toOssStorageKey(block.videoUrl) : block.videoUrl ?? '',
+    carouselImages: (block.carouselImages ?? []).map((slide) => ({
+      ...slide,
+      url: slide.url.trim() ? toOssStorageKey(slide.url) : slide.url,
+    })),
+    items: (block.items ?? []).map((item) => ({
+      ...item,
+      coverImage: item.coverImage?.trim() ? toOssStorageKey(item.coverImage) : item.coverImage,
+    })),
+  }));
+
   const [existing] = await db
     .select({ id: solutionContents.id })
     .from(solutionContents)
@@ -362,12 +396,12 @@ async function upsertSolutionBlocks(solutionId: string, blocks: SolutionBlockDra
   if (existing) {
     await db
       .update(solutionContents)
-      .set({ blocks: blocks as SolutionBlockDraft[], updatedAt: new Date() })
+      .set({ blocks: normalized as SolutionBlockDraft[], updatedAt: new Date() })
       .where(eq(solutionContents.solutionId, solutionId));
   } else {
     await db.insert(solutionContents).values({
       solutionId,
-      blocks: blocks as SolutionBlockDraft[],
+      blocks: normalized as SolutionBlockDraft[],
     });
   }
 }
@@ -462,6 +496,8 @@ export async function createAdminSolution(input: unknown) {
       sortOrder: (maxSort?.sortOrder ?? 0) + 10,
       status: parsed.status ?? 'draft',
       coverImage: toOssStorageKey(parsed.coverImage ?? ''),
+      gallery: normalizeGallery(parsed.gallery),
+      videoUrl: normalizeVideoUrl(parsed.videoUrl),
       backgroundMode: bg.backgroundMode,
       backgroundValue: bg.backgroundValue,
       backgroundImage,

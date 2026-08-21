@@ -10,11 +10,18 @@ import {
 
 type SolutionBlockItemListProps = {
   items: SolutionBlockItemDraft[];
+  /** 节点 | 课程 | 内容 */
+  itemLabel?: string;
   onChange: (items: SolutionBlockItemDraft[]) => void;
   onEdit: (item: SolutionBlockItemDraft) => void;
 };
 
-export function SolutionBlockItemList({ items, onChange, onEdit }: SolutionBlockItemListProps) {
+export function SolutionBlockItemList({
+  items,
+  itemLabel = '内容',
+  onChange,
+  onEdit,
+}: SolutionBlockItemListProps) {
   function moveItem(index: number, offset: number) {
     const nextIndex = index + offset;
     if (nextIndex < 0 || nextIndex >= items.length) return;
@@ -27,18 +34,18 @@ export function SolutionBlockItemList({ items, onChange, onEdit }: SolutionBlock
   return (
     <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-        <Typography.Text strong>内容</Typography.Text>
+        <Typography.Text strong>{itemLabel}</Typography.Text>
         <Button
           type="primary"
           icon={<PlusOutlined />}
           onClick={() => onChange([...items, createSolutionBlockItem()])}
         >
-          添加内容
+          添加{itemLabel}
         </Button>
       </div>
 
       {items.length === 0 ? (
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="尚未添加内容" />
+        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={`尚未添加${itemLabel}`} />
       ) : (
         <Space orientation="vertical" size="small" style={{ width: '100%' }}>
           {items.map((item, index) => (
@@ -55,7 +62,9 @@ export function SolutionBlockItemList({ items, onChange, onEdit }: SolutionBlock
                 background: '#fff',
               }}
             >
-              <Typography.Text>内容 {index + 1}</Typography.Text>
+              <Typography.Text>
+                {itemLabel} {index + 1}
+              </Typography.Text>
               <Space size={4}>
                 <Button
                   type="text"

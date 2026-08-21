@@ -7,6 +7,7 @@ import {
   solutionSummaryLayouts,
   type SolutionBlockDraft,
 } from '@/lib/solution-blocks';
+import type { ProductGalleryImage } from '@/lib/product-content';
 
 export type SolutionSlug = string;
 
@@ -45,6 +46,8 @@ export type AdminSolutionListItem = {
   sortOrder: number;
   status: SolutionStatus;
   coverImage: string;
+  gallery: ProductGalleryImage[];
+  videoUrl: string;
   backgroundMode: '' | 'solid' | 'preset' | 'upload';
   backgroundValue: string;
   backgroundImage: string;
@@ -105,6 +108,7 @@ export const solutionBlockSchema = z.object({
     id: z.string().trim().min(1),
     url: z.string(),
   })).optional(),
+  videoUrl: z.string().optional(),
   href: z.string().optional(),
   productIds: z.array(z.string().trim().min(1)).optional().default([]),
   locales: z.record(localeCopySchema).default({}),
@@ -146,12 +150,21 @@ export const adminSolutionTranslationPatchSchema = adminSolutionTranslationSchem
 
 const backgroundModeSchema = z.enum(['solid', 'preset', 'upload', '']);
 
+const galleryItemSchema = z.object({
+  url: z.string().trim().min(1),
+  alt: z.string().trim().default(''),
+  width: z.number().int().nullable().optional(),
+  height: z.number().int().nullable().optional(),
+});
+
 export const adminSolutionPatchSchema = z.object({
   slug: z.string().trim().min(1).max(64).optional(),
   boardKeys: z.array(z.string()).optional(),
   status: z.enum(solutionStatuses).optional(),
   sortOrder: z.number().int().optional(),
   coverImage: z.string().optional(),
+  gallery: z.array(galleryItemSchema).optional(),
+  videoUrl: z.string().optional(),
   backgroundMode: backgroundModeSchema.optional(),
   backgroundValue: z.string().optional(),
   showCoverOnBackground: z.boolean().optional(),
@@ -165,6 +178,8 @@ export const adminSolutionCreateSchema = z.object({
   boardKeys: z.array(z.string()).optional().default([]),
   status: z.enum(solutionStatuses).optional(),
   coverImage: z.string().optional().default(''),
+  gallery: z.array(galleryItemSchema).optional().default([]),
+  videoUrl: z.string().optional().default(''),
   backgroundMode: backgroundModeSchema.optional().default(''),
   backgroundValue: z.string().optional().default(''),
   showCoverOnBackground: z.boolean().optional().default(true),
