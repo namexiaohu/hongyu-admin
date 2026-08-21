@@ -119,8 +119,8 @@ const summaryIconSvgs: Record<SolutionSummaryIcon, ReactNode> = {
 };
 
 type SolutionSummaryIconPickerProps = {
-  value?: string;
-  onChange: (icon: SolutionSummaryIcon) => void;
+  value?: string | null;
+  onChange: (icon: SolutionSummaryIcon | null) => void;
 };
 
 const tileStyle: CSSProperties = {
@@ -142,12 +142,33 @@ export function SolutionSummaryIconSvg({ icon }: { icon: SolutionSummaryIcon }) 
 }
 
 export function SolutionSummaryIconPicker({ value, onChange }: SolutionSummaryIconPickerProps) {
+  const selectedValue = value && solutionSummaryIcons.includes(value as SolutionSummaryIcon)
+    ? value
+    : null;
+
   return (
     <div>
-      <div style={{ marginBottom: 8 }}>图标</div>
+      <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <span>图标</span>
+        <button
+          type="button"
+          onClick={() => onChange(null)}
+          style={{
+            border: 'none',
+            background: 'transparent',
+            color: selectedValue ? '#cf1322' : '#94a3b8',
+            cursor: selectedValue ? 'pointer' : 'default',
+            fontSize: 13,
+            padding: 0,
+          }}
+          disabled={!selectedValue}
+        >
+          移除图标
+        </button>
+      </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
         {solutionSummaryIcons.map((icon) => {
-          const selected = value === icon;
+          const selected = selectedValue === icon;
           return (
             <button
               key={icon}

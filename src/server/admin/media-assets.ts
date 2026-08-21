@@ -13,7 +13,7 @@ import {
 } from '@/lib/media-assets';
 import { db } from '@/server/db';
 import { mediaAssets } from '@/server/db/schema';
-import { uploadToOss } from '@/server/oss';
+import { deleteFromOss, uploadToOss } from '@/server/oss';
 
 function toIso(value: Date) {
   return value.toISOString();
@@ -140,6 +140,18 @@ export async function createAdminMediaAssetFromKey(input: {
 }
 
 export async function deleteAdminMediaAsset(id: string) {
+  const [row] = await db
+    .select({ id: mediaAssets.id, storageKey: mediaAssets.storageKey })
+    .from(mediaAssets)
+    .where(eq(mediaAssets.id, id))
+    .limit(1);
+  if (!row) return false;
+
   const [deleted] = await db.delete(mediaAssets).where(eq(mediaAssets.id, id)).returning({ id: mediaAssets.id });
-  return Boolean(deleted);
+  if (!deleted) return false;
+
+  if (row.storageKey.trim()) {
+    await deleteFromOss(row.storageKey).catch(() => undefined);
+  }
+  return true;
 }

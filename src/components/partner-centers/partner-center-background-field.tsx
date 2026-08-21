@@ -1,7 +1,7 @@
 'use client';
 
-import { CheckOutlined, LoadingOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Modal, Segmented, Space, Typography, Upload, message } from 'antd';
+import { CheckOutlined, DeleteOutlined, LoadingOutlined, PlusOutlined } from '@ant-design/icons';
+import { Button, Modal, Popconfirm, Segmented, Space, Typography, Upload, message } from 'antd';
 import type { UploadProps } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -10,6 +10,7 @@ import { IMAGE_UPLOAD_MIME_TYPES, MAX_IMAGE_UPLOAD_BYTES } from '@/lib/media-upl
 import {
   getSharedBackgroundMediaAssets,
   peekSharedBackgroundMediaAssets,
+  removeSharedBackgroundMediaAsset,
   setSharedBackgroundMediaAssets,
 } from '@/lib/background-media-cache';
 import {
@@ -52,6 +53,7 @@ export function PartnerCenterBackgroundField({
   const [uploadItems, setUploadItems] = useState<AdminMediaAsset[]>([]);
   const [loadingUploads, setLoadingUploads] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [modeCache, setModeCache] = useState<Partial<Record<PartnerCenterBackgroundMode, { value: string; previewUrl: string }>>>({});
 
   const solid = mode === 'solid' ? getPartnerCenterSolidPreset(selectedValue) : null;
@@ -152,6 +154,27 @@ export function PartnerCenterBackgroundField({
     setModeCache((prev) => ({ ...prev, upload: { value: asset.id, previewUrl: asset.url } }));
     onChange?.({ mode: 'upload', value: asset.id, previewUrl: asset.url });
     setPickerOpen(false);
+  }
+
+  async function deleteUpload(asset: AdminMediaAsset) {
+    if (deletingId) return;
+    try {
+      setDeletingId(asset.id);
+      const response = await fetch(`/api/admin/media-assets/${asset.id}`, { method: 'DELETE' });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.message || '删除失败');
+
+      const next = removeSharedBackgroundMediaAsset(asset.id);
+      setUploadItems(next);
+      if (mode === 'upload' && selectedValue === asset.id) {
+        clear();
+      }
+      void message.success('已删除');
+    } catch (error) {
+      void message.error(error instanceof Error ? error.message : '删除失败');
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   function clear() {
@@ -377,43 +400,85 @@ export function PartnerCenterBackgroundField({
               >
                 {uploadItems.map((item) => {
                   const active = selectedValue === item.id;
+                  const deleting = deletingId === item.id;
                   return (
-                    <button
+                    <div
                       key={item.id}
-                      type="button"
-                      onClick={() => selectUpload(item)}
                       style={{
                         border: active ? '2px solid #2563eb' : '1px solid #e2e8f0',
                         borderRadius: 10,
                         padding: 0,
                         overflow: 'hidden',
-                        cursor: 'pointer',
                         background: '#fff',
-                        textAlign: 'left',
                         minWidth: 0,
                         width: '100%',
                         boxSizing: 'border-box',
+                        position: 'relative',
                       }}
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={item.url}
-                        alt={item.filename || '大背景图'}
-                        style={{ width: '100%', height: 110, objectFit: 'cover', display: 'block' }}
-                      />
-                      <div
+                      <button
+                        type="button"
+                        onClick={() => selectUpload(item)}
                         style={{
-                          padding: '8px 10px',
-                          fontSize: 11,
-                          color: '#64748b',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
+                          border: 'none',
+                          padding: 0,
+                          margin: 0,
+                          width: '100%',
+                          background: 'transparent',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          display: 'block',
                         }}
                       >
-                        {item.filename || item.id.slice(0, 8)}
-                      </div>
-                    </button>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={item.url}
+                          alt={item.filename || '大背景图'}
+                          style={{ width: '100%', height: 110, objectFit: 'cover', display: 'block' }}
+                        />
+                        <div
+                          style={{
+                            padding: '8px 10px',
+                            fontSize: 11,
+                            color: '#64748b',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {item.filename || item.id.slice(0, 8)}
+                        </div>
+                      </button>
+                      <Popconfirm
+                        title="删除这张大背景图？"
+                        description="删除后不可恢复，引用该图的实体需重新选择。"
+                        okText="删除"
+                        cancelText="取消"
+                        okButtonProps={{ danger: true, loading: deleting }}
+                        onConfirm={(event) => {
+                          event?.stopPropagation();
+                          void deleteUpload(item);
+                        }}
+                        onCancel={(event) => event?.stopPropagation()}
+                      >
+                        <Button
+                          type="text"
+                          size="small"
+                          danger
+                          icon={deleting ? <LoadingOutlined /> : <DeleteOutlined />}
+                          disabled={disabled || Boolean(deletingId)}
+                          onClick={(event) => event.stopPropagation()}
+                          aria-label="删除大背景图"
+                          style={{
+                            position: 'absolute',
+                            top: 6,
+                            right: 6,
+                            background: 'rgba(255,255,255,0.92)',
+                            boxShadow: '0 1px 4px rgba(15,23,42,0.12)',
+                          }}
+                        />
+                      </Popconfirm>
+                    </div>
                   );
                 })}
               </div>

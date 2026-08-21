@@ -117,7 +117,7 @@ function mapSummarySection(block: BrandNarrativeBlockDraft, locale: string) {
         const itemCopy = pickLocaleCopy(item.locales, locale);
         return {
           cardStyle: 'cert' as const,
-          icon: isSummaryIcon(item.icon) ? item.icon : 'check',
+          icon: isSummaryIcon(item.icon) ? item.icon : null,
           title: text(itemCopy.largeTitle, text(itemCopy.smallTitle, ' ')),
           body: text(itemCopy.description, ' '),
         };
@@ -142,6 +142,7 @@ function mapSummarySection(block: BrandNarrativeBlockDraft, locale: string) {
           body: text(itemCopy.description),
           image: resolveOssAssetUrl(item.coverImage),
           imageAlt: text(itemCopy.largeTitle),
+          icon: isSummaryIcon(item.icon) ? item.icon : null,
         };
       }),
     };
@@ -169,10 +170,9 @@ function mapSummarySection(block: BrandNarrativeBlockDraft, locale: string) {
 
   const cards = (block.items ?? []).map((item) => {
     const itemCopy = pickLocaleCopy(item.locales, locale);
-    const icon = isSummaryIcon(item.icon) ? item.icon : 'layers';
     return {
       cardStyle: 'value' as const,
-      icon,
+      icon: isSummaryIcon(item.icon) ? item.icon : null,
       title: text(itemCopy.largeTitle, text(itemCopy.smallTitle, ' ')),
       body: text(itemCopy.description, ' '),
     };
@@ -187,7 +187,7 @@ function mapSummarySection(block: BrandNarrativeBlockDraft, locale: string) {
     lead: body || undefined,
     cards: cards.length
       ? cards
-      : [{ cardStyle: 'value' as const, icon: 'layers' as const, title: title || ' ', body: body || ' ' }],
+      : [{ cardStyle: 'value' as const, icon: null, title: title || ' ', body: body || ' ' }],
   };
 }
 

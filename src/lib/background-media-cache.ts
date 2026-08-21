@@ -41,3 +41,9 @@ export function prependSharedBackgroundMediaAsset(asset: AdminMediaAsset) {
   cachedItems = next;
   return next;
 }
+
+export function removeSharedBackgroundMediaAsset(id: string) {
+  const next = (cachedItems ?? []).filter((item) => item.id !== id);
+  cachedItems = next;
+  return next;
+}

@@ -119,8 +119,8 @@ const summaryIconSvgs: Record<BrandNarrativeSummaryIcon, ReactNode> = {
 };
 
 type BrandNarrativeSummaryIconPickerProps = {
-  value?: string;
-  onChange: (icon: BrandNarrativeSummaryIcon) => void;
+  value?: string | null;
+  onChange: (icon: BrandNarrativeSummaryIcon | null) => void;
 };
 
 const tileStyle: CSSProperties = {
@@ -142,12 +142,33 @@ export function BrandNarrativeSummaryIconSvg({ icon }: { icon: BrandNarrativeSum
 }
 
 export function BrandNarrativeSummaryIconPicker({ value, onChange }: BrandNarrativeSummaryIconPickerProps) {
+  const selectedValue = value && brandNarrativeSummaryIcons.includes(value as BrandNarrativeSummaryIcon)
+    ? value
+    : null;
+
   return (
     <div>
-      <div style={{ marginBottom: 8 }}>图标</div>
+      <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <span>图标</span>
+        <button
+          type="button"
+          onClick={() => onChange(null)}
+          style={{
+            border: 'none',
+            background: 'transparent',
+            color: selectedValue ? '#cf1322' : '#94a3b8',
+            cursor: selectedValue ? 'pointer' : 'default',
+            fontSize: 13,
+            padding: 0,
+          }}
+          disabled={!selectedValue}
+        >
+          移除图标
+        </button>
+      </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
         {brandNarrativeSummaryIcons.map((icon) => {
-          const selected = value === icon;
+          const selected = selectedValue === icon;
           return (
             <button
               key={icon}

@@ -173,7 +173,7 @@ function mapSummarySection(block: SolutionBlockDraft, locale: string) {
   const cards = (block.items ?? []).map((item) => {
     const itemCopy = pickLocaleCopy(item.locales, locale);
     return {
-      icon: isSummaryIcon(item.icon) ? item.icon : 'layers',
+      icon: isSummaryIcon(item.icon) ? item.icon : null,
       image: resolveOssAssetUrl(item.coverImage ?? ''),
       imageAlt: text(itemCopy.largeTitle, itemCopy.smallTitle),
       title: text(itemCopy.largeTitle, itemCopy.smallTitle) || ' ',

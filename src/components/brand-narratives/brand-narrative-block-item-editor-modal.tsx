@@ -9,7 +9,6 @@ import { BrandNarrativeSummaryIconPicker } from '@/components/brand-narratives/b
 import { CoverImageField } from '@/components/editorial/cover-image-field';
 import {
   createEmptyBlockLocaleCopy,
-  defaultBrandNarrativeSummaryIcon,
   hasLocaleCopyContent,
   isSummaryIcon,
   writeLocaleCopy,
@@ -188,19 +187,26 @@ export function BrandNarrativeBlockItemEditorModal({
     >
       <Space orientation="vertical" size="large" style={{ width: '100%', maxWidth: '100%', minWidth: 0 }}>
         <div className="content-editor-shared-section" style={mode === 'stub' && media !== 'cover' ? { minHeight: 72 } : undefined}>
-          {media === 'icon' && mode === 'summary' && item ? (
-            <BrandNarrativeSummaryIconPicker
-              value={isSummaryIcon(item.icon) ? item.icon : defaultBrandNarrativeSummaryIcon}
-              onChange={(icon) => emit(mergeCurrentLocale({ ...item, icon }))}
-            />
-          ) : null}
-          {media === 'cover' && item ? (
-            <CoverImageField
-              folder="brand-narratives/covers"
-              value={item.coverImage ?? ''}
-              onChange={(next) => emit(mergeCurrentLocale({ ...item, coverImage: next ?? '' }))}
-            />
-          ) : null}
+          <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
+            {mode === 'summary' && item ? (
+              <BrandNarrativeSummaryIconPicker
+                value={isSummaryIcon(item.icon) ? item.icon : null}
+                onChange={(icon) => {
+                  const next = { ...item };
+                  if (icon) next.icon = icon;
+                  else delete next.icon;
+                  emit(mergeCurrentLocale(next));
+                }}
+              />
+            ) : null}
+            {media === 'cover' && item ? (
+              <CoverImageField
+                folder="brand-narratives/covers"
+                value={item.coverImage ?? ''}
+                onChange={(next) => emit(mergeCurrentLocale({ ...item, coverImage: next ?? '' }))}
+              />
+            ) : null}
+          </Space>
         </div>
 
         <div className="content-editor-layout">
