@@ -15,12 +15,11 @@ export type PartnerCenterImagePreset = {
   credit: string;
 };
 
-/** 与 /solutions .sol-hero 相同：135deg，底色混黑 72% → 底色 */
+/** Shared solid hero gradient: 135deg, base mixed with black 72% → base */
 function solidHeroCss(base: string) {
   return `linear-gradient(135deg, color-mix(in oklch, ${base}, black 72%) 0%, ${base} 100%)`;
 }
 
-/** 纯色大背景图（公式统一，仅底色不同） */
 export const PARTNER_CENTER_SOLID_PRESETS: PartnerCenterSolidPreset[] = [
   { id: 'slate-deep', label: '品牌蓝', css: solidHeroCss('#1e3a5f') },
   { id: 'navy-depth', label: '深蓝', css: solidHeroCss('#1e40af') },
@@ -36,7 +35,7 @@ function unsplash(photoId: string, w: number) {
   return `https://images.unsplash.com/${photoId}?auto=format&fit=crop&w=${w}&q=80`;
 }
 
-/** 预置大背景图（Unsplash 横图，30 张） */
+/** Unsplash landscape presets (30) */
 export const PARTNER_CENTER_IMAGE_PRESETS: PartnerCenterImagePreset[] = [
   { id: 'u-01', label: '现代医院大厅', thumbUrl: unsplash('photo-1519494026892-80bbd2d6fd0d', 480), fullUrl: unsplash('photo-1519494026892-80bbd2d6fd0d', 1920), credit: 'Unsplash' },
   { id: 'u-02', label: '洁净手术空间', thumbUrl: unsplash('photo-1551076805-e1869033e561', 480), fullUrl: unsplash('photo-1551076805-e1869033e561', 1920), credit: 'Unsplash' },
@@ -73,6 +72,7 @@ export const PARTNER_CENTER_IMAGE_PRESETS: PartnerCenterImagePreset[] = [
 export const MEDIA_ASSET_TYPE_PARTNER_CENTER_BACKGROUND = 'partner_center_background';
 export const MEDIA_ASSET_TYPE_BRAND_NARRATIVE_BACKGROUND = 'brand_narrative_background';
 export const MEDIA_ASSET_TYPE_SOLUTION_BACKGROUND = 'solution_background';
+export const MEDIA_ASSET_TYPE_PRODUCT_BACKGROUND = 'product_background';
 
 export function normalizeBackgroundWrite(mode: string | undefined, value: string | undefined) {
   const nextMode = (mode ?? '') as PartnerCenterBackgroundMode;
@@ -133,4 +133,34 @@ export function resolvePartnerCenterBackgroundDisplay(input: {
   }
 
   return { mode: '', imageUrl: '', solidCss: '' };
+}
+
+/** Admin list/detail preview: resolve mode/value + public preview URL (no solid fallback). */
+export function resolveAdminBackgroundPreview(input: {
+  mode: string;
+  value: string;
+  legacyBackgroundImageKey: string;
+  uploadKeyById: Map<string, string>;
+  toPublicUrl: (storageKey: string) => string;
+}): { mode: PartnerCenterBackgroundMode; value: string; previewUrl: string } {
+  const mode = (input.mode ?? '') as PartnerCenterBackgroundMode;
+  const value = (input.value ?? '').trim();
+  let uploadUrl = '';
+  if (mode === 'upload' && value) {
+    const key = input.uploadKeyById.get(value);
+    uploadUrl = key ? input.toPublicUrl(key) : '';
+  }
+  const legacyKey = input.legacyBackgroundImageKey?.trim() ?? '';
+  const display = resolvePartnerCenterBackgroundDisplay({
+    mode,
+    value,
+    uploadUrl,
+    legacyBackgroundImage: legacyKey ? input.toPublicUrl(legacyKey) : '',
+    fallbackSolidWhenEmpty: false,
+  });
+  return {
+    mode: (mode || display.mode || '') as PartnerCenterBackgroundMode,
+    value,
+    previewUrl: display.imageUrl,
+  };
 }

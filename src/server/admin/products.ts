@@ -30,16 +30,21 @@ import {
   type ProductStatus,
   type ProductStat,
 } from '@/lib/product-content';
-import { rewriteHtmlOssAssets, toOssStorageKey } from '@/lib/oss-asset-url';
+import { rewriteHtmlOssAssets, toOssStorageKey, resolveOssAssetUrl } from '@/lib/oss-asset-url';
 import { normalizeEntityKeyForSave } from '@/lib/admin-entity-key';
 import type { ProductListQuery } from '@/lib/product-list-query';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import { resolveSlugForSave } from '@/lib/slug';
+import {
+  normalizeBackgroundWrite,
+  resolveAdminBackgroundPreview,
+} from '@/lib/partner-center-background-presets';
 import { getAdminBrandOptions } from '@/server/admin/brands';
 import { getAdminCategoryOptions } from '@/server/admin/categories';
 import { countProductFeatureAssignmentsByProductIds } from '@/server/admin/product-features';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
 import { validateProductBoardKeys, getEnabledProductBoardOptions } from '@/server/admin/product-boards';
+import { getAdminMediaAssetStorageKeys } from '@/server/admin/media-assets';
 import { db } from '@/server/db';
 import { brands, categories, productBoardAssignments, productCategories, productTranslations, products } from '@/server/db/schema';
 import { brandNameSql } from '@/server/brands/resolve-brand-translation';
@@ -122,6 +127,9 @@ export const adminProductPatchSchema = z.object({
   featuredSortOrder: z.coerce.number().int().min(0).optional(),
   status: z.enum(productStatuses).optional(),
   boardKeys: z.array(z.string().trim().min(1)).optional(),
+  backgroundMode: z.enum(['', 'solid', 'preset', 'upload']).optional(),
+  backgroundValue: z.string().trim().optional(),
+  showCoverOnBackground: z.boolean().optional(),
 });
 
 type TranslationCreateInput = z.infer<typeof adminProductTranslationSchema>;
@@ -379,10 +387,18 @@ function toListItem(
   categoryIds?: string[],
   boardKeys: string[] = [],
   boardLabels: string[] = [],
+  uploadKeyById: Map<string, string> = new Map(),
 ): AdminProductListItem | null {
   const primary = pickTranslationForDisplay(translations, displayLocale);
   if (!primary) return null;
   const payload = normalizePayload((primary.payload ?? defaultProductPayload()) as AdminProductPayload);
+  const bg = resolveAdminBackgroundPreview({
+    mode: product.backgroundMode ?? '',
+    value: product.backgroundValue ?? '',
+    legacyBackgroundImageKey: product.backgroundImage ?? '',
+    uploadKeyById,
+    toPublicUrl: resolveOssAssetUrl,
+  });
 
   return {
     id: product.id,
@@ -411,6 +427,11 @@ function toListItem(
     boardKey: product.boardKey,
     boardKeys,
     boardLabels,
+    backgroundMode: bg.mode,
+    backgroundValue: bg.value,
+    backgroundImage: product.backgroundImage ?? '',
+    backgroundPreviewUrl: bg.previewUrl,
+    showCoverOnBackground: Boolean(product.showCoverOnBackground),
     createdAt: product.createdAt.toISOString(),
     updatedAt: product.updatedAt.toISOString(),
   };
@@ -614,6 +635,12 @@ export async function getAdminProductsPaginated(query: ProductListQuery): Promis
     getAdminProductStats(),
   ]);
 
+  const uploadIds = productRows
+    .map((row) => row.product)
+    .filter((product) => product.backgroundMode === 'upload' && product.backgroundValue)
+    .map((product) => product.backgroundValue);
+  const uploadKeyById = await getAdminMediaAssetStorageKeys(uploadIds);
+
   const boardOptions = await getEnabledProductBoardOptions();
   const boardTitleByKey = new Map(boardOptions.map((board) => [board.key, board.title]));
 
@@ -631,6 +658,7 @@ export async function getAdminProductsPaginated(query: ProductListQuery): Promis
         undefined,
         boardKeys,
         boardLabels,
+        uploadKeyById,
       );
     })
     .filter((item): item is AdminProductListItem => Boolean(item));
@@ -674,6 +702,12 @@ export async function getAdminProductListItem(productId: string) {
   const boardTitleByKey = new Map(boardOptions.map((board) => [board.key, board.title]));
   const boardLabels = boardKeys.map((key) => boardTitleByKey.get(key) ?? key);
 
+  const uploadIds =
+    row.product.backgroundMode === 'upload' && row.product.backgroundValue
+      ? [row.product.backgroundValue]
+      : [];
+  const uploadKeyById = await getAdminMediaAssetStorageKeys(uploadIds);
+
   return toListItem(
     row.product,
     translations,
@@ -684,6 +718,7 @@ export async function getAdminProductListItem(productId: string) {
     categoryIds,
     boardKeys,
     boardLabels,
+    uploadKeyById,
   );
 }
 
@@ -974,13 +1009,33 @@ export async function updateAdminProductShared(productId: string, input: Product
 
   const resolved = resolveCategoryFields(parsed);
   const shouldSyncCategories = parsed.categoryIds !== undefined || parsed.defaultCategoryId !== undefined;
-  const { categoryIds: _categoryIds, boardKeys, ...productFields } = parsed;
+  const {
+    categoryIds: _categoryIds,
+    boardKeys,
+    backgroundMode,
+    backgroundValue,
+    showCoverOnBackground,
+    ...productFields
+  } = parsed;
+
+  const backgroundWrite =
+    backgroundMode !== undefined || backgroundValue !== undefined
+      ? normalizeBackgroundWrite(backgroundMode, backgroundValue)
+      : null;
 
   const [product] = await db
     .update(products)
     .set({
       ...productFields,
       ...(shouldSyncCategories ? { defaultCategoryId: resolved.defaultCategoryId } : {}),
+      ...(backgroundWrite
+        ? {
+            backgroundMode: backgroundWrite.backgroundMode,
+            backgroundValue: backgroundWrite.backgroundValue,
+            backgroundImage: backgroundWrite.backgroundImage,
+          }
+        : {}),
+      ...(showCoverOnBackground !== undefined ? { showCoverOnBackground } : {}),
       updatedAt: new Date(),
     })
     .where(eq(products.id, productId))

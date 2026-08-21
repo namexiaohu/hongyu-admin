@@ -3,10 +3,8 @@ import 'server-only';
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 
 import {
-  type PartnerCenterBackgroundMode,
-  getPartnerCenterImagePreset,
   normalizeBackgroundWrite,
-  resolvePartnerCenterBackgroundDisplay,
+  resolveAdminBackgroundPreview,
 } from '@/lib/partner-center-background-presets';
 import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
 import {
@@ -38,24 +36,12 @@ function mapListItem(
   localeCount: number,
   uploadKeyById: Map<string, string>,
 ): AdminPartnerCenterListItem {
-  const mode = (row.backgroundMode ?? '') as PartnerCenterBackgroundMode;
-  const value = row.backgroundValue ?? '';
-  let uploadUrl = '';
-  if (mode === 'upload' && value) {
-    const key = uploadKeyById.get(value);
-    uploadUrl = key ? resolveOssAssetUrl(key) : '';
-  } else if (mode === 'preset' && value) {
-    uploadUrl = getPartnerCenterImagePreset(value)?.fullUrl ?? '';
-  } else if (!mode && row.backgroundImage) {
-    uploadUrl = resolveOssAssetUrl(row.backgroundImage);
-  }
-
-  const display = resolvePartnerCenterBackgroundDisplay({
-    mode,
-    value,
-    uploadUrl,
-    legacyBackgroundImage: row.backgroundImage ? resolveOssAssetUrl(row.backgroundImage) : '',
-    fallbackSolidWhenEmpty: false,
+  const bg = resolveAdminBackgroundPreview({
+    mode: row.backgroundMode ?? '',
+    value: row.backgroundValue ?? '',
+    legacyBackgroundImageKey: row.backgroundImage ?? '',
+    uploadKeyById,
+    toPublicUrl: resolveOssAssetUrl,
   });
 
   return {
@@ -67,9 +53,9 @@ function mapListItem(
     coverImage: row.coverImage,
     logo: row.logo,
     backgroundImage: row.backgroundImage ?? '',
-    backgroundMode: (row.backgroundMode || display.mode || '') as PartnerCenterBackgroundMode,
-    backgroundValue: value,
-    backgroundPreviewUrl: display.imageUrl,
+    backgroundMode: bg.mode,
+    backgroundValue: bg.value,
+    backgroundPreviewUrl: bg.previewUrl,
     showCoverOnBackground: Boolean(row.showCoverOnBackground),
     sortOrder: row.sortOrder,
     name,

@@ -4,9 +4,17 @@ import { Col, Form, Input, Row, Switch } from 'antd';
 
 import { BrandPickerField } from '@/components/brands/brand-picker-field';
 import { CategoryPickerField } from '@/components/categories/category-picker-field';
+import { CoverImageField } from '@/components/editorial/cover-image-field';
+import {
+  PartnerCenterBackgroundField,
+  type PartnerCenterBackgroundValue,
+} from '@/components/partner-centers/partner-center-background-field';
 import { ProductBoardMultiSelect, type ProductBoardOption } from '@/components/products/product-board-multi-select';
+import { ProductGalleryField } from '@/components/products/product-gallery-field';
+import { ProductVideoField } from '@/components/products/product-video-field';
 import type { AdminCategoryTreeNode } from '@/lib/category-content';
-import type { ProductStatus } from '@/lib/product-content';
+import { MEDIA_ASSET_TYPE_PRODUCT_BACKGROUND } from '@/lib/partner-center-background-presets';
+import type { AdminProductPayload, ProductStatus } from '@/lib/product-content';
 
 type ProductGeneralConfigPanelProps = {
   spu: string;
@@ -21,6 +29,16 @@ type ProductGeneralConfigPanelProps = {
   onBoardKeysChange: (value: string[]) => void;
   status: ProductStatus;
   onStatusChange: (nextStatus: ProductStatus) => void;
+  coverUrl: string;
+  onCoverUrlChange: (value: string) => void;
+  gallery: AdminProductPayload['gallery'];
+  onGalleryChange: (value: AdminProductPayload['gallery']) => void;
+  videoUrl: string;
+  onVideoUrlChange: (value: string) => void;
+  background: PartnerCenterBackgroundValue;
+  onBackgroundChange: (value: PartnerCenterBackgroundValue) => void;
+  showCoverOnBackground: boolean;
+  onShowCoverOnBackgroundChange: (value: boolean) => void;
 };
 
 const fieldStyle = { marginBottom: 16 };
@@ -38,6 +56,16 @@ export function ProductGeneralConfigPanel({
   onBoardKeysChange,
   status,
   onStatusChange,
+  coverUrl,
+  onCoverUrlChange,
+  gallery,
+  onGalleryChange,
+  videoUrl,
+  onVideoUrlChange,
+  background,
+  onBackgroundChange,
+  showCoverOnBackground,
+  onShowCoverOnBackgroundChange,
 }: ProductGeneralConfigPanelProps) {
   return (
     <div className="content-editor-shared-section">
@@ -87,6 +115,44 @@ export function ProductGeneralConfigPanel({
           </Form.Item>
         </Col>
       </Row>
+
+      <Form.Item label="封面图" layout="vertical" style={fieldStyle}>
+        <CoverImageField
+          folder="products/covers"
+          value={coverUrl || null}
+          onChange={(value) => onCoverUrlChange(value ?? '')}
+        />
+      </Form.Item>
+      <Form.Item label="轮播图" layout="vertical" style={fieldStyle}>
+        <ProductGalleryField value={gallery} onChange={(value) => onGalleryChange(value ?? [])} />
+      </Form.Item>
+      <Form.Item label="产品视频" layout="vertical" style={fieldStyle}>
+        <ProductVideoField
+          folder="products/videos"
+          value={videoUrl || null}
+          onChange={(value) => onVideoUrlChange(value ?? '')}
+        />
+      </Form.Item>
+      <Form.Item
+        label="大背景图同时显示封面"
+        layout="vertical"
+        style={fieldStyle}
+        extra="开启后，详情页看板在大背景图右侧同时展示封面"
+      >
+        <Switch
+          checked={showCoverOnBackground}
+          checkedChildren="开"
+          unCheckedChildren="关"
+          onChange={onShowCoverOnBackgroundChange}
+        />
+      </Form.Item>
+      <Form.Item label="大背景图" layout="vertical" style={fieldStyle}>
+        <PartnerCenterBackgroundField
+          assetType={MEDIA_ASSET_TYPE_PRODUCT_BACKGROUND}
+          value={background}
+          onChange={onBackgroundChange}
+        />
+      </Form.Item>
     </div>
   );
 }

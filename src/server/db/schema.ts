@@ -406,6 +406,13 @@ export const products = pgTable(
     boardKey: varchar('board_key', { length: 100 }),
     configurationRules: jsonb('configuration_rules'),
     torqueCurveData: jsonb('torque_curve_data'),
+    /** @deprecated use backgroundMode + backgroundValue */
+    backgroundImage: text('background_image').notNull().default(''),
+    /** solid | preset | upload | '' */
+    backgroundMode: text('background_mode').notNull().default(''),
+    /** solid token | preset id | media_assets.id */
+    backgroundValue: text('background_value').notNull().default(''),
+    showCoverOnBackground: boolean('show_cover_on_background').notNull().default(true),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

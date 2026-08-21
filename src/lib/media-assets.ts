@@ -2,6 +2,7 @@ export const MEDIA_ASSET_TYPES = [
   'partner_center_background',
   'brand_narrative_background',
   'solution_background',
+  'product_background',
 ] as const;
 
 export type MediaAssetType = (typeof MEDIA_ASSET_TYPES)[number];

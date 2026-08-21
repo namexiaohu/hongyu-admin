@@ -1,7 +1,6 @@
 import { getSiteUrl } from '@/lib/app-urls';
 
 export const SITE_NAME = 'STEPMOTECH';
-export const SITE_LEGACY_NAME = 'VexMotor';
 export const SITE_URL = getSiteUrl();
 
 /** Admin sidebar branding (override via env) */

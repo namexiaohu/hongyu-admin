@@ -98,6 +98,9 @@ export type StorefrontProductDetail = StorefrontProductCard & {
   description: string;
   gallery: StorefrontImage[];
   videoUrl?: string | null;
+  backgroundImage?: string;
+  backgroundSolidCss?: string;
+  showCoverOnBackground?: boolean;
   categories: StorefrontCategory[];
   attributes: Array<{ group: string; value: string }>;
   attachments: StorefrontAttachment[];

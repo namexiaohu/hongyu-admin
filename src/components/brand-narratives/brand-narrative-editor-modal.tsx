@@ -598,7 +598,7 @@ export function BrandNarrativeEditorModal({
               </Form.Item>
               <Form.Item
                 name="showCoverOnBackground"
-                label="大背景图同时显示封面图"
+                label="大背景图同时显示封面"
                 valuePropName="checked"
                 extra="开启后，详情页看板在大背景图右侧同时展示封面图"
               >

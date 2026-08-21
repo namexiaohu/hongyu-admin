@@ -61,6 +61,7 @@ const FOLDER_BY_TYPE: Record<string, string> = {
   partner_center_background: 'partner-centers/backgrounds',
   brand_narrative_background: 'brand-narratives/backgrounds',
   solution_background: 'solutions/backgrounds',
+  product_background: 'products/backgrounds',
 };
 
 export async function createAdminMediaAssetFromUpload(input: {

@@ -2,6 +2,7 @@ import { and, asc, count, desc, eq, exists, ilike, inArray, or, sql as drizzleSq
 
 import type { SolutionBlockDraft } from '@/lib/solution-blocks';
 import { resolveOssAssetUrl, rewriteHtmlOssAssets } from '@/lib/oss-asset-url';
+import { resolvePartnerCenterBackgroundDisplay } from '@/lib/partner-center-background-presets';
 import { db } from '@/server/db';
 import {
   attachments,
@@ -32,6 +33,7 @@ import {
   resolveProductCoverImage,
 } from '@/server/products/load-product-translations';
 import { getStorefrontProductFeatureOptions, getStorefrontProductFeatures } from '@/server/admin/product-features';
+import { getAdminMediaAssetStorageKeys } from '@/server/admin/media-assets';
 import {
   footerContactBlocks,
   footerCopyright,
@@ -919,6 +921,10 @@ export async function getProductBySlug(slug: string, localeInput?: string | null
         featured: products.featured,
         allowBackorder: products.allowBackorder,
         paidSampleEnabled: products.paidSampleEnabled,
+        backgroundMode: products.backgroundMode,
+        backgroundValue: products.backgroundValue,
+        backgroundImage: products.backgroundImage,
+        showCoverOnBackground: products.showCoverOnBackground,
         brandId: brands.id,
         brandName: brandNameSql(brands.id, locale),
         brandSlug: brandSlugSql(brands.id, locale),
@@ -993,6 +999,20 @@ export async function getProductBySlug(slug: string, localeInput?: string | null
       .filter((item) => item.label?.trim() && item.value?.trim())
       .map((item) => ({ label: item.label, value: item.value }));
 
+    let uploadUrl = '';
+    if (product.backgroundMode === 'upload' && product.backgroundValue) {
+      const keys = await getAdminMediaAssetStorageKeys([product.backgroundValue]);
+      const key = keys.get(product.backgroundValue);
+      uploadUrl = key ? resolveOssAssetUrl(key) : '';
+    }
+    const bg = resolvePartnerCenterBackgroundDisplay({
+      mode: product.backgroundMode ?? '',
+      value: product.backgroundValue ?? '',
+      uploadUrl,
+      legacyBackgroundImage: product.backgroundImage ? resolveOssAssetUrl(product.backgroundImage) : '',
+      fallbackSolidWhenEmpty: true,
+    });
+
     return {
       id: product.id,
       name: product.name,
@@ -1007,6 +1027,9 @@ export async function getProductBySlug(slug: string, localeInput?: string | null
         ? resolveOssAssetUrl(product.payload.videoUrl)
         : null,
       gallery: mergeGalleryWithCover(baseGallery, coverImage),
+      backgroundImage: bg.imageUrl,
+      backgroundSolidCss: bg.solidCss,
+      showCoverOnBackground: Boolean(product.showCoverOnBackground),
       price: asMoney(product.price, product.currencyCode),
       compareAtPrice: product.compareAtPrice ? asMoney(product.compareAtPrice, product.currencyCode) : null,
       purchaseMode: product.purchaseMode,

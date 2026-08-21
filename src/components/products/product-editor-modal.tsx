@@ -10,13 +10,11 @@ import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { ContentTranslateButton } from '@/components/admin/content-translate-button';
 import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
 import { AdminDateTimePicker } from '@/components/admin/admin-datetime-picker';
-import { CoverImageField } from '@/components/editorial/cover-image-field';
 import { RichTextEditor } from '@/components/editorial/rich-text-editor';
 import { hasMeaningfulHtmlBody } from '@/lib/editorial-html';
 import { ProductAttachmentsField } from '@/components/products/product-attachments-field';
-import { ProductGalleryField } from '@/components/products/product-gallery-field';
 import { ProductGeneralConfigPanel } from '@/components/products/product-general-config-panel';
-import { ProductVideoField } from '@/components/products/product-video-field';
+import type { PartnerCenterBackgroundValue } from '@/components/partner-centers/partner-center-background-field';
 import type { ProductBoardOption } from '@/components/products/product-board-multi-select';
 import { productLifecycleOptions } from '@/lib/admin-display';
 import { confirmProductListingChange } from '@/lib/confirm-product-listing';
@@ -51,10 +49,7 @@ type LocaleFormValues = {
   extraText: string;
   shortDescription: string;
   description: string;
-  coverUrl: string;
   coverAlt: string;
-  videoUrl: string;
-  gallery: AdminProductPayload['gallery'];
   stats: ProductStat[];
   price: number;
   compareAtPrice: number | null;
@@ -78,8 +73,24 @@ type LocaleFormValues = {
 
 type LocaleDraft = LocaleFormValues & {
   entryId?: string;
+  coverUrl: string;
+  videoUrl: string;
+  gallery: AdminProductPayload['gallery'];
   persisted: boolean;
 };
+
+type SharedMediaState = {
+  coverUrl: string;
+  coverAlt: string;
+  videoUrl: string;
+  gallery: AdminProductPayload['gallery'];
+};
+
+const EMPTY_BACKGROUND: PartnerCenterBackgroundValue = { mode: '', value: '', previewUrl: '' };
+
+function emptySharedMedia(): SharedMediaState {
+  return { coverUrl: '', coverAlt: '', videoUrl: '', gallery: [] };
+}
 
 type ProductEditorModalProps = {
   open: boolean;
@@ -222,10 +233,10 @@ function mergeActiveFormIntoDrafts(
       description: hasMeaningfulHtmlBody(values.description ?? '')
         ? values.description
         : previous.description,
-      coverUrl: values.coverUrl?.trim() ? values.coverUrl : previous.coverUrl,
-      coverAlt: values.coverAlt?.trim() ? values.coverAlt : previous.coverAlt,
-      videoUrl: values.videoUrl?.trim() ? values.videoUrl : previous.videoUrl,
-      gallery: values.gallery?.length ? values.gallery : previous.gallery,
+      coverUrl: previous.coverUrl,
+      coverAlt: previous.coverAlt,
+      videoUrl: previous.videoUrl,
+      gallery: previous.gallery,
       attachments: values.attachments?.length ? values.attachments : previous.attachments,
     },
   };
@@ -235,11 +246,17 @@ function inheritDefaultLocaleMedia(draft: LocaleDraft, defaultDraft: LocaleDraft
   if (!defaultDraft) return draft;
   return {
     ...draft,
-    coverUrl: draft.coverUrl.trim() ? draft.coverUrl : defaultDraft.coverUrl,
-    coverAlt: draft.coverAlt.trim() ? draft.coverAlt : defaultDraft.coverAlt,
-    videoUrl: draft.videoUrl.trim() ? draft.videoUrl : defaultDraft.videoUrl,
-    gallery: draft.gallery.length ? draft.gallery : defaultDraft.gallery,
     attachments: draft.attachments.length ? draft.attachments : defaultDraft.attachments,
+  };
+}
+
+function applySharedMedia(draft: LocaleDraft, media: SharedMediaState): LocaleDraft {
+  return {
+    ...draft,
+    coverUrl: media.coverUrl,
+    coverAlt: media.coverAlt,
+    videoUrl: media.videoUrl,
+    gallery: media.gallery,
   };
 }
 
@@ -261,6 +278,32 @@ function buildPayload(draft: LocaleDraft): AdminProductPayload {
   };
 }
 
+function pickSharedMediaFromDrafts(
+  drafts: Record<string, LocaleDraft>,
+  defaultLocale: string,
+): SharedMediaState {
+  const preferred = drafts[defaultLocale];
+  if (preferred) {
+    return {
+      coverUrl: preferred.coverUrl,
+      coverAlt: preferred.coverAlt,
+      videoUrl: preferred.videoUrl,
+      gallery: preferred.gallery ?? [],
+    };
+  }
+  for (const draft of Object.values(drafts)) {
+    if (draft.coverUrl.trim() || draft.videoUrl.trim() || draft.gallery.length) {
+      return {
+        coverUrl: draft.coverUrl,
+        coverAlt: draft.coverAlt,
+        videoUrl: draft.videoUrl,
+        gallery: draft.gallery ?? [],
+      };
+    }
+  }
+  return emptySharedMedia();
+}
+
 export function ProductEditorModal({
   open,
   activeLanguages,
@@ -280,6 +323,9 @@ export function ProductEditorModal({
   const [status, setStatus] = useState<ProductStatus>('active');
   const [boardKeys, setBoardKeys] = useState<string[]>([]);
   const [boardOptions, setBoardOptions] = useState<ProductBoardOption[]>([]);
+  const [sharedMedia, setSharedMedia] = useState<SharedMediaState>(emptySharedMedia);
+  const [background, setBackground] = useState<PartnerCenterBackgroundValue>(EMPTY_BACKGROUND);
+  const [showCoverOnBackground, setShowCoverOnBackground] = useState(true);
   const [activeLocale, setActiveLocale] = useState('');
   const [sectionTab, setSectionTab] = useState<SectionTabKey>('content');
   const [drafts, setDrafts] = useState<Record<string, LocaleDraft>>({});
@@ -365,6 +411,9 @@ export function ProductEditorModal({
       setPaidSampleEnabled(false);
       setStatus('active');
       setBoardKeys([]);
+      setSharedMedia(emptySharedMedia());
+      setBackground(EMPTY_BACKGROUND);
+      setShowCoverOnBackground(true);
       const emptyDrafts = Object.fromEntries(
         activeLanguages.map((language) => [language.code, makeEmptyDraft(language.code)]),
       );
@@ -403,6 +452,12 @@ export function ProductEditorModal({
     setPurchaseMode(editingEntry.purchaseMode);
     setStatus(editingEntry.status);
     setBoardKeys(editingEntry.boardKeys ?? []);
+    setBackground({
+      mode: editingEntry.backgroundMode ?? '',
+      value: editingEntry.backgroundValue ?? '',
+      previewUrl: editingEntry.backgroundPreviewUrl ?? '',
+    });
+    setShowCoverOnBackground(editingEntry.showCoverOnBackground ?? true);
     setLoadingGroup(true);
 
     void (async () => {
@@ -428,6 +483,12 @@ export function ProductEditorModal({
         );
         setBrandId(payload.item.brandId);
         setBoardKeys(payload.item.boardKeys ?? []);
+        setBackground({
+          mode: payload.item.backgroundMode ?? '',
+          value: payload.item.backgroundValue ?? '',
+          previewUrl: payload.item.backgroundPreviewUrl ?? '',
+        });
+        setShowCoverOnBackground(payload.item.showCoverOnBackground ?? true);
 
         const nextDrafts = Object.fromEntries(
           activeLanguages.map((language) => {
@@ -436,6 +497,7 @@ export function ProductEditorModal({
           }),
         );
         setDrafts(nextDrafts);
+        setSharedMedia(pickSharedMediaFromDrafts(nextDrafts, nextDefaultLocale));
         loadDraft(activeLocaleRef.current, nextDrafts);
         setEditorRevision((value) => value + 1);
       } catch {
@@ -477,10 +539,6 @@ export function ProductEditorModal({
       extraText: draft.extraText,
       shortDescription: draft.shortDescription,
       description: draft.description,
-      coverUrl: draft.coverUrl,
-      coverAlt: draft.coverAlt,
-      videoUrl: draft.videoUrl,
-      galleryJson: JSON.stringify(draft.gallery ?? []),
       attachmentsJson: JSON.stringify(draft.attachments ?? []),
       certificationsText: draft.certificationsText,
       tagsText: draft.tagsText,
@@ -498,7 +556,6 @@ export function ProductEditorModal({
       || draft.extraText.trim()
       || draft.shortDescription.trim()
       || hasMeaningfulHtmlBody(draft.description)
-      || draft.coverAlt.trim()
       || draft.certificationsText.trim()
       || draft.tagsText.trim()
       || draft.seoTitle.trim()
@@ -510,7 +567,7 @@ export function ProductEditorModal({
   function handleTranslated(fields: Record<string, string>) {
     const merged = getMergedDrafts();
     const current = merged[activeLocale] ?? makeEmptyDraft(activeLocale);
-    const { galleryJson, attachmentsJson, coverUrl, videoUrl, statsText, stats: statsField, ...textFields } = fields;
+    const { attachmentsJson, statsText, stats: statsField, ...textFields } = fields;
     const nextDraft = applyNonemptyTranslatedFields(current, textFields);
     const defaultDraft = merged[defaultLocale] ?? makeEmptyDraft(defaultLocale);
     const targetCurrency = resolveCurrencyForLocale(activeLocale);
@@ -520,26 +577,6 @@ export function ProductEditorModal({
       label: row.label,
       value: row.value,
     }));
-
-    if (coverUrl?.trim()) {
-      nextDraft.coverUrl = coverUrl;
-    } else if (defaultDraft.coverUrl.trim()) {
-      nextDraft.coverUrl = defaultDraft.coverUrl;
-    }
-
-    if (videoUrl?.trim()) {
-      nextDraft.videoUrl = videoUrl;
-    } else if (defaultDraft.videoUrl.trim()) {
-      nextDraft.videoUrl = defaultDraft.videoUrl;
-    }
-
-    try {
-      const gallery = galleryJson ? JSON.parse(galleryJson) as LocaleDraft['gallery'] : null;
-      if (Array.isArray(gallery) && gallery.length) nextDraft.gallery = gallery;
-      else if (defaultDraft.gallery.length) nextDraft.gallery = defaultDraft.gallery;
-    } catch {
-      if (defaultDraft.gallery.length) nextDraft.gallery = defaultDraft.gallery;
-    }
 
     try {
       const attachments = attachmentsJson ? JSON.parse(attachmentsJson) as LocaleDraft['attachments'] : null;
@@ -566,28 +603,26 @@ export function ProductEditorModal({
       }
     }
 
-    const nextDrafts = { ...merged, [activeLocale]: nextDraft };
+    const withMedia = applySharedMedia(nextDraft, sharedMedia);
+    const nextDrafts = { ...merged, [activeLocale]: withMedia };
     setDrafts(nextDrafts);
     form.setFieldsValue({
-      name: nextDraft.name,
-      badgeText: nextDraft.badgeText,
-      extraText: nextDraft.extraText,
-      shortDescription: nextDraft.shortDescription,
-      description: nextDraft.description,
-      slug: nextDraft.slug,
-      coverUrl: nextDraft.coverUrl,
-      coverAlt: nextDraft.coverAlt,
-      videoUrl: nextDraft.videoUrl,
-      gallery: nextDraft.gallery,
-      attachments: nextDraft.attachments,
-      certificationsText: nextDraft.certificationsText,
-      tagsText: nextDraft.tagsText,
-      seoTitle: nextDraft.seoTitle,
-      seoDescription: nextDraft.seoDescription,
-      stats: nextDraft.stats,
-      price: nextDraft.price,
-      compareAtPrice: nextDraft.compareAtPrice,
-      currencyCode: nextDraft.currencyCode,
+      name: withMedia.name,
+      badgeText: withMedia.badgeText,
+      extraText: withMedia.extraText,
+      shortDescription: withMedia.shortDescription,
+      description: withMedia.description,
+      slug: withMedia.slug,
+      coverAlt: withMedia.coverAlt,
+      attachments: withMedia.attachments,
+      certificationsText: withMedia.certificationsText,
+      tagsText: withMedia.tagsText,
+      seoTitle: withMedia.seoTitle,
+      seoDescription: withMedia.seoDescription,
+      stats: withMedia.stats,
+      price: withMedia.price,
+      compareAtPrice: withMedia.compareAtPrice,
+      currencyCode: withMedia.currencyCode,
     });
     setEditorRevision((value) => value + 1);
   }
@@ -680,7 +715,10 @@ export function ProductEditorModal({
         const draft = workingDrafts[language.code] ?? createEmptyDraft();
         return {
           locale: language.code,
-          draft: inheritDefaultLocaleMedia(draft, defaultDraft),
+          draft: applySharedMedia(
+            inheritDefaultLocaleMedia(draft, defaultDraft),
+            sharedMedia,
+          ),
         };
       })
       .filter((target) => shouldPersistLocaleDraft({
@@ -731,6 +769,9 @@ export function ProductEditorModal({
         paidSampleEnabled,
         status,
         boardKeys,
+        backgroundMode: background.mode ?? '',
+        backgroundValue: background.value ?? '',
+        showCoverOnBackground,
       };
 
       if (nextProductId) {
@@ -813,6 +854,16 @@ export function ProductEditorModal({
         if (nextStatus === status) return;
         confirmProductListingChange(nextStatus, () => setStatus(nextStatus));
       }}
+      coverUrl={sharedMedia.coverUrl}
+      onCoverUrlChange={(value) => setSharedMedia((prev) => ({ ...prev, coverUrl: value }))}
+      gallery={sharedMedia.gallery}
+      onGalleryChange={(value) => setSharedMedia((prev) => ({ ...prev, gallery: value }))}
+      videoUrl={sharedMedia.videoUrl}
+      onVideoUrlChange={(value) => setSharedMedia((prev) => ({ ...prev, videoUrl: value }))}
+      background={background}
+      onBackgroundChange={setBackground}
+      showCoverOnBackground={showCoverOnBackground}
+      onShowCoverOnBackgroundChange={setShowCoverOnBackground}
     />
   );
 
@@ -896,21 +947,6 @@ export function ProductEditorModal({
                             <Form.Item label="简短描述" name="shortDescription"><Input.TextArea rows={3} /></Form.Item>
                             <Form.Item label="详细描述" name="description">
                               <RichTextEditor key={`${activeLocale}-${editorRevision}`} />
-                            </Form.Item>
-                            <Form.Item
-                              label="封面图"
-                              name="coverUrl"
-                              getValueFromEvent={(value: string | null) => value ?? ''}
-                            >
-                              <CoverImageField folder="products/covers" />
-                            </Form.Item>
-                            <Form.Item label="轮播图" name="gallery"><ProductGalleryField /></Form.Item>
-                            <Form.Item
-                              label="产品视频"
-                              name="videoUrl"
-                              getValueFromEvent={(value: string | null) => value ?? ''}
-                            >
-                              <ProductVideoField folder="products/videos" />
                             </Form.Item>
                           </Space>
                         ),

@@ -70,6 +70,11 @@ export type AdminProductListItem = {
   boardKey: string | null;
   boardKeys: string[];
   boardLabels: string[];
+  backgroundMode: '' | 'solid' | 'preset' | 'upload';
+  backgroundValue: string;
+  backgroundImage: string;
+  backgroundPreviewUrl: string;
+  showCoverOnBackground: boolean;
   createdAt: string;
   updatedAt: string;
 };
