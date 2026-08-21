@@ -1370,6 +1370,13 @@ export const brandNarratives = pgTable(
     status: cmsStatusEnum('status').notNull().default('draft'),
     publishedAt: timestamp('published_at', { withTimezone: true }),
     coverImage: text('cover_image').notNull().default(''),
+    /** @deprecated use backgroundMode + backgroundValue */
+    backgroundImage: text('background_image').notNull().default(''),
+    /** solid | preset | upload | '' */
+    backgroundMode: text('background_mode').notNull().default(''),
+    /** solid token | preset id | media_assets.id */
+    backgroundValue: text('background_value').notNull().default(''),
+    showCoverOnBackground: boolean('show_cover_on_background').notNull().default(true),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -1426,6 +1433,13 @@ export const solutions = pgTable(
     status: cmsStatusEnum('status').notNull().default('draft'),
     publishedAt: timestamp('published_at', { withTimezone: true }),
     coverImage: text('cover_image').notNull().default(''),
+    /** @deprecated use backgroundMode + backgroundValue */
+    backgroundImage: text('background_image').notNull().default(''),
+    /** solid | preset | upload | '' */
+    backgroundMode: text('background_mode').notNull().default(''),
+    /** solid token | preset id | media_assets.id */
+    backgroundValue: text('background_value').notNull().default(''),
+    showCoverOnBackground: boolean('show_cover_on_background').notNull().default(true),
     materials: jsonb('materials').$type<SolutionMaterial[]>().notNull().default([]),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -1600,6 +1614,24 @@ export const centerRegionEnum = pgEnum('center_region', [
   'oceania',
 ]);
 
+/** Uploaded media library; type e.g. partner_center_background (大背景图) */
+export const mediaAssets = pgTable(
+  'media_assets',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    type: text('type').notNull(),
+    storageKey: text('storage_key').notNull(),
+    filename: text('filename').notNull().default(''),
+    contentType: text('content_type').notNull().default(''),
+    byteSize: integer('byte_size').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    typeCreatedAtIdx: index('media_assets_type_created_at_idx').on(table.type, table.createdAt),
+  }),
+);
+
 export const partnerCenters = pgTable(
   'partner_centers',
   {
@@ -1610,7 +1642,14 @@ export const partnerCenters = pgTable(
     website: varchar('website', { length: 300 }).notNull().default(''),
     coverImage: text('cover_image').notNull().default(''),
     logo: text('logo').notNull().default(''),
+    /** @deprecated use backgroundMode + backgroundValue; kept for legacy/seed compatibility */
     backgroundImage: text('background_image').notNull().default(''),
+    /** solid | preset | upload | '' */
+    backgroundMode: text('background_mode').notNull().default(''),
+    /** solid token | preset id | media_assets.id */
+    backgroundValue: text('background_value').notNull().default(''),
+    /** When true, detail hero shows cover image on the right over the background */
+    showCoverOnBackground: boolean('show_cover_on_background').notNull().default(true),
     sortOrder: integer('sort_order').notNull().default(0),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

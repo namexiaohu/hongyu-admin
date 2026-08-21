@@ -2,12 +2,16 @@
 
 import type { FormInstance } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Form, Input, Modal, Popconfirm, Space, Tabs, Tag, message } from 'antd';
+import { Button, Form, Input, Modal, Popconfirm, Space, Switch, Tabs, Tag, message } from 'antd';
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 
 import { ContentTranslateButton } from '@/components/admin/content-translate-button';
 import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
 import { CoverImageField } from '@/components/editorial/cover-image-field';
+import {
+  PartnerCenterBackgroundField,
+  type PartnerCenterBackgroundValue,
+} from '@/components/partner-centers/partner-center-background-field';
 import { BrandNarrativeBlockEditorModal, type BrandNarrativeBlockEditorHandle } from '@/components/brand-narratives/brand-narrative-block-editor-modal';
 import { BrandNarrativeBlockList } from '@/components/brand-narratives/brand-narrative-block-list';
 import type { BrandNarrativeBlockDraft } from '@/lib/brand-narrative-blocks';
@@ -16,6 +20,7 @@ import {
   type AdminBrandNarrativeTranslation,
   type BrandNarrativeStatus,
 } from '@/lib/brand-narrative-content';
+import { MEDIA_ASSET_TYPE_BRAND_NARRATIVE_BACKGROUND } from '@/lib/partner-center-background-presets';
 import { applyNonemptyTranslatedFields } from '@/lib/content-translate-config';
 import { shouldPersistLocaleDraft } from '@/lib/locale-draft-persistence';
 import { resolveSlugForSave, textToSlug, validateSourceThenAutoSlug } from '@/lib/slug';
@@ -80,6 +85,8 @@ type LocaleDraft = Omit<LocaleFormValues, 'slug'>;
 type SharedFormValues = {
   coverImage: string;
   slug: string;
+  showCoverOnBackground: boolean;
+  background: PartnerCenterBackgroundValue;
 };
 
 type BrandNarrativeEditorModalProps = {
@@ -320,7 +327,16 @@ export function BrandNarrativeEditorModal({
     setEditingBlock(null);
     blocksRef.current = detail?.blocks ?? [];
     form.setFieldsValue(nextDrafts[firstLocale] ?? emptyDraft());
-    sharedForm.setFieldsValue({ coverImage: detail?.coverImage ?? '', slug: detail?.slug ?? '' });
+    sharedForm.setFieldsValue({
+      coverImage: detail?.coverImage ?? '',
+      slug: detail?.slug ?? '',
+      showCoverOnBackground: detail?.showCoverOnBackground ?? true,
+      background: {
+        mode: detail?.backgroundMode ?? '',
+        value: detail?.backgroundValue ?? '',
+        previewUrl: detail?.backgroundPreviewUrl ?? '',
+      },
+    });
     // 只在打开弹窗时初始化；保存后父组件刷新 detail 不应丢掉区块草稿。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -405,6 +421,10 @@ export function BrandNarrativeEditorModal({
         })();
 
         const coverImage = sharedValues.coverImage?.trim() ?? '';
+        const showCoverOnBackground = Boolean(sharedValues.showCoverOnBackground);
+        const backgroundMode = sharedValues.background?.mode ?? '';
+        const backgroundValue = sharedValues.background?.value?.trim() ?? '';
+        const sharedBgPayload = { showCoverOnBackground, backgroundMode, backgroundValue };
 
         async function upsertTranslation(narrativeId: string, locale: string, draft: LocaleDraft) {
           const saveDraft = draft.heroTitle.trim()
@@ -432,6 +452,7 @@ export function BrandNarrativeEditorModal({
 
               status,
               coverImage,
+              ...sharedBgPayload,
               blocks: blocksToSave,
               translation: buildTranslationBody(defaultDraft, defaultLocale),
             }),
@@ -454,7 +475,13 @@ export function BrandNarrativeEditorModal({
         const statusResponse = await fetch(`/api/admin/brand-narratives/${narrativeId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status, blocks: blocksToSave, slug: resolvedSlug, coverImage }),
+          body: JSON.stringify({
+            status,
+            blocks: blocksToSave,
+            slug: resolvedSlug,
+            coverImage,
+            ...sharedBgPayload,
+          }),
         });
         if (!statusResponse.ok) {
           const errorBody = await statusResponse.json().catch(() => null);
@@ -568,6 +595,21 @@ export function BrandNarrativeEditorModal({
                 getValueFromEvent={(value: string | null) => value ?? ''}
               >
                 <CoverImageField folder="brand-narratives/covers" />
+              </Form.Item>
+              <Form.Item
+                name="showCoverOnBackground"
+                label="大背景图同时显示封面图"
+                valuePropName="checked"
+                extra="开启后，详情页看板在大背景图右侧同时展示封面图"
+              >
+                <Switch checkedChildren="开" unCheckedChildren="关" />
+              </Form.Item>
+              <Form.Item
+                name="background"
+                label="大背景图（各语言共用）"
+                getValueFromEvent={(v: PartnerCenterBackgroundValue | null) => v ?? { mode: '', value: '', previewUrl: '' }}
+              >
+                <PartnerCenterBackgroundField assetType={MEDIA_ASSET_TYPE_BRAND_NARRATIVE_BACKGROUND} />
               </Form.Item>
             </Form>
           </div>

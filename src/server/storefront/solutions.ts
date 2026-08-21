@@ -5,6 +5,9 @@ import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
 import type { SolutionBlockDraft, SolutionBlockLocaleCopy } from '@/lib/solution-blocks';
 import { isSummaryIcon, pickBlockLocaleCopy, summaryItemUsesCoverImage } from '@/lib/solution-blocks';
 import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
+import {
+  resolvePartnerCenterBackgroundDisplay,
+} from '@/lib/partner-center-background-presets';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import type { SolutionMaterial, SolutionProductParam, SolutionStat } from '@/lib/solution-content';
 import { db } from '@/server/db';
@@ -18,6 +21,7 @@ import {
   solutions,
 } from '@/server/db/schema';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
+import { getAdminMediaAssetStorageKeys } from '@/server/admin/media-assets';
 import {
   coverImageFromPayload,
   loadProductTranslationsByProductIds,
@@ -56,6 +60,9 @@ export type StorefrontSolutionDetail = {
     lead: string;
     image: string;
     imageAlt: string;
+    backgroundImage: string;
+    backgroundSolidCss: string;
+    showCoverOnBackground: boolean;
   };
   stats: Array<{ value: string; label: string; suffix?: string }> | null;
   materials: StorefrontSolutionMaterial[];
@@ -357,6 +364,20 @@ export async function getStorefrontSolutionBySlug(
     locale: requestedLocale,
   });
 
+  let uploadUrl = '';
+  if (row.backgroundMode === 'upload' && row.backgroundValue) {
+    const keys = await getAdminMediaAssetStorageKeys([row.backgroundValue]);
+    const key = keys.get(row.backgroundValue);
+    uploadUrl = key ? resolveOssAssetUrl(key) : '';
+  }
+  const bg = resolvePartnerCenterBackgroundDisplay({
+    mode: row.backgroundMode ?? '',
+    value: row.backgroundValue ?? '',
+    uploadUrl,
+    legacyBackgroundImage: row.backgroundImage ? resolveOssAssetUrl(row.backgroundImage) : '',
+    fallbackSolidWhenEmpty: true,
+  });
+
   return {
     slug: row.slug,
     locale: translation.locale,
@@ -375,6 +396,9 @@ export async function getStorefrontSolutionBySlug(
       lead: text(translation.description),
       image: resolveOssAssetUrl(row.coverImage),
       imageAlt: headline,
+      backgroundImage: bg.imageUrl,
+      backgroundSolidCss: bg.solidCss,
+      showCoverOnBackground: Boolean(row.showCoverOnBackground),
     },
     stats: mapStats(translation.stats),
     materials: mapMaterials(row.materials as SolutionMaterial[]),

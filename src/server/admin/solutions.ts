@@ -16,9 +16,16 @@ import {
   type SolutionMaterial,
   type SolutionStatus,
 } from '@/lib/solution-content';
-import { toOssStorageKey } from '@/lib/oss-asset-url';
+import {
+  type PartnerCenterBackgroundMode,
+  getPartnerCenterImagePreset,
+  normalizeBackgroundWrite,
+  resolvePartnerCenterBackgroundDisplay,
+} from '@/lib/partner-center-background-presets';
+import { resolveOssAssetUrl, toOssStorageKey } from '@/lib/oss-asset-url';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import { normalizeSlug } from '@/lib/slug';
+import { getAdminMediaAssetStorageKeys } from '@/server/admin/media-assets';
 import { db } from '@/server/db';
 import {
   productCoverageBoards,
@@ -49,7 +56,28 @@ function mapListItem(
   title: string,
   localeCount: number,
   boardKeys: string[],
+  uploadKeyById: Map<string, string>,
 ): AdminSolutionListItem {
+  const mode = (row.backgroundMode ?? '') as PartnerCenterBackgroundMode;
+  const value = row.backgroundValue ?? '';
+  let uploadUrl = '';
+  if (mode === 'upload' && value) {
+    const key = uploadKeyById.get(value);
+    uploadUrl = key ? resolveOssAssetUrl(key) : '';
+  } else if (mode === 'preset' && value) {
+    uploadUrl = getPartnerCenterImagePreset(value)?.fullUrl ?? '';
+  } else if (!mode && row.backgroundImage) {
+    uploadUrl = resolveOssAssetUrl(row.backgroundImage);
+  }
+
+  const display = resolvePartnerCenterBackgroundDisplay({
+    mode,
+    value,
+    uploadUrl,
+    legacyBackgroundImage: row.backgroundImage ? resolveOssAssetUrl(row.backgroundImage) : '',
+    fallbackSolidWhenEmpty: false,
+  });
+
   return {
     id: row.id,
     slug: row.slug,
@@ -57,11 +85,23 @@ function mapListItem(
     sortOrder: row.sortOrder,
     status: row.status as SolutionStatus,
     coverImage: row.coverImage,
+    backgroundMode: (row.backgroundMode || display.mode || '') as PartnerCenterBackgroundMode,
+    backgroundValue: value,
+    backgroundImage: row.backgroundImage ?? '',
+    backgroundPreviewUrl: display.imageUrl,
+    showCoverOnBackground: Boolean(row.showCoverOnBackground),
     title,
     localeCount,
     publishedAt: row.publishedAt ? toIso(row.publishedAt) : null,
     updatedAt: toIso(row.updatedAt),
   };
+}
+
+async function loadUploadKeysForRows(rows: Array<typeof solutions.$inferSelect>) {
+  const ids = rows
+    .filter((row) => row.backgroundMode === 'upload' && row.backgroundValue)
+    .map((row) => row.backgroundValue);
+  return getAdminMediaAssetStorageKeys(ids);
 }
 
 async function getBoardKeysForSolutions(solutionIds: string[]): Promise<Map<string, string[]>> {
@@ -137,12 +177,14 @@ async function mapDetail(
   const display = pickTranslationForDisplay(translations, defaultLocale);
   const blocks = await getBlocksForSolution(row.id);
   const boardKeyMap = await getBoardKeysForSolutions([row.id]);
+  const uploadKeys = await loadUploadKeysForRows([row]);
   return {
     ...mapListItem(
       row,
       resolveSolutionDisplayTitle(display, row.slug),
       translations.length,
       boardKeyMap.get(row.id) ?? [],
+      uploadKeys,
     ),
     materials: (row.materials ?? []) as SolutionMaterial[],
     blocks,
@@ -162,11 +204,12 @@ export async function getAdminSolutionList(params?: {
     .orderBy(asc(solutions.sortOrder), asc(solutions.slug));
 
   const solutionIds = rows.map((row) => row.id);
-  const [translations, boardKeyMap] = await Promise.all([
+  const [translations, boardKeyMap, uploadKeys] = await Promise.all([
     solutionIds.length
       ? db.select().from(solutionTranslations).where(inArray(solutionTranslations.solutionId, solutionIds))
       : Promise.resolve([] as Array<typeof solutionTranslations.$inferSelect>),
     getBoardKeysForSolutions(solutionIds),
+    loadUploadKeysForRows(rows),
   ]);
 
   const translationsBySolution = new Map<string, typeof solutionTranslations.$inferSelect[]>();
@@ -184,6 +227,7 @@ export async function getAdminSolutionList(params?: {
       resolveSolutionDisplayTitle(display, row.slug),
       rowTranslations.length,
       boardKeyMap.get(row.id) ?? [],
+      uploadKeys,
     );
   });
 
@@ -271,6 +315,26 @@ export async function updateAdminSolution(id: string, input: unknown) {
     nextPublishedAt = new Date();
   }
 
+  const bgPatch: {
+    backgroundMode?: string;
+    backgroundValue?: string;
+    backgroundImage?: string;
+  } = {};
+  if (parsed.backgroundMode !== undefined || parsed.backgroundValue !== undefined) {
+    const bg = normalizeBackgroundWrite(
+      parsed.backgroundMode ?? current.backgroundMode,
+      parsed.backgroundValue ?? current.backgroundValue,
+    );
+    bgPatch.backgroundMode = bg.backgroundMode;
+    bgPatch.backgroundValue = bg.backgroundValue;
+    if (bg.backgroundMode === 'upload' && bg.backgroundValue) {
+      const keys = await getAdminMediaAssetStorageKeys([bg.backgroundValue]);
+      bgPatch.backgroundImage = keys.get(bg.backgroundValue) ?? '';
+    } else {
+      bgPatch.backgroundImage = '';
+    }
+  }
+
   const [updated] = await db
     .update(solutions)
     .set({
@@ -278,6 +342,10 @@ export async function updateAdminSolution(id: string, input: unknown) {
       ...(parsed.status !== undefined ? { status: parsed.status } : {}),
       ...(parsed.sortOrder !== undefined ? { sortOrder: parsed.sortOrder } : {}),
       ...(parsed.coverImage !== undefined ? { coverImage: toOssStorageKey(parsed.coverImage) } : {}),
+      ...bgPatch,
+      ...(parsed.showCoverOnBackground !== undefined
+        ? { showCoverOnBackground: parsed.showCoverOnBackground }
+        : {}),
       ...(parsed.materials !== undefined ? { materials: normalizeMaterials(parsed.materials) } : {}),
       ...(parsed.status !== undefined || parsed.publishedAt !== undefined ? { publishedAt: nextPublishedAt } : {}),
       updatedAt: new Date(),
@@ -393,6 +461,13 @@ export async function createAdminSolution(input: unknown) {
     .orderBy(desc(solutions.sortOrder))
     .limit(1);
 
+  const bg = normalizeBackgroundWrite(parsed.backgroundMode, parsed.backgroundValue);
+  let backgroundImage = bg.backgroundImage;
+  if (bg.backgroundMode === 'upload' && bg.backgroundValue) {
+    const keys = await getAdminMediaAssetStorageKeys([bg.backgroundValue]);
+    backgroundImage = keys.get(bg.backgroundValue) ?? '';
+  }
+
   const [inserted] = await db
     .insert(solutions)
     .values({
@@ -401,6 +476,10 @@ export async function createAdminSolution(input: unknown) {
       sortOrder: (maxSort?.sortOrder ?? 0) + 10,
       status: parsed.status ?? 'draft',
       coverImage: toOssStorageKey(parsed.coverImage ?? ''),
+      backgroundMode: bg.backgroundMode,
+      backgroundValue: bg.backgroundValue,
+      backgroundImage,
+      showCoverOnBackground: parsed.showCoverOnBackground ?? true,
       materials: normalizeMaterials(parsed.materials),
       publishedAt: (parsed.status ?? 'draft') === 'published' ? new Date() : null,
     })

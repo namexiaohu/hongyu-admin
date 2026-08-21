@@ -3,6 +3,13 @@ import 'server-only';
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 
 import {
+  type PartnerCenterBackgroundMode,
+  getPartnerCenterImagePreset,
+  normalizeBackgroundWrite,
+  resolvePartnerCenterBackgroundDisplay,
+} from '@/lib/partner-center-background-presets';
+import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
+import {
   type AdminPartnerCenterDetail,
   type AdminPartnerCenterListItem,
   type AdminPartnerCenterTranslation,
@@ -16,6 +23,7 @@ import {
 } from '@/lib/partner-center-content';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import { normalizeSlug } from '@/lib/slug';
+import { getAdminMediaAssetStorageKeys } from '@/server/admin/media-assets';
 import { db } from '@/server/db';
 import { partnerCenters, partnerCenterSurgeons, partnerCenterTranslations } from '@/server/db/schema';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
@@ -28,7 +36,28 @@ function mapListItem(
   row: typeof partnerCenters.$inferSelect,
   name: string,
   localeCount: number,
+  uploadKeyById: Map<string, string>,
 ): AdminPartnerCenterListItem {
+  const mode = (row.backgroundMode ?? '') as PartnerCenterBackgroundMode;
+  const value = row.backgroundValue ?? '';
+  let uploadUrl = '';
+  if (mode === 'upload' && value) {
+    const key = uploadKeyById.get(value);
+    uploadUrl = key ? resolveOssAssetUrl(key) : '';
+  } else if (mode === 'preset' && value) {
+    uploadUrl = getPartnerCenterImagePreset(value)?.fullUrl ?? '';
+  } else if (!mode && row.backgroundImage) {
+    uploadUrl = resolveOssAssetUrl(row.backgroundImage);
+  }
+
+  const display = resolvePartnerCenterBackgroundDisplay({
+    mode,
+    value,
+    uploadUrl,
+    legacyBackgroundImage: row.backgroundImage ? resolveOssAssetUrl(row.backgroundImage) : '',
+    fallbackSolidWhenEmpty: false,
+  });
+
   return {
     id: row.id,
     slug: row.slug,
@@ -38,6 +67,10 @@ function mapListItem(
     coverImage: row.coverImage,
     logo: row.logo,
     backgroundImage: row.backgroundImage ?? '',
+    backgroundMode: (row.backgroundMode || display.mode || '') as PartnerCenterBackgroundMode,
+    backgroundValue: value,
+    backgroundPreviewUrl: display.imageUrl,
+    showCoverOnBackground: Boolean(row.showCoverOnBackground),
     sortOrder: row.sortOrder,
     name,
     localeCount,
@@ -88,14 +121,22 @@ async function syncPartnerCenterSurgeons(centerId: string, surgeonIds: string[])
   );
 }
 
+async function loadUploadKeysForRows(rows: Array<typeof partnerCenters.$inferSelect>) {
+  const ids = rows
+    .filter((row) => row.backgroundMode === 'upload' && row.backgroundValue)
+    .map((row) => row.backgroundValue);
+  return getAdminMediaAssetStorageKeys(ids);
+}
+
 async function mapDetail(
   row: typeof partnerCenters.$inferSelect,
   translations: Array<typeof partnerCenterTranslations.$inferSelect>,
   defaultLocale: string,
 ): Promise<AdminPartnerCenterDetail> {
+  const uploadKeys = await loadUploadKeysForRows([row]);
   const display = pickTranslationForDisplay(translations, defaultLocale);
   return {
-    ...mapListItem(row, resolveCenterDisplayName(display, row.slug), translations.length),
+    ...mapListItem(row, resolveCenterDisplayName(display, row.slug), translations.length, uploadKeys),
     translations: translations.map(mapTranslation),
     surgeonIds: await loadSurgeonIds(row.id),
   };
@@ -104,6 +145,7 @@ async function mapDetail(
 export async function getAdminPartnerCenterList() {
   const defaultLocale = await getDefaultSiteLanguageCode();
   const rows = await db.select().from(partnerCenters).orderBy(asc(partnerCenters.sortOrder), asc(partnerCenters.slug));
+  const uploadKeys = await loadUploadKeysForRows(rows);
 
   const ids = rows.map((r) => r.id);
   const translations = ids.length
@@ -120,7 +162,7 @@ export async function getAdminPartnerCenterList() {
   const items = rows.map((row) => {
     const rowT = byId.get(row.id) ?? [];
     const display = pickTranslationForDisplay(rowT, defaultLocale);
-    return mapListItem(row, resolveCenterDisplayName(display, row.slug), rowT.length);
+    return mapListItem(row, resolveCenterDisplayName(display, row.slug), rowT.length, uploadKeys);
   });
 
   return { items, total: items.length };
@@ -146,6 +188,13 @@ export async function createAdminPartnerCenter(input: unknown) {
   if (existing) throw new Error('SLUG_EXISTS');
 
   const [maxSort] = await db.select({ sortOrder: partnerCenters.sortOrder }).from(partnerCenters).orderBy(desc(partnerCenters.sortOrder)).limit(1);
+  const bg = normalizeBackgroundWrite(parsed.backgroundMode, parsed.backgroundValue);
+
+  let backgroundImage = bg.backgroundImage;
+  if (bg.backgroundMode === 'upload' && bg.backgroundValue) {
+    const keys = await getAdminMediaAssetStorageKeys([bg.backgroundValue]);
+    backgroundImage = keys.get(bg.backgroundValue) ?? '';
+  }
 
   const [inserted] = await db.insert(partnerCenters).values({
     slug,
@@ -154,7 +203,10 @@ export async function createAdminPartnerCenter(input: unknown) {
     website: parsed.website?.trim() ?? '',
     coverImage: parsed.coverImage ?? '',
     logo: parsed.logo ?? '',
-    backgroundImage: parsed.backgroundImage ?? '',
+    backgroundMode: bg.backgroundMode,
+    backgroundValue: bg.backgroundValue,
+    backgroundImage,
+    showCoverOnBackground: parsed.showCoverOnBackground ?? true,
     sortOrder: parsed.sortOrder ?? (maxSort?.sortOrder ?? 0) + 10,
   }).returning({ id: partnerCenters.id });
 
@@ -179,6 +231,26 @@ export async function updateAdminPartnerCenter(id: string, input: unknown) {
     }
   }
 
+  const bgPatch: Partial<{
+    backgroundMode: string;
+    backgroundValue: string;
+    backgroundImage: string;
+  }> = {};
+  if (parsed.backgroundMode !== undefined || parsed.backgroundValue !== undefined) {
+    const bg = normalizeBackgroundWrite(
+      parsed.backgroundMode ?? current.backgroundMode,
+      parsed.backgroundValue ?? current.backgroundValue,
+    );
+    bgPatch.backgroundMode = bg.backgroundMode;
+    bgPatch.backgroundValue = bg.backgroundValue;
+    if (bg.backgroundMode === 'upload' && bg.backgroundValue) {
+      const keys = await getAdminMediaAssetStorageKeys([bg.backgroundValue]);
+      bgPatch.backgroundImage = keys.get(bg.backgroundValue) ?? '';
+    } else {
+      bgPatch.backgroundImage = '';
+    }
+  }
+
   await db.update(partnerCenters).set({
     ...(parsed.slug !== undefined ? { slug: nextSlug } : {}),
     ...(parsed.region !== undefined ? { region: parsed.region } : {}),
@@ -186,7 +258,10 @@ export async function updateAdminPartnerCenter(id: string, input: unknown) {
     ...(parsed.website !== undefined ? { website: parsed.website.trim() } : {}),
     ...(parsed.coverImage !== undefined ? { coverImage: parsed.coverImage } : {}),
     ...(parsed.logo !== undefined ? { logo: parsed.logo } : {}),
-    ...(parsed.backgroundImage !== undefined ? { backgroundImage: parsed.backgroundImage } : {}),
+    ...bgPatch,
+    ...(parsed.showCoverOnBackground !== undefined
+      ? { showCoverOnBackground: parsed.showCoverOnBackground }
+      : {}),
     ...(parsed.sortOrder !== undefined ? { sortOrder: parsed.sortOrder } : {}),
     updatedAt: new Date(),
   }).where(eq(partnerCenters.id, id));

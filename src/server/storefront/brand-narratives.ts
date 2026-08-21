@@ -4,9 +4,12 @@ import { and, asc, eq } from 'drizzle-orm';
 
 import type { BrandNarrativeBlockDraft, BrandNarrativeBlockLocaleCopy } from '@/lib/brand-narrative-blocks';
 import { isSummaryIcon, pickBlockLocaleCopy, summaryItemUsesCoverImage } from '@/lib/brand-narrative-blocks';
-import { resolveNarrativePageMeta } from '@/lib/brand-narrative-content';
+import {
+  resolvePartnerCenterBackgroundDisplay,
+} from '@/lib/partner-center-background-presets';
 import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
+import { getAdminMediaAssetStorageKeys } from '@/server/admin/media-assets';
 import { db } from '@/server/db';
 import { brandNarrativeContents, brandNarrativeTranslations, brandNarratives } from '@/server/db/schema';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
@@ -22,6 +25,9 @@ export type BrandNarrativePageData = {
     lead: string;
     image: string;
     imageAlt: string;
+    backgroundImage: string;
+    backgroundSolidCss: string;
+    showCoverOnBackground: boolean;
   };
   stats?: Array<{ value: string; label: string; suffix?: string }> | null;
   sections: Array<Record<string, unknown>>;
@@ -299,8 +305,8 @@ function mapPageData(
   translation: typeof brandNarrativeTranslations.$inferSelect,
   blocks: BrandNarrativeBlockDraft[],
   requestedLocale: string,
+  bg: { imageUrl: string; solidCss: string },
 ): BrandNarrativePageData {
-  const meta = resolveNarrativePageMeta(row.slug);
   const pageTitle = text(translation.title);
   const headline = text(translation.largeTitle, pageTitle);
   const stats = (translation.stats ?? []).filter((item) => item.label.trim() && item.value.trim());
@@ -320,10 +326,29 @@ function mapPageData(
       lead: text(translation.description),
       image: resolveOssAssetUrl(row.coverImage),
       imageAlt: headline,
+      backgroundImage: bg.imageUrl,
+      backgroundSolidCss: bg.solidCss,
+      showCoverOnBackground: Boolean(row.showCoverOnBackground),
     },
     stats: stats.length ? stats.map((item) => ({ label: item.label, value: item.value })) : null,
     sections: mapBlocksToSections(blocks, sectionLocale, row.slug),
   };
+}
+
+async function resolveNarrativeBackground(row: typeof brandNarratives.$inferSelect) {
+  let uploadUrl = '';
+  if (row.backgroundMode === 'upload' && row.backgroundValue) {
+    const keys = await getAdminMediaAssetStorageKeys([row.backgroundValue]);
+    const key = keys.get(row.backgroundValue);
+    uploadUrl = key ? resolveOssAssetUrl(key) : '';
+  }
+  return resolvePartnerCenterBackgroundDisplay({
+    mode: row.backgroundMode ?? '',
+    value: row.backgroundValue ?? '',
+    uploadUrl,
+    legacyBackgroundImage: row.backgroundImage ? resolveOssAssetUrl(row.backgroundImage) : '',
+    fallbackSolidWhenEmpty: true,
+  });
 }
 
 export async function getStorefrontBrandNarrativeBySlug(
@@ -357,23 +382,24 @@ export async function getStorefrontBrandNarrativeBySlug(
   if (!translations.length) return null;
 
   const blocks = ((contentRow[0]?.blocks ?? []) as BrandNarrativeBlockDraft[]);
+  const bg = await resolveNarrativeBackground(row);
 
   const normalized = requestedLocale.trim().toLowerCase();
   const exact = translations.find((item) => item.locale.toLowerCase() === normalized);
-  if (exact) return mapPageData(row, exact, blocks, requestedLocale);
+  if (exact) return mapPageData(row, exact, blocks, requestedLocale, bg);
 
   const prefix = normalized.split('-')[0];
   const prefixMatch = translations.find((item) => {
     const locale = item.locale.toLowerCase();
     return locale === prefix || locale.startsWith(`${prefix}-`);
   });
-  if (prefixMatch) return mapPageData(row, prefixMatch, blocks, requestedLocale);
+  if (prefixMatch) return mapPageData(row, prefixMatch, blocks, requestedLocale, bg);
 
   const defaultLocale = await getDefaultSiteLanguageCode();
   const fallback = pickTranslationForDisplay(translations, defaultLocale);
   if (!fallback) return null;
 
-  return mapPageData(row, fallback, blocks, requestedLocale);
+  return mapPageData(row, fallback, blocks, requestedLocale, bg);
 }
 
 export async function listPublishedBrandNarrativeSlugs() {

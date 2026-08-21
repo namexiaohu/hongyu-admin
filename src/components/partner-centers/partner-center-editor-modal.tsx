@@ -1,13 +1,17 @@
 'use client';
 
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Form, Input, Modal, Select, Space, Tabs, message } from 'antd';
+import { Button, Form, Input, Modal, Select, Space, Switch, Tabs, message } from 'antd';
 import { useEffect, useState, useTransition } from 'react';
 
 import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
 import { ContentTranslateButton } from '@/components/admin/content-translate-button';
 import { CoverImageField } from '@/components/editorial/cover-image-field';
 import { RichTextEditor } from '@/components/editorial/rich-text-editor';
+import {
+  PartnerCenterBackgroundField,
+  type PartnerCenterBackgroundValue,
+} from '@/components/partner-centers/partner-center-background-field';
 import { SurgeonPickerField } from '@/components/surgeons/surgeon-picker-field';
 import { applyNonemptyTranslatedFields } from '@/lib/content-translate-config';
 import { deserializeLineList, serializeLineList } from '@/lib/content-translate-serialize';
@@ -62,7 +66,8 @@ type SharedFormValues = {
   website: string;
   coverImage: string;
   logo: string;
-  backgroundImage: string;
+  showCoverOnBackground: boolean;
+  background: PartnerCenterBackgroundValue;
   surgeonIds: string[];
 };
 
@@ -283,7 +288,12 @@ export function PartnerCenterEditorModal({ open, detail, activeLanguages, onClos
       website: detail?.website ?? '',
       coverImage: detail?.coverImage ?? '',
       logo: detail?.logo ?? '',
-      backgroundImage: detail?.backgroundImage ?? '',
+      showCoverOnBackground: detail?.showCoverOnBackground ?? true,
+      background: {
+        mode: detail?.backgroundMode ?? '',
+        value: detail?.backgroundValue ?? '',
+        previewUrl: detail?.backgroundPreviewUrl ?? '',
+      },
       surgeonIds: detail?.surgeonIds ?? [],
     });
     setEditorRevision((value) => value + 1);
@@ -340,7 +350,9 @@ export function PartnerCenterEditorModal({ open, detail, activeLanguages, onClos
           website: shared.website?.trim() ?? '',
           coverImage: shared.coverImage?.trim() ?? '',
           logo: shared.logo?.trim() ?? '',
-          backgroundImage: shared.backgroundImage?.trim() ?? '',
+          showCoverOnBackground: Boolean(shared.showCoverOnBackground),
+          backgroundMode: shared.background?.mode ?? '',
+          backgroundValue: shared.background?.value?.trim() ?? '',
           surgeonIds: shared.surgeonIds ?? [],
         };
 
@@ -440,8 +452,20 @@ export function PartnerCenterEditorModal({ open, detail, activeLanguages, onClos
             <Form.Item name="coverImage" label="封面图（各语言共用）" getValueFromEvent={(v: string | null) => v ?? ''}>
               <CoverImageField folder="partner-centers/covers" />
             </Form.Item>
-            <Form.Item name="backgroundImage" label="大背景图（各语言共用）" getValueFromEvent={(v: string | null) => v ?? ''}>
-              <CoverImageField folder="partner-centers/backgrounds" uploadLabel="上传大背景图" />
+            <Form.Item
+              name="showCoverOnBackground"
+              label="大背景图同时显示封面图"
+              valuePropName="checked"
+              extra="开启后，详情页看板在大背景图右侧同时展示封面图"
+            >
+              <Switch checkedChildren="开" unCheckedChildren="关" />
+            </Form.Item>
+            <Form.Item
+              name="background"
+              label="大背景图（各语言共用）"
+              getValueFromEvent={(v: PartnerCenterBackgroundValue | null) => v ?? { mode: '', value: '', previewUrl: '' }}
+            >
+              <PartnerCenterBackgroundField />
             </Form.Item>
             <Form.Item name="surgeonIds" label="关联术者" getValueFromEvent={(v: string[] | undefined) => v ?? []}>
               <SurgeonPickerField mode="multiple" addButtonLabel="添加术者" />

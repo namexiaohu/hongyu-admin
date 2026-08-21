@@ -2,7 +2,9 @@ import '@/lib/env';
 
 import { and, eq } from 'drizzle-orm';
 
+import { MEDIA_ASSET_TYPE_PARTNER_CENTER_BACKGROUND } from '@/lib/partner-center-background-presets';
 import { PARTNER_CENTER_PROFILE_SEED_RECORDS } from '@/lib/partner-center-profile-seed-data';
+import { createAdminMediaAssetFromKey } from '@/server/admin/media-assets';
 import { db } from '@/server/db';
 import { partnerCenters, partnerCenterTranslations } from '@/server/db/schema';
 import { putStorageObject } from '@/server/oss';
@@ -17,7 +19,7 @@ async function downloadBuffer(url: string) {
 
 async function uploadBackground(slug: string, url: string) {
   const key = `partner-centers/${slug}/background.jpg`;
-  console.log(`上传大背景: ${slug} → ${key}`);
+  console.log(`上传大背景图: ${slug} → ${key}`);
   const buffer = await downloadBuffer(url);
   const result = await putStorageObject(key, buffer, 'image/jpeg');
   if (!result.ok) throw new Error(result.error);
@@ -43,6 +45,13 @@ async function main() {
 
     const now = new Date();
     const backgroundKey = await uploadBackground(record.slug, record.backgroundUrl);
+    const asset = await createAdminMediaAssetFromKey({
+      type: MEDIA_ASSET_TYPE_PARTNER_CENTER_BACKGROUND,
+      storageKey: backgroundKey,
+      filename: `${record.slug}-background.jpg`,
+      contentType: 'image/jpeg',
+      byteSize: 0,
+    });
 
     await db
       .update(partnerCenters)
@@ -50,6 +59,8 @@ async function main() {
         email: record.email,
         ...(record.website ? { website: record.website } : {}),
         backgroundImage: backgroundKey,
+        backgroundMode: 'upload',
+        backgroundValue: asset.id,
         updatedAt: now,
       })
       .where(eq(partnerCenters.id, row.id));
@@ -83,13 +94,13 @@ async function main() {
     }
 
     updated += 1;
-    console.log(`已更新合作中心资料字段: ${record.slug}`);
+    console.log(`已更新: ${record.slug}`);
   }
 
-  console.log(`\n完成：更新 ${updated} 家，跳过 ${skipped} 家。`);
+  console.log(`完成：更新 ${updated}，跳过 ${skipped}`);
 }
 
-main().catch((e) => {
-  console.error(e);
+main().catch((error) => {
+  console.error(error);
   process.exit(1);
 });

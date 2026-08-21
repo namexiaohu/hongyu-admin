@@ -47,6 +47,11 @@ export type AdminBrandNarrativeListItem = {
   sortOrder: number;
   status: BrandNarrativeStatus;
   coverImage: string;
+  backgroundMode: '' | 'solid' | 'preset' | 'upload';
+  backgroundValue: string;
+  backgroundImage: string;
+  backgroundPreviewUrl: string;
+  showCoverOnBackground: boolean;
   title: string;
   localeCount: number;
   publishedAt: string | null;
@@ -122,11 +127,16 @@ export const adminBrandNarrativeTranslationSchema = z.object({
 
 export const adminBrandNarrativeTranslationPatchSchema = adminBrandNarrativeTranslationSchema.partial();
 
+const backgroundModeSchema = z.enum(['solid', 'preset', 'upload', '']);
+
 export const adminBrandNarrativePatchSchema = z.object({
   slug: z.string().trim().min(1).max(64).optional(),
   status: z.enum(brandNarrativeStatuses).optional(),
   sortOrder: z.number().int().optional(),
   coverImage: z.string().optional(),
+  backgroundMode: backgroundModeSchema.optional(),
+  backgroundValue: z.string().optional(),
+  showCoverOnBackground: z.boolean().optional(),
   blocks: brandNarrativeBlocksSchema.optional(),
   publishedAt: z.coerce.date().nullable().optional(),
 });
@@ -135,6 +145,9 @@ export const adminBrandNarrativeCreateSchema = z.object({
   slug: z.string().trim().min(1).max(64),
   status: z.enum(brandNarrativeStatuses).optional(),
   coverImage: z.string().optional().default(''),
+  backgroundMode: backgroundModeSchema.optional().default(''),
+  backgroundValue: z.string().optional().default(''),
+  showCoverOnBackground: z.boolean().optional().default(true),
   blocks: brandNarrativeBlocksSchema.optional(),
   translation: adminBrandNarrativeTranslationSchema,
 });

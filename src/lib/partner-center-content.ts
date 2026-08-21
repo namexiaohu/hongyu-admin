@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import type { PartnerCenterBackgroundMode } from '@/lib/partner-center-background-presets';
+
 export const centerRegions = [
   'asia-pacific',
   'europe',
@@ -25,6 +27,8 @@ export type PartnerCenterMetric = {
   value: string;
 };
 
+export const partnerCenterBackgroundModes = ['solid', 'preset', 'upload', ''] as const;
+
 export type AdminPartnerCenterListItem = {
   id: string;
   slug: string;
@@ -33,7 +37,13 @@ export type AdminPartnerCenterListItem = {
   website: string;
   coverImage: string;
   logo: string;
+  /** @deprecated prefer backgroundMode/value; may still hold legacy key */
   backgroundImage: string;
+  backgroundMode: PartnerCenterBackgroundMode;
+  backgroundValue: string;
+  /** Admin preview: resolved image URL or empty (solid uses CSS on client) */
+  backgroundPreviewUrl: string;
+  showCoverOnBackground: boolean;
   sortOrder: number;
   name: string;
   localeCount: number;
@@ -86,6 +96,8 @@ export const adminPartnerCenterTranslationSchema = z.object({
 
 export const adminPartnerCenterTranslationPatchSchema = adminPartnerCenterTranslationSchema.partial();
 
+const backgroundModeSchema = z.enum(['solid', 'preset', 'upload', '']);
+
 export const adminPartnerCenterPatchSchema = z.object({
   slug: z.string().trim().min(1).max(64).optional(),
   region: z.enum(centerRegions).optional(),
@@ -93,7 +105,9 @@ export const adminPartnerCenterPatchSchema = z.object({
   website: z.string().optional(),
   coverImage: z.string().optional(),
   logo: z.string().optional(),
-  backgroundImage: z.string().optional(),
+  backgroundMode: backgroundModeSchema.optional(),
+  backgroundValue: z.string().optional(),
+  showCoverOnBackground: z.boolean().optional(),
   sortOrder: z.number().int().optional(),
   surgeonIds: z.array(z.string().uuid()).optional(),
 });
@@ -105,7 +119,9 @@ export const adminPartnerCenterCreateSchema = z.object({
   website: z.string().optional().default(''),
   coverImage: z.string().optional().default(''),
   logo: z.string().optional().default(''),
-  backgroundImage: z.string().optional().default(''),
+  backgroundMode: backgroundModeSchema.optional().default(''),
+  backgroundValue: z.string().optional().default(''),
+  showCoverOnBackground: z.boolean().optional().default(true),
   sortOrder: z.number().int().optional(),
   surgeonIds: z.array(z.string().uuid()).optional().default([]),
   translation: adminPartnerCenterTranslationSchema,

@@ -6,7 +6,12 @@ import { resolveOssAssetUrl, rewriteHtmlOssAssets } from '@/lib/oss-asset-url';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import type { CenterRegion, PartnerCenterMetric } from '@/lib/partner-center-content';
 import { centerRegions, normalizePartnerCenterMetrics } from '@/lib/partner-center-content';
+import {
+  type PartnerCenterBackgroundMode,
+  resolvePartnerCenterBackgroundDisplay,
+} from '@/lib/partner-center-background-presets';
 import type { SurgeonGradeKey } from '@/lib/surgeon-content';
+import { getAdminMediaAssetStorageKeys } from '@/server/admin/media-assets';
 import { db } from '@/server/db';
 import {
   partnerCenters,
@@ -21,7 +26,10 @@ export type StorefrontCenterItem = {
   slug: string;
   coverImage: string;
   logo: string;
+  backgroundMode: PartnerCenterBackgroundMode;
   backgroundImage: string;
+  backgroundSolidCss: string;
+  showCoverOnBackground: boolean;
   region: CenterRegion;
   email: string;
   website: string;
@@ -109,12 +117,32 @@ function shuffleIds<T>(items: T[]): T[] {
 function mapCenterItem(
   row: typeof partnerCenters.$inferSelect,
   display: typeof partnerCenterTranslations.$inferSelect | null | undefined,
+  uploadKeyById: Map<string, string>,
 ): StorefrontCenterItem {
+  const mode = row.backgroundMode ?? '';
+  const value = row.backgroundValue ?? '';
+  let uploadUrl = '';
+  if (mode === 'upload' && value) {
+    const key = uploadKeyById.get(value);
+    uploadUrl = key ? resolveOssAssetUrl(key) : '';
+  }
+
+  const bg = resolvePartnerCenterBackgroundDisplay({
+    mode,
+    value,
+    uploadUrl,
+    legacyBackgroundImage: row.backgroundImage ? resolveOssAssetUrl(row.backgroundImage) : '',
+    fallbackSolidWhenEmpty: true,
+  });
+
   return {
     slug: row.slug,
     coverImage: resolveOssAssetUrl(row.coverImage),
     logo: resolveOssAssetUrl(row.logo),
-    backgroundImage: resolveOssAssetUrl(row.backgroundImage ?? ''),
+    backgroundMode: bg.mode,
+    backgroundImage: bg.imageUrl,
+    backgroundSolidCss: bg.solidCss,
+    showCoverOnBackground: Boolean(row.showCoverOnBackground),
     region: row.region as CenterRegion,
     email: row.email ?? '',
     website: (row.website || display?.website || '').trim(),
@@ -130,6 +158,13 @@ function mapCenterItem(
     stats: normalizePartnerCenterMetrics((display?.stats ?? []) as PartnerCenterMetric[]),
     cooperationInfo: normalizePartnerCenterMetrics((display?.cooperationInfo ?? []) as PartnerCenterMetric[]),
   };
+}
+
+async function loadUploadKeysForCenterRows(rows: Array<typeof partnerCenters.$inferSelect>) {
+  const ids = rows
+    .filter((row) => row.backgroundMode === 'upload' && row.backgroundValue)
+    .map((row) => row.backgroundValue);
+  return getAdminMediaAssetStorageKeys(ids);
 }
 
 async function loadCenterSurgeons(input: {
@@ -230,6 +265,7 @@ async function loadRelatedCenters(input: {
 export async function getStorefrontPartnerCentersList(input: { locale: string }): Promise<StorefrontPartnerCentersResponse> {
   const defaultLocale = await getDefaultSiteLanguageCode();
   const rows = await db.select().from(partnerCenters).orderBy(asc(partnerCenters.sortOrder), asc(partnerCenters.slug));
+  const uploadKeys = await loadUploadKeysForCenterRows(rows);
 
   const ids = rows.map((r) => r.id);
   const translations = ids.length
@@ -249,7 +285,7 @@ export async function getStorefrontPartnerCentersList(input: { locale: string })
     const rowT = byId.get(row.id) ?? [];
     const localeMatch = rowT.find((t) => t.locale.toLowerCase() === input.locale.toLowerCase());
     const display = localeMatch ?? pickTranslationForDisplay(rowT, defaultLocale);
-    const item = mapCenterItem(row, display);
+    const item = mapCenterItem(row, display, uploadKeys);
 
     const bucket = itemsByRegion.get(row.region as CenterRegion) ?? [];
     bucket.push(item);
@@ -282,6 +318,7 @@ export async function getStorefrontPartnerCenterBySlug(input: {
   const localeMatch = translations.find((t) => t.locale.toLowerCase() === input.locale.toLowerCase());
   const display = localeMatch ?? pickTranslationForDisplay(translations, defaultLocale);
   const region = row.region as CenterRegion;
+  const uploadKeys = await loadUploadKeysForCenterRows([row]);
 
   const [surgeonsList, relatedCenters] = await Promise.all([
     loadCenterSurgeons({
@@ -298,7 +335,7 @@ export async function getStorefrontPartnerCenterBySlug(input: {
   ]);
 
   return {
-    ...mapCenterItem(row, display),
+    ...mapCenterItem(row, display, uploadKeys),
     regionLabel: resolveRegionLabel(region, input.locale),
     surgeons: surgeonsList,
     relatedCenters,

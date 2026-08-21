@@ -2,12 +2,16 @@
 
 import type { FormInstance } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Form, Input, Modal, Popconfirm, Space, Tabs, Tag, message } from 'antd';
+import { Button, Form, Input, Modal, Popconfirm, Space, Switch, Tabs, Tag, message } from 'antd';
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 
 import { ContentTranslateButton } from '@/components/admin/content-translate-button';
 import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
 import { CoverImageField } from '@/components/editorial/cover-image-field';
+import {
+  PartnerCenterBackgroundField,
+  type PartnerCenterBackgroundValue,
+} from '@/components/partner-centers/partner-center-background-field';
 import { ProductBoardMultiSelect, type ProductBoardOption } from '@/components/products/product-board-multi-select';
 import { SolutionBlockEditorModal, type SolutionBlockEditorHandle } from '@/components/solutions/solution-block-editor-modal';
 import { SolutionBlockList } from '@/components/solutions/solution-block-list';
@@ -19,6 +23,7 @@ import {
   type SolutionMaterial,
   type SolutionStatus,
 } from '@/lib/solution-content';
+import { MEDIA_ASSET_TYPE_SOLUTION_BACKGROUND } from '@/lib/partner-center-background-presets';
 import type { AdminCategoryTreeNode } from '@/lib/category-content';
 import { applyNonemptyTranslatedFields } from '@/lib/content-translate-config';
 import { shouldPersistLocaleDraft } from '@/lib/locale-draft-persistence';
@@ -98,6 +103,8 @@ type SharedFormValues = {
   slug: string;
   boardKeys: string[];
   materials: SolutionMaterial[];
+  showCoverOnBackground: boolean;
+  background: PartnerCenterBackgroundValue;
 };
 
 type SolutionEditorModalProps = {
@@ -398,6 +405,12 @@ export function SolutionEditorModal({
       slug: detail?.slug ?? '',
       boardKeys: detail?.boardKeys ?? [],
       materials: detail?.materials ?? [],
+      showCoverOnBackground: detail?.showCoverOnBackground ?? true,
+      background: {
+        mode: detail?.backgroundMode ?? '',
+        value: detail?.backgroundValue ?? '',
+        previewUrl: detail?.backgroundPreviewUrl ?? '',
+      },
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -484,6 +497,10 @@ export function SolutionEditorModal({
 
         const coverImage = sharedValues.coverImage?.trim() ?? '';
         const materials = (sharedValues.materials ?? []).filter((item) => item.url?.trim());
+        const showCoverOnBackground = Boolean(sharedValues.showCoverOnBackground);
+        const backgroundMode = sharedValues.background?.mode ?? '';
+        const backgroundValue = sharedValues.background?.value?.trim() ?? '';
+        const sharedBgPayload = { showCoverOnBackground, backgroundMode, backgroundValue };
 
         async function upsertTranslation(solutionId: string, locale: string, draft: LocaleDraft) {
           const saveDraft = draft.heroTitle.trim()
@@ -511,6 +528,7 @@ export function SolutionEditorModal({
               boardKeys,
               status,
               coverImage,
+              ...sharedBgPayload,
               materials,
               blocks: blocksToSave,
               translation: buildTranslationBody(defaultDraft, defaultLocale),
@@ -539,6 +557,7 @@ export function SolutionEditorModal({
             blocks: blocksToSave,
             slug: resolvedSlug,
             coverImage,
+            ...sharedBgPayload,
             boardKeys,
             materials,
           }),
@@ -666,6 +685,21 @@ export function SolutionEditorModal({
                 getValueFromEvent={(value: string | null) => value ?? ''}
               >
                 <CoverImageField folder="solutions/covers" />
+              </Form.Item>
+              <Form.Item
+                name="showCoverOnBackground"
+                label="大背景图同时显示封面图"
+                valuePropName="checked"
+                extra="开启后，详情页看板在大背景图右侧同时展示封面图"
+              >
+                <Switch checkedChildren="开" unCheckedChildren="关" />
+              </Form.Item>
+              <Form.Item
+                name="background"
+                label="大背景图（各语言共用）"
+                getValueFromEvent={(v: PartnerCenterBackgroundValue | null) => v ?? { mode: '', value: '', previewUrl: '' }}
+              >
+                <PartnerCenterBackgroundField assetType={MEDIA_ASSET_TYPE_SOLUTION_BACKGROUND} />
               </Form.Item>
               <Form.Item
                 name="materials"

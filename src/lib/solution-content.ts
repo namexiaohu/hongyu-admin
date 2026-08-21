@@ -45,6 +45,11 @@ export type AdminSolutionListItem = {
   sortOrder: number;
   status: SolutionStatus;
   coverImage: string;
+  backgroundMode: '' | 'solid' | 'preset' | 'upload';
+  backgroundValue: string;
+  backgroundImage: string;
+  backgroundPreviewUrl: string;
+  showCoverOnBackground: boolean;
   title: string;
   localeCount: number;
   publishedAt: string | null;
@@ -139,12 +144,17 @@ export const adminSolutionTranslationSchema = z.object({
 
 export const adminSolutionTranslationPatchSchema = adminSolutionTranslationSchema.partial();
 
+const backgroundModeSchema = z.enum(['solid', 'preset', 'upload', '']);
+
 export const adminSolutionPatchSchema = z.object({
   slug: z.string().trim().min(1).max(64).optional(),
   boardKeys: z.array(z.string()).optional(),
   status: z.enum(solutionStatuses).optional(),
   sortOrder: z.number().int().optional(),
   coverImage: z.string().optional(),
+  backgroundMode: backgroundModeSchema.optional(),
+  backgroundValue: z.string().optional(),
+  showCoverOnBackground: z.boolean().optional(),
   materials: z.array(materialSchema).optional(),
   blocks: solutionBlocksSchema.optional(),
   publishedAt: z.coerce.date().nullable().optional(),
@@ -155,6 +165,9 @@ export const adminSolutionCreateSchema = z.object({
   boardKeys: z.array(z.string()).optional().default([]),
   status: z.enum(solutionStatuses).optional(),
   coverImage: z.string().optional().default(''),
+  backgroundMode: backgroundModeSchema.optional().default(''),
+  backgroundValue: z.string().optional().default(''),
+  showCoverOnBackground: z.boolean().optional().default(true),
   materials: z.array(materialSchema).optional().default([]),
   blocks: solutionBlocksSchema.optional(),
   translation: adminSolutionTranslationSchema,
