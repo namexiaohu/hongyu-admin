@@ -26,7 +26,18 @@ async function fetchDetail(id: string): Promise<AdminSurgeonDetail> {
 }
 
 function toListItem(d: AdminSurgeonDetail): AdminSurgeonListItem {
-  return { id: d.id, slug: d.slug, avatar: d.avatar, gradeKey: d.gradeKey, sortOrder: d.sortOrder, name: d.name, localeCount: d.translations.length, updatedAt: d.updatedAt };
+  return {
+    id: d.id,
+    slug: d.slug,
+    avatar: d.avatar,
+    gradeKey: d.gradeKey,
+    certificationYear: d.certificationYear,
+    surgeryCount: d.surgeryCount,
+    sortOrder: d.sortOrder,
+    name: d.name,
+    localeCount: d.translations.length,
+    updatedAt: d.updatedAt,
+  };
 }
 
 export function SurgeonListClient({ initialList, activeLanguages }: Props) {

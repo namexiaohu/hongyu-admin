@@ -38,8 +38,18 @@ async function fetchDetail(id: string): Promise<AdminPartnerCenterDetail> {
 
 function toListItem(d: AdminPartnerCenterDetail): AdminPartnerCenterListItem {
   return {
-    id: d.id, slug: d.slug, region: d.region, coverImage: d.coverImage, logo: d.logo,
-    sortOrder: d.sortOrder, name: d.name, localeCount: d.translations.length, updatedAt: d.updatedAt,
+    id: d.id,
+    slug: d.slug,
+    region: d.region,
+    email: d.email,
+    website: d.website,
+    coverImage: d.coverImage,
+    logo: d.logo,
+    backgroundImage: d.backgroundImage,
+    sortOrder: d.sortOrder,
+    name: d.name,
+    localeCount: d.translations.length,
+    updatedAt: d.updatedAt,
   };
 }
 
