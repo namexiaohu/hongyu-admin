@@ -1621,7 +1621,7 @@ export const centerRegionEnum = pgEnum('center_region', [
   'oceania',
 ]);
 
-/** Uploaded media library; type e.g. partner_center_background (大背景图) */
+/** Uploaded media library; type e.g. background (shared 大背景图) */
 export const mediaAssets = pgTable(
   'media_assets',
   {

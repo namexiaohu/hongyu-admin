@@ -4,6 +4,7 @@ CREATE TYPE "public"."admin_status" AS ENUM('active', 'disabled');--> statement-
 CREATE TYPE "public"."brand_status" AS ENUM('active', 'inactive');--> statement-breakpoint
 CREATE TYPE "public"."cart_status" AS ENUM('active', 'converted', 'abandoned');--> statement-breakpoint
 CREATE TYPE "public"."category_status" AS ENUM('active', 'inactive');--> statement-breakpoint
+CREATE TYPE "public"."center_region" AS ENUM('asia-pacific', 'europe', 'north-america', 'latin-america', 'middle-east-africa', 'oceania');--> statement-breakpoint
 CREATE TYPE "public"."cms_status" AS ENUM('draft', 'published', 'archived');--> statement-breakpoint
 CREATE TYPE "public"."content_status" AS ENUM('active', 'inactive');--> statement-breakpoint
 CREATE TYPE "public"."coupon_discount_type" AS ENUM('direct_amount', 'percent', 'fixed_amount', 'special_price');--> statement-breakpoint
@@ -32,6 +33,8 @@ CREATE TYPE "public"."refund_type" AS ENUM('full_refund', 'partial_refund', 'no_
 CREATE TYPE "public"."return_type" AS ENUM('return_goods', 'no_return');--> statement-breakpoint
 CREATE TYPE "public"."shipping_status" AS ENUM('unshipped', 'shipped', 'delivered');--> statement-breakpoint
 CREATE TYPE "public"."simple_status" AS ENUM('active', 'inactive');--> statement-breakpoint
+CREATE TYPE "public"."summit_status" AS ENUM('upcoming', 'registering', 'completed');--> statement-breakpoint
+CREATE TYPE "public"."surgeon_grade_key" AS ENUM('platinum', 'gold', 'silver');--> statement-breakpoint
 CREATE TYPE "public"."text_direction" AS ENUM('ltr', 'rtl');--> statement-breakpoint
 CREATE TYPE "public"."user_role" AS ENUM('customer', 'staff', 'admin');--> statement-breakpoint
 CREATE TYPE "public"."user_status" AS ENUM('active', 'disabled', 'pending');--> statement-breakpoint
@@ -90,6 +93,43 @@ CREATE TABLE "attachments" (
 	"mime_type" varchar(100) NOT NULL,
 	"size_bytes" integer,
 	"sort_order" integer DEFAULT 0 NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "brand_narrative_contents" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"narrative_id" uuid NOT NULL,
+	"blocks" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "brand_narratives_i18n" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"narrative_id" uuid NOT NULL,
+	"locale" varchar(16) NOT NULL,
+	"title" varchar(255) DEFAULT '' NOT NULL,
+	"large_title" varchar(255) DEFAULT '' NOT NULL,
+	"description" text DEFAULT '' NOT NULL,
+	"seo_title" varchar(255) DEFAULT '' NOT NULL,
+	"seo_description" varchar(500) DEFAULT '' NOT NULL,
+	"stats" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "brand_narratives" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"slug" varchar(64) NOT NULL,
+	"sort_order" integer DEFAULT 0 NOT NULL,
+	"status" "cms_status" DEFAULT 'draft' NOT NULL,
+	"published_at" timestamp with time zone,
+	"cover_image" text DEFAULT '' NOT NULL,
+	"background_image" text DEFAULT '' NOT NULL,
+	"background_mode" text DEFAULT '' NOT NULL,
+	"background_value" text DEFAULT '' NOT NULL,
+	"show_cover_on_background" boolean DEFAULT true NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -187,6 +227,37 @@ CREATE TABLE "commerce_settings" (
 	"default_shipping_method_code" varchar(100) DEFAULT 'dhl-express' NOT NULL,
 	"volume_pricing_rules" jsonb DEFAULT '[]'::jsonb NOT NULL,
 	"shipping_country_rates" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "company_profiles_i18n" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"profile_id" uuid NOT NULL,
+	"locale" varchar(16) NOT NULL,
+	"company_name" varchar(255) DEFAULT '' NOT NULL,
+	"slogan" varchar(255) DEFAULT '' NOT NULL,
+	"positioning" text DEFAULT '' NOT NULL,
+	"copyright" varchar(255) DEFAULT '' NOT NULL,
+	"contact_phone" varchar(120) DEFAULT '' NOT NULL,
+	"address" varchar(400) DEFAULT '' NOT NULL,
+	"business_hours" varchar(200) DEFAULT '' NOT NULL,
+	"business_hotline" varchar(120) DEFAULT '' NOT NULL,
+	"basic_info" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"executives" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"managers" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"offices" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "company_profiles" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"company_email" varchar(255) DEFAULT '' NOT NULL,
+	"business_email" varchar(255) DEFAULT '' NOT NULL,
+	"website" varchar(300) DEFAULT '' NOT NULL,
+	"icp_number" varchar(120) DEFAULT '' NOT NULL,
+	"public_files" jsonb DEFAULT '[]'::jsonb NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -320,8 +391,29 @@ CREATE TABLE "editorial_contents" (
 	"content_type" "editorial_content_type" DEFAULT 'content' NOT NULL,
 	"content_module" "editorial_content_module" DEFAULT 'editorial' NOT NULL,
 	"board_key" varchar(100) DEFAULT 'content' NOT NULL,
+	"cover_image" text DEFAULT '' NOT NULL,
 	"status" "cms_status" DEFAULT 'draft' NOT NULL,
 	"published_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "editorial_coverage_boards_i18n" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"board_id" uuid NOT NULL,
+	"locale" varchar(16) NOT NULL,
+	"name" varchar(150) NOT NULL,
+	"description" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "editorial_coverage_boards" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"board_key" varchar(100) NOT NULL,
+	"content_type" "editorial_content_type" DEFAULT 'content' NOT NULL,
+	"source_mode" varchar(32) DEFAULT 'admin-managed' NOT NULL,
+	"enabled" boolean DEFAULT true NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -399,6 +491,35 @@ CREATE TABLE "geo_divisions" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "homepage_configs_i18n" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"config_id" uuid NOT NULL,
+	"locale" varchar(16) NOT NULL,
+	"banner_title" text DEFAULT '' NOT NULL,
+	"banner_subtitle" text DEFAULT '' NOT NULL,
+	"banner_description" text DEFAULT '' NOT NULL,
+	"solutions_title" text DEFAULT '' NOT NULL,
+	"solutions_description" text DEFAULT '' NOT NULL,
+	"about_title" text DEFAULT '' NOT NULL,
+	"about_description" text DEFAULT '' NOT NULL,
+	"stats" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"global_title" text DEFAULT '' NOT NULL,
+	"global_description" text DEFAULT '' NOT NULL,
+	"education_title" text DEFAULT '' NOT NULL,
+	"education_description" text DEFAULT '' NOT NULL,
+	"education_items" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "homepage_configs" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"banner_slides" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"about_slides" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "inquiries" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"product_id" uuid,
@@ -418,6 +539,7 @@ CREATE TABLE "inquiries" (
 	"terminated_by" uuid,
 	"last_message_at" timestamp with time zone,
 	"source_page_url" text,
+	"inquiry_type" varchar(80),
 	"handled_by" uuid,
 	"handled_at" timestamp with time zone,
 	"internal_note" text,
@@ -438,6 +560,27 @@ CREATE TABLE "inquiry_messages" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "inquiry_profiles" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"inquiry_id" uuid NOT NULL,
+	"full_name" varchar(150) DEFAULT '' NOT NULL,
+	"email" varchar(320) DEFAULT '' NOT NULL,
+	"country" varchar(100) DEFAULT '' NOT NULL,
+	"phone" varchar(50) DEFAULT '' NOT NULL,
+	"job_title" varchar(150) DEFAULT '' NOT NULL,
+	"company_name" varchar(150) DEFAULT '' NOT NULL,
+	"vat" varchar(80) DEFAULT '' NOT NULL,
+	"company_website" varchar(500) DEFAULT '' NOT NULL,
+	"company_size" varchar(80) DEFAULT '' NOT NULL,
+	"company_address" text DEFAULT '' NOT NULL,
+	"project_name" varchar(200) DEFAULT '' NOT NULL,
+	"industry" varchar(120) DEFAULT '' NOT NULL,
+	"project_start" varchar(80) DEFAULT '' NOT NULL,
+	"annual_target" varchar(120) DEFAULT '' NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "inventory" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"product_id" uuid NOT NULL,
@@ -446,6 +589,17 @@ CREATE TABLE "inventory" (
 	"reserved_quantity" integer DEFAULT 0 NOT NULL,
 	"available_quantity" integer DEFAULT 0 NOT NULL,
 	"low_stock_threshold" integer,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "media_assets" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"type" text NOT NULL,
+	"storage_key" text NOT NULL,
+	"filename" text DEFAULT '' NOT NULL,
+	"content_type" text DEFAULT '' NOT NULL,
+	"byte_size" integer DEFAULT 0 NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
@@ -561,6 +715,50 @@ CREATE TABLE "orders" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "partner_center_surgeons" (
+	"center_id" uuid NOT NULL,
+	"surgeon_id" uuid NOT NULL,
+	"sort_order" integer DEFAULT 0 NOT NULL,
+	CONSTRAINT "partner_center_surgeons_center_id_surgeon_id_pk" PRIMARY KEY("center_id","surgeon_id")
+);
+--> statement-breakpoint
+CREATE TABLE "partner_centers_i18n" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"center_id" uuid NOT NULL,
+	"locale" varchar(16) NOT NULL,
+	"name" varchar(200) DEFAULT '' NOT NULL,
+	"description" text DEFAULT '' NOT NULL,
+	"detail_description" text DEFAULT '' NOT NULL,
+	"location" varchar(300) DEFAULT '' NOT NULL,
+	"badge_text" varchar(120) DEFAULT '' NOT NULL,
+	"address" varchar(400) DEFAULT '' NOT NULL,
+	"business_hours" varchar(200) DEFAULT '' NOT NULL,
+	"contact" varchar(200) DEFAULT '' NOT NULL,
+	"website" varchar(300) DEFAULT '' NOT NULL,
+	"tags" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"stats" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"cooperation_info" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "partner_centers" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"slug" varchar(64) NOT NULL,
+	"region" "center_region" DEFAULT 'asia-pacific' NOT NULL,
+	"email" varchar(255) DEFAULT '' NOT NULL,
+	"website" varchar(300) DEFAULT '' NOT NULL,
+	"cover_image" text DEFAULT '' NOT NULL,
+	"logo" text DEFAULT '' NOT NULL,
+	"background_image" text DEFAULT '' NOT NULL,
+	"background_mode" text DEFAULT '' NOT NULL,
+	"background_value" text DEFAULT '' NOT NULL,
+	"show_cover_on_background" boolean DEFAULT true NOT NULL,
+	"sort_order" integer DEFAULT 0 NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "product_board_assignments" (
 	"product_id" uuid NOT NULL,
 	"board_key" varchar(100) NOT NULL,
@@ -573,6 +771,25 @@ CREATE TABLE "product_categories" (
 	"category_id" uuid NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "product_categories_pk" PRIMARY KEY("product_id","category_id")
+);
+--> statement-breakpoint
+CREATE TABLE "product_coverage_boards_i18n" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"board_id" uuid NOT NULL,
+	"locale" varchar(16) NOT NULL,
+	"name" varchar(200) DEFAULT '' NOT NULL,
+	"description" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "product_coverage_boards" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"board_key" varchar(100) NOT NULL,
+	"source_mode" varchar(32) DEFAULT 'admin-managed' NOT NULL,
+	"enabled" boolean DEFAULT true NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "product_feature_assignments" (
@@ -643,10 +860,13 @@ CREATE TABLE "product_translations" (
 	"locale" varchar(16) DEFAULT 'en' NOT NULL,
 	"name" varchar(255) NOT NULL,
 	"slug" varchar(255) NOT NULL,
+	"badge_text" varchar(120) DEFAULT '' NOT NULL,
+	"extra_text" varchar(255) DEFAULT '' NOT NULL,
 	"short_description" text,
 	"description" text,
 	"seo_title" varchar(255),
 	"seo_description" varchar(500),
+	"stats" jsonb DEFAULT '[]'::jsonb NOT NULL,
 	"price" numeric(12, 2) DEFAULT '0' NOT NULL,
 	"compare_at_price" numeric(12, 2),
 	"currency_code" varchar(3) DEFAULT 'USD' NOT NULL,
@@ -659,7 +879,7 @@ CREATE TABLE "product_translations" (
 	"eol_date" timestamp with time zone,
 	"last_time_buy_date" timestamp with time zone,
 	"efficiency_class" varchar(20),
-	"payload" jsonb DEFAULT '{"coverUrl":null,"coverAlt":null,"gallery":[],"tags":[],"attachments":[],"certifications":[]}'::jsonb NOT NULL,
+	"payload" jsonb DEFAULT '{"coverUrl":null,"coverAlt":null,"videoUrl":null,"gallery":[],"tags":[],"attachments":[],"certifications":[]}'::jsonb NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -692,6 +912,10 @@ CREATE TABLE "products" (
 	"board_key" varchar(100),
 	"configuration_rules" jsonb,
 	"torque_curve_data" jsonb,
+	"background_image" text DEFAULT '' NOT NULL,
+	"background_mode" text DEFAULT '' NOT NULL,
+	"background_value" text DEFAULT '' NOT NULL,
+	"show_cover_on_background" boolean DEFAULT true NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -746,6 +970,131 @@ CREATE TABLE "site_settings" (
 	"default_country_code" varchar(16) DEFAULT 'US' NOT NULL,
 	"payment_sandbox_mode" boolean DEFAULT true NOT NULL,
 	"extra" jsonb DEFAULT '{}'::jsonb NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "social_media_profiles_i18n" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"profile_id" uuid NOT NULL,
+	"locale" varchar(16) NOT NULL,
+	"featured_posts" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "social_media_profiles" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"social_channels" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"overseas_contacts" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "solution_board_links" (
+	"solution_id" uuid NOT NULL,
+	"board_id" uuid NOT NULL,
+	CONSTRAINT "solution_board_links_solution_id_board_id_pk" PRIMARY KEY("solution_id","board_id")
+);
+--> statement-breakpoint
+CREATE TABLE "solution_contents" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"solution_id" uuid NOT NULL,
+	"blocks" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "solutions_i18n" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"solution_id" uuid NOT NULL,
+	"locale" varchar(16) NOT NULL,
+	"title" varchar(255) DEFAULT '' NOT NULL,
+	"large_title" varchar(255) DEFAULT '' NOT NULL,
+	"description" text DEFAULT '' NOT NULL,
+	"badge_text" varchar(120) DEFAULT '' NOT NULL,
+	"seo_title" varchar(255) DEFAULT '' NOT NULL,
+	"seo_description" varchar(500) DEFAULT '' NOT NULL,
+	"stats" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"product_params" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"tags" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "solutions" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"slug" varchar(64) NOT NULL,
+	"category_id" uuid,
+	"sort_order" integer DEFAULT 0 NOT NULL,
+	"status" "cms_status" DEFAULT 'draft' NOT NULL,
+	"published_at" timestamp with time zone,
+	"cover_image" text DEFAULT '' NOT NULL,
+	"background_image" text DEFAULT '' NOT NULL,
+	"background_mode" text DEFAULT '' NOT NULL,
+	"background_value" text DEFAULT '' NOT NULL,
+	"show_cover_on_background" boolean DEFAULT true NOT NULL,
+	"materials" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "summits_i18n" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"summit_id" uuid NOT NULL,
+	"locale" varchar(16) NOT NULL,
+	"title" varchar(300) DEFAULT '' NOT NULL,
+	"description" text DEFAULT '' NOT NULL,
+	"scale" varchar(200) DEFAULT '' NOT NULL,
+	"duration" varchar(100) DEFAULT '' NOT NULL,
+	"location" varchar(300) DEFAULT '' NOT NULL,
+	"address" varchar(400) DEFAULT '' NOT NULL,
+	"transportation" text DEFAULT '' NOT NULL,
+	"speakers" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "summits" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"slug" varchar(64) NOT NULL,
+	"status" "summit_status" DEFAULT 'upcoming' NOT NULL,
+	"start_date" timestamp with time zone,
+	"end_date" timestamp with time zone,
+	"cover_image" text DEFAULT '' NOT NULL,
+	"venue_image" text DEFAULT '' NOT NULL,
+	"agenda" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"sort_order" integer DEFAULT 0 NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "surgeons_i18n" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"surgeon_id" uuid NOT NULL,
+	"locale" varchar(16) NOT NULL,
+	"name" varchar(120) DEFAULT '' NOT NULL,
+	"position" varchar(200) DEFAULT '' NOT NULL,
+	"institution" varchar(200) DEFAULT '' NOT NULL,
+	"expertise" varchar(300) DEFAULT '' NOT NULL,
+	"experience" varchar(300) DEFAULT '' NOT NULL,
+	"grade_title" varchar(120) DEFAULT '' NOT NULL,
+	"detail_description" text DEFAULT '' NOT NULL,
+	"tags" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"other_certifications" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"specialties" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "surgeons" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"slug" varchar(64) NOT NULL,
+	"avatar" text DEFAULT '' NOT NULL,
+	"grade_key" "surgeon_grade_key" DEFAULT 'silver' NOT NULL,
+	"certification_year" integer,
+	"surgery_count" integer,
+	"sort_order" integer DEFAULT 0 NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -806,6 +1155,13 @@ CREATE TABLE "verification_tokens" (
 	CONSTRAINT "verification_tokens_pk" PRIMARY KEY("identifier","token")
 );
 --> statement-breakpoint
+CREATE TABLE "website_configs" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"nav_columns" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "wishlists" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
@@ -817,6 +1173,8 @@ CREATE TABLE "wishlists" (
 ALTER TABLE "accounts" ADD CONSTRAINT "accounts_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "addresses" ADD CONSTRAINT "addresses_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "attachments" ADD CONSTRAINT "attachments_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "brand_narrative_contents" ADD CONSTRAINT "brand_narrative_contents_narrative_id_brand_narratives_id_fk" FOREIGN KEY ("narrative_id") REFERENCES "public"."brand_narratives"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "brand_narratives_i18n" ADD CONSTRAINT "brand_narratives_i18n_narrative_id_brand_narratives_id_fk" FOREIGN KEY ("narrative_id") REFERENCES "public"."brand_narratives"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "brand_translations" ADD CONSTRAINT "brand_translations_brand_id_brands_id_fk" FOREIGN KEY ("brand_id") REFERENCES "public"."brands"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "cart_items" ADD CONSTRAINT "cart_items_cart_id_carts_id_fk" FOREIGN KEY ("cart_id") REFERENCES "public"."carts"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "cart_items" ADD CONSTRAINT "cart_items_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -824,6 +1182,7 @@ ALTER TABLE "cart_items" ADD CONSTRAINT "cart_items_variant_id_product_variants_
 ALTER TABLE "carts" ADD CONSTRAINT "carts_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "categories" ADD CONSTRAINT "categories_parent_id_categories_id_fk" FOREIGN KEY ("parent_id") REFERENCES "public"."categories"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "category_translations" ADD CONSTRAINT "category_translations_category_id_categories_id_fk" FOREIGN KEY ("category_id") REFERENCES "public"."categories"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "company_profiles_i18n" ADD CONSTRAINT "company_profiles_i18n_profile_id_company_profiles_id_fk" FOREIGN KEY ("profile_id") REFERENCES "public"."company_profiles"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "compare_items" ADD CONSTRAINT "compare_items_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "compare_items" ADD CONSTRAINT "compare_items_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "coupon_brands" ADD CONSTRAINT "coupon_brands_coupon_id_coupons_id_fk" FOREIGN KEY ("coupon_id") REFERENCES "public"."coupons"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -843,14 +1202,17 @@ ALTER TABLE "customer_messages" ADD CONSTRAINT "customer_messages_user_id_users_
 ALTER TABLE "customer_messages" ADD CONSTRAINT "customer_messages_admin_id_admins_id_fk" FOREIGN KEY ("admin_id") REFERENCES "public"."admins"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "editorial_content_boards" ADD CONSTRAINT "editorial_content_boards_content_id_editorial_contents_id_fk" FOREIGN KEY ("content_id") REFERENCES "public"."editorial_contents"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "editorial_content_translations" ADD CONSTRAINT "editorial_content_translations_content_id_editorial_contents_id_fk" FOREIGN KEY ("content_id") REFERENCES "public"."editorial_contents"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "editorial_coverage_boards_i18n" ADD CONSTRAINT "editorial_coverage_boards_i18n_board_id_editorial_coverage_boards_id_fk" FOREIGN KEY ("board_id") REFERENCES "public"."editorial_coverage_boards"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "feature_definition_translations" ADD CONSTRAINT "feature_definition_translations_definition_id_feature_definitions_id_fk" FOREIGN KEY ("definition_id") REFERENCES "public"."feature_definitions"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "geo_divisions" ADD CONSTRAINT "geo_divisions_parent_id_geo_divisions_id_fk" FOREIGN KEY ("parent_id") REFERENCES "public"."geo_divisions"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "homepage_configs_i18n" ADD CONSTRAINT "homepage_configs_i18n_config_id_homepage_configs_id_fk" FOREIGN KEY ("config_id") REFERENCES "public"."homepage_configs"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "inquiries" ADD CONSTRAINT "inquiries_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "inquiries" ADD CONSTRAINT "inquiries_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "inquiries" ADD CONSTRAINT "inquiries_terminated_by_admins_id_fk" FOREIGN KEY ("terminated_by") REFERENCES "public"."admins"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "inquiries" ADD CONSTRAINT "inquiries_handled_by_users_id_fk" FOREIGN KEY ("handled_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "inquiry_messages" ADD CONSTRAINT "inquiry_messages_inquiry_id_inquiries_id_fk" FOREIGN KEY ("inquiry_id") REFERENCES "public"."inquiries"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "inquiry_messages" ADD CONSTRAINT "inquiry_messages_admin_id_admins_id_fk" FOREIGN KEY ("admin_id") REFERENCES "public"."admins"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "inquiry_profiles" ADD CONSTRAINT "inquiry_profiles_inquiry_id_inquiries_id_fk" FOREIGN KEY ("inquiry_id") REFERENCES "public"."inquiries"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "inventory" ADD CONSTRAINT "inventory_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "inventory" ADD CONSTRAINT "inventory_variant_id_product_variants_id_fk" FOREIGN KEY ("variant_id") REFERENCES "public"."product_variants"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "order_action_logs" ADD CONSTRAINT "order_action_logs_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -871,9 +1233,13 @@ ALTER TABLE "orders" ADD CONSTRAINT "orders_cart_id_carts_id_fk" FOREIGN KEY ("c
 ALTER TABLE "orders" ADD CONSTRAINT "orders_shipping_address_id_addresses_id_fk" FOREIGN KEY ("shipping_address_id") REFERENCES "public"."addresses"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "orders" ADD CONSTRAINT "orders_billing_address_id_addresses_id_fk" FOREIGN KEY ("billing_address_id") REFERENCES "public"."addresses"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "orders" ADD CONSTRAINT "orders_terminated_by_admins_id_fk" FOREIGN KEY ("terminated_by") REFERENCES "public"."admins"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "partner_center_surgeons" ADD CONSTRAINT "partner_center_surgeons_center_id_partner_centers_id_fk" FOREIGN KEY ("center_id") REFERENCES "public"."partner_centers"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "partner_center_surgeons" ADD CONSTRAINT "partner_center_surgeons_surgeon_id_surgeons_id_fk" FOREIGN KEY ("surgeon_id") REFERENCES "public"."surgeons"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "partner_centers_i18n" ADD CONSTRAINT "partner_centers_i18n_center_id_partner_centers_id_fk" FOREIGN KEY ("center_id") REFERENCES "public"."partner_centers"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "product_board_assignments" ADD CONSTRAINT "product_board_assignments_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "product_categories" ADD CONSTRAINT "product_categories_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "product_categories" ADD CONSTRAINT "product_categories_category_id_categories_id_fk" FOREIGN KEY ("category_id") REFERENCES "public"."categories"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "product_coverage_boards_i18n" ADD CONSTRAINT "product_coverage_boards_i18n_board_id_product_coverage_boards_id_fk" FOREIGN KEY ("board_id") REFERENCES "public"."product_coverage_boards"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "product_feature_assignments" ADD CONSTRAINT "product_feature_assignments_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "product_feature_assignments" ADD CONSTRAINT "product_feature_assignments_definition_id_feature_definitions_id_fk" FOREIGN KEY ("definition_id") REFERENCES "public"."feature_definitions"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "product_feature_value_translations" ADD CONSTRAINT "product_feature_value_translations_value_id_product_feature_values_id_fk" FOREIGN KEY ("value_id") REFERENCES "public"."product_feature_values"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -887,12 +1253,24 @@ ALTER TABLE "products" ADD CONSTRAINT "products_brand_id_brands_id_fk" FOREIGN K
 ALTER TABLE "products" ADD CONSTRAINT "products_default_category_id_categories_id_fk" FOREIGN KEY ("default_category_id") REFERENCES "public"."categories"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "sessions" ADD CONSTRAINT "sessions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "shipping_method_translations" ADD CONSTRAINT "shipping_method_translations_shipping_method_id_shipping_methods_id_fk" FOREIGN KEY ("shipping_method_id") REFERENCES "public"."shipping_methods"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "social_media_profiles_i18n" ADD CONSTRAINT "social_media_profiles_i18n_profile_id_social_media_profiles_id_fk" FOREIGN KEY ("profile_id") REFERENCES "public"."social_media_profiles"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "solution_board_links" ADD CONSTRAINT "solution_board_links_solution_id_solutions_id_fk" FOREIGN KEY ("solution_id") REFERENCES "public"."solutions"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "solution_board_links" ADD CONSTRAINT "solution_board_links_board_id_product_coverage_boards_id_fk" FOREIGN KEY ("board_id") REFERENCES "public"."product_coverage_boards"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "solution_contents" ADD CONSTRAINT "solution_contents_solution_id_solutions_id_fk" FOREIGN KEY ("solution_id") REFERENCES "public"."solutions"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "solutions_i18n" ADD CONSTRAINT "solutions_i18n_solution_id_solutions_id_fk" FOREIGN KEY ("solution_id") REFERENCES "public"."solutions"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "summits_i18n" ADD CONSTRAINT "summits_i18n_summit_id_summits_id_fk" FOREIGN KEY ("summit_id") REFERENCES "public"."summits"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "surgeons_i18n" ADD CONSTRAINT "surgeons_i18n_surgeon_id_surgeons_id_fk" FOREIGN KEY ("surgeon_id") REFERENCES "public"."surgeons"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "ui_string_translations" ADD CONSTRAINT "ui_string_translations_key_ui_strings_key_fk" FOREIGN KEY ("key") REFERENCES "public"."ui_strings"("key") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "wishlists" ADD CONSTRAINT "wishlists_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "wishlists" ADD CONSTRAINT "wishlists_product_id_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE UNIQUE INDEX "accounts_provider_unique" ON "accounts" USING btree ("provider","provider_account_id");--> statement-breakpoint
 CREATE INDEX "addresses_user_id_idx" ON "addresses" USING btree ("user_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "admins_email_unique" ON "admins" USING btree ("email");--> statement-breakpoint
+CREATE UNIQUE INDEX "brand_narrative_contents_narrative_id_unique" ON "brand_narrative_contents" USING btree ("narrative_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "brand_narratives_i18n_narrative_locale_unique" ON "brand_narratives_i18n" USING btree ("narrative_id","locale");--> statement-breakpoint
+CREATE INDEX "brand_narratives_i18n_narrative_id_idx" ON "brand_narratives_i18n" USING btree ("narrative_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "brand_narratives_slug_unique" ON "brand_narratives" USING btree ("slug");--> statement-breakpoint
+CREATE INDEX "brand_narratives_status_sort_idx" ON "brand_narratives" USING btree ("status","sort_order");--> statement-breakpoint
 CREATE UNIQUE INDEX "brand_translations_brand_locale_unique" ON "brand_translations" USING btree ("brand_id","locale");--> statement-breakpoint
 CREATE UNIQUE INDEX "brand_translations_slug_locale_unique" ON "brand_translations" USING btree ("slug","locale");--> statement-breakpoint
 CREATE INDEX "brand_translations_brand_id_idx" ON "brand_translations" USING btree ("brand_id");--> statement-breakpoint
@@ -904,6 +1282,8 @@ CREATE UNIQUE INDEX "category_translations_category_locale_unique" ON "category_
 CREATE UNIQUE INDEX "category_translations_slug_locale_unique" ON "category_translations" USING btree ("slug","locale");--> statement-breakpoint
 CREATE INDEX "category_translations_category_id_idx" ON "category_translations" USING btree ("category_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "cms_pages_slug_unique" ON "cms_pages" USING btree ("slug");--> statement-breakpoint
+CREATE UNIQUE INDEX "company_profiles_i18n_profile_locale_unique" ON "company_profiles_i18n" USING btree ("profile_id","locale");--> statement-breakpoint
+CREATE INDEX "company_profiles_i18n_profile_id_idx" ON "company_profiles_i18n" USING btree ("profile_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "compare_items_user_product_unique" ON "compare_items" USING btree ("user_id","product_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "content_blocks_placement_key_unique" ON "content_blocks" USING btree ("placement","block_key");--> statement-breakpoint
 CREATE INDEX "coupon_distribution_batches_coupon_created_idx" ON "coupon_distribution_batches" USING btree ("coupon_id","created_at");--> statement-breakpoint
@@ -921,6 +1301,9 @@ CREATE INDEX "editorial_content_translations_content_id_idx" ON "editorial_conte
 CREATE INDEX "editorial_contents_type_status_published_idx" ON "editorial_contents" USING btree ("content_type","status","published_at");--> statement-breakpoint
 CREATE INDEX "editorial_contents_board_key_idx" ON "editorial_contents" USING btree ("board_key");--> statement-breakpoint
 CREATE INDEX "editorial_contents_content_module_board_idx" ON "editorial_contents" USING btree ("content_module","board_key");--> statement-breakpoint
+CREATE UNIQUE INDEX "editorial_coverage_boards_i18n_board_locale_unique" ON "editorial_coverage_boards_i18n" USING btree ("board_id","locale");--> statement-breakpoint
+CREATE INDEX "editorial_coverage_boards_i18n_board_id_idx" ON "editorial_coverage_boards_i18n" USING btree ("board_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "editorial_coverage_boards_board_key_unique" ON "editorial_coverage_boards" USING btree ("board_key");--> statement-breakpoint
 CREATE UNIQUE INDEX "feature_definition_translations_definition_locale_unique" ON "feature_definition_translations" USING btree ("definition_id","locale");--> statement-breakpoint
 CREATE INDEX "feature_definition_translations_definition_id_idx" ON "feature_definition_translations" USING btree ("definition_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "feature_definitions_key_unique" ON "feature_definitions" USING btree ("key");--> statement-breakpoint
@@ -930,16 +1313,30 @@ CREATE INDEX "geo_divisions_parent_idx" ON "geo_divisions" USING btree ("parent_
 CREATE INDEX "geo_divisions_level_idx" ON "geo_divisions" USING btree ("level");--> statement-breakpoint
 CREATE INDEX "geo_divisions_continent_idx" ON "geo_divisions" USING btree ("continent_code");--> statement-breakpoint
 CREATE UNIQUE INDEX "geo_divisions_iso_alpha2_unique" ON "geo_divisions" USING btree ("iso_alpha2");--> statement-breakpoint
+CREATE UNIQUE INDEX "homepage_configs_i18n_config_locale_unique" ON "homepage_configs_i18n" USING btree ("config_id","locale");--> statement-breakpoint
+CREATE INDEX "homepage_configs_i18n_config_id_idx" ON "homepage_configs_i18n" USING btree ("config_id");--> statement-breakpoint
 CREATE INDEX "inquiries_awaiting_admin_idx" ON "inquiries" USING btree ("awaiting_admin");--> statement-breakpoint
 CREATE INDEX "inquiries_last_message_at_idx" ON "inquiries" USING btree ("last_message_at");--> statement-breakpoint
 CREATE UNIQUE INDEX "inquiries_quote_number_unique" ON "inquiries" USING btree ("quote_number");--> statement-breakpoint
 CREATE INDEX "inquiry_messages_inquiry_created_idx" ON "inquiry_messages" USING btree ("inquiry_id","created_at");--> statement-breakpoint
+CREATE UNIQUE INDEX "inquiry_profiles_inquiry_id_unique" ON "inquiry_profiles" USING btree ("inquiry_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "inventory_product_variant_unique" ON "inventory" USING btree ("product_id","variant_id");--> statement-breakpoint
+CREATE INDEX "media_assets_type_created_at_idx" ON "media_assets" USING btree ("type","created_at");--> statement-breakpoint
 CREATE UNIQUE INDEX "newsletter_subscribers_email_unique" ON "newsletter_subscribers" USING btree ("email");--> statement-breakpoint
 CREATE UNIQUE INDEX "orders_number_unique" ON "orders" USING btree ("order_number");--> statement-breakpoint
 CREATE INDEX "orders_airwallex_payment_intent_idx" ON "orders" USING btree ("airwallex_payment_intent_id");--> statement-breakpoint
 CREATE INDEX "orders_stripe_payment_intent_idx" ON "orders" USING btree ("stripe_payment_intent_id");--> statement-breakpoint
+CREATE INDEX "partner_center_surgeons_center_id_idx" ON "partner_center_surgeons" USING btree ("center_id");--> statement-breakpoint
+CREATE INDEX "partner_center_surgeons_surgeon_id_idx" ON "partner_center_surgeons" USING btree ("surgeon_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "partner_centers_i18n_center_locale_unique" ON "partner_centers_i18n" USING btree ("center_id","locale");--> statement-breakpoint
+CREATE INDEX "partner_centers_i18n_center_id_idx" ON "partner_centers_i18n" USING btree ("center_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "partner_centers_slug_unique" ON "partner_centers" USING btree ("slug");--> statement-breakpoint
+CREATE INDEX "partner_centers_region_idx" ON "partner_centers" USING btree ("region");--> statement-breakpoint
+CREATE INDEX "partner_centers_sort_idx" ON "partner_centers" USING btree ("sort_order");--> statement-breakpoint
 CREATE INDEX "product_board_assignments_board_key_idx" ON "product_board_assignments" USING btree ("board_key");--> statement-breakpoint
+CREATE UNIQUE INDEX "product_coverage_boards_i18n_board_locale_unique" ON "product_coverage_boards_i18n" USING btree ("board_id","locale");--> statement-breakpoint
+CREATE INDEX "product_coverage_boards_i18n_board_id_idx" ON "product_coverage_boards_i18n" USING btree ("board_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "product_coverage_boards_board_key_unique" ON "product_coverage_boards" USING btree ("board_key");--> statement-breakpoint
 CREATE UNIQUE INDEX "product_feature_assignments_product_definition_unique" ON "product_feature_assignments" USING btree ("product_id","definition_id");--> statement-breakpoint
 CREATE INDEX "product_feature_assignments_product_id_idx" ON "product_feature_assignments" USING btree ("product_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "product_feature_value_translations_value_locale_unique" ON "product_feature_value_translations" USING btree ("value_id","locale");--> statement-breakpoint
@@ -959,6 +1356,25 @@ CREATE UNIQUE INDEX "shipping_methods_code_unique" ON "shipping_methods" USING b
 CREATE INDEX "shipping_methods_enabled_idx" ON "shipping_methods" USING btree ("enabled");--> statement-breakpoint
 CREATE INDEX "site_languages_status_sort_idx" ON "site_languages" USING btree ("status","sort_order");--> statement-breakpoint
 CREATE INDEX "site_languages_default_idx" ON "site_languages" USING btree ("is_default");--> statement-breakpoint
+CREATE UNIQUE INDEX "social_media_profiles_i18n_profile_locale_unique" ON "social_media_profiles_i18n" USING btree ("profile_id","locale");--> statement-breakpoint
+CREATE INDEX "social_media_profiles_i18n_profile_id_idx" ON "social_media_profiles_i18n" USING btree ("profile_id");--> statement-breakpoint
+CREATE INDEX "solution_board_links_solution_id_idx" ON "solution_board_links" USING btree ("solution_id");--> statement-breakpoint
+CREATE INDEX "solution_board_links_board_id_idx" ON "solution_board_links" USING btree ("board_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "solution_contents_solution_id_unique" ON "solution_contents" USING btree ("solution_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "solutions_i18n_solution_locale_unique" ON "solutions_i18n" USING btree ("solution_id","locale");--> statement-breakpoint
+CREATE INDEX "solutions_i18n_solution_id_idx" ON "solutions_i18n" USING btree ("solution_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "solutions_slug_unique" ON "solutions" USING btree ("slug");--> statement-breakpoint
+CREATE INDEX "solutions_status_sort_idx" ON "solutions" USING btree ("status","sort_order");--> statement-breakpoint
+CREATE INDEX "solutions_category_id_idx" ON "solutions" USING btree ("category_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "summits_i18n_summit_locale_unique" ON "summits_i18n" USING btree ("summit_id","locale");--> statement-breakpoint
+CREATE INDEX "summits_i18n_summit_id_idx" ON "summits_i18n" USING btree ("summit_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "summits_slug_unique" ON "summits" USING btree ("slug");--> statement-breakpoint
+CREATE INDEX "summits_status_idx" ON "summits" USING btree ("status");--> statement-breakpoint
+CREATE INDEX "summits_start_date_idx" ON "summits" USING btree ("start_date");--> statement-breakpoint
+CREATE UNIQUE INDEX "surgeons_i18n_surgeon_locale_unique" ON "surgeons_i18n" USING btree ("surgeon_id","locale");--> statement-breakpoint
+CREATE INDEX "surgeons_i18n_surgeon_id_idx" ON "surgeons_i18n" USING btree ("surgeon_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "surgeons_slug_unique" ON "surgeons" USING btree ("slug");--> statement-breakpoint
+CREATE INDEX "surgeons_sort_idx" ON "surgeons" USING btree ("sort_order");--> statement-breakpoint
 CREATE INDEX "ui_string_translations_locale_idx" ON "ui_string_translations" USING btree ("locale");--> statement-breakpoint
 CREATE INDEX "ui_strings_group_idx" ON "ui_strings" USING btree ("group");--> statement-breakpoint
 CREATE INDEX "ui_strings_status_idx" ON "ui_strings" USING btree ("status");--> statement-breakpoint

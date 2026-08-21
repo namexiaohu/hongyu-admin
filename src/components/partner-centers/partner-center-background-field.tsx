@@ -8,7 +8,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AdminMediaAsset, MediaAssetType } from '@/lib/media-assets';
 import { IMAGE_UPLOAD_MIME_TYPES, MAX_IMAGE_UPLOAD_BYTES } from '@/lib/media-upload';
 import {
-  MEDIA_ASSET_TYPE_PARTNER_CENTER_BACKGROUND,
+  getSharedBackgroundMediaAssets,
+  peekSharedBackgroundMediaAssets,
+  setSharedBackgroundMediaAssets,
+} from '@/lib/background-media-cache';
+import {
+  MEDIA_ASSET_TYPE_BACKGROUND,
   PARTNER_CENTER_IMAGE_PRESETS,
   PARTNER_CENTER_SOLID_PRESETS,
   type PartnerCenterBackgroundMode,
@@ -26,7 +31,7 @@ type Props = {
   value?: PartnerCenterBackgroundValue | null;
   onChange?: (value: PartnerCenterBackgroundValue) => void;
   disabled?: boolean;
-  /** media_assets.type for upload library */
+  /** @deprecated ignored — all modules share the background library */
   assetType?: MediaAssetType;
 };
 
@@ -36,8 +41,10 @@ export function PartnerCenterBackgroundField({
   value,
   onChange,
   disabled = false,
-  assetType = MEDIA_ASSET_TYPE_PARTNER_CENTER_BACKGROUND,
+  assetType: _assetType = MEDIA_ASSET_TYPE_BACKGROUND,
 }: Props) {
+  const assetType = MEDIA_ASSET_TYPE_BACKGROUND;
+  void _assetType;
   const mode = value?.mode ?? '';
   const selectedValue = value?.value ?? '';
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -64,25 +71,38 @@ export function PartnerCenterBackgroundField({
     }));
   }, [value?.mode, value?.value, value?.previewUrl]);
 
-  const loadUploads = useCallback(async () => {
+  const loadUploads = useCallback(async (force = false) => {
+    if (!force) {
+      const cached = peekSharedBackgroundMediaAssets();
+      if (cached) {
+        setUploadItems(cached);
+        setLoadingUploads(false);
+        return;
+      }
+    }
+
     setLoadingUploads(true);
     try {
-      const r = await fetch(`/api/admin/media-assets?type=${assetType}`);
-      if (!r.ok) throw new Error('加载图库失败');
-      const data = (await r.json()) as { items: AdminMediaAsset[] };
-      setUploadItems(data.items ?? []);
+      const items = await getSharedBackgroundMediaAssets({ force });
+      setUploadItems(items);
     } catch (error) {
       message.error(error instanceof Error ? error.message : '加载图库失败');
     } finally {
       setLoadingUploads(false);
     }
-  }, [assetType]);
+  }, []);
 
   useEffect(() => {
     if (pickerOpen && pickerKind === 'upload') {
-      void loadUploads();
+      void loadUploads(false);
     }
   }, [pickerOpen, pickerKind, loadUploads]);
+
+  // Prefetch once when the entity editor mounts this field
+  useEffect(() => {
+    if (peekSharedBackgroundMediaAssets()) return;
+    void getSharedBackgroundMediaAssets().catch(() => undefined);
+  }, []);
 
   function setMode(next: PartnerCenterBackgroundMode) {
     if (disabled) return;
@@ -164,7 +184,10 @@ export function PartnerCenterBackgroundField({
         const data = await r.json().catch(() => null);
         if (!r.ok) throw new Error(data?.message || '上传失败');
         const asset = data as AdminMediaAsset;
-        setUploadItems((prev) => [asset, ...prev.filter((item) => item.id !== asset.id)]);
+        // Refresh shared library so the new upload is included, then reuse cache next open
+        const items = await getSharedBackgroundMediaAssets({ force: true });
+        setSharedBackgroundMediaAssets(items);
+        setUploadItems(items);
         onChange?.({ mode: 'upload', value: asset.id, previewUrl: asset.url });
         setModeCache((prev) => ({ ...prev, upload: { value: asset.id, previewUrl: asset.url } }));
         setPickerOpen(false);

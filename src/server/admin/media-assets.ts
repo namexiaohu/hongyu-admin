@@ -4,7 +4,13 @@ import { desc, eq, inArray } from 'drizzle-orm';
 
 import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
 import type { AdminMediaAsset, MediaAssetType } from '@/lib/media-assets';
-import { MEDIA_ASSET_TYPES } from '@/lib/media-assets';
+import {
+  LEGACY_BACKGROUND_MEDIA_TYPES,
+  MEDIA_ASSET_TYPE_BACKGROUND,
+  MEDIA_ASSET_TYPES,
+  isBackgroundMediaType,
+  normalizeMediaAssetType,
+} from '@/lib/media-assets';
 import { db } from '@/server/db';
 import { mediaAssets } from '@/server/db/schema';
 import { uploadToOss } from '@/server/oss';
@@ -31,11 +37,17 @@ export function isMediaAssetType(value: string): value is MediaAssetType {
   return (MEDIA_ASSET_TYPES as readonly string[]).includes(value);
 }
 
+const ALL_BACKGROUND_TYPES: string[] = [
+  MEDIA_ASSET_TYPE_BACKGROUND,
+  ...LEGACY_BACKGROUND_MEDIA_TYPES,
+];
+
 export async function listAdminMediaAssets(type: string): Promise<AdminMediaAsset[]> {
+  const types = isBackgroundMediaType(type) ? ALL_BACKGROUND_TYPES : [type];
   const rows = await db
     .select()
     .from(mediaAssets)
-    .where(eq(mediaAssets.type, type))
+    .where(inArray(mediaAssets.type, types))
     .orderBy(desc(mediaAssets.createdAt));
   return rows.map(mapAsset);
 }
@@ -58,10 +70,11 @@ export async function getAdminMediaAssetStorageKeys(ids: string[]) {
 }
 
 const FOLDER_BY_TYPE: Record<string, string> = {
-  partner_center_background: 'partner-centers/backgrounds',
-  brand_narrative_background: 'brand-narratives/backgrounds',
-  solution_background: 'solutions/backgrounds',
-  product_background: 'products/backgrounds',
+  [MEDIA_ASSET_TYPE_BACKGROUND]: 'backgrounds',
+  partner_center_background: 'backgrounds',
+  brand_narrative_background: 'backgrounds',
+  solution_background: 'backgrounds',
+  product_background: 'backgrounds',
 };
 
 export async function createAdminMediaAssetFromUpload(input: {
@@ -75,7 +88,8 @@ export async function createAdminMediaAssetFromUpload(input: {
     throw new Error('INVALID_TYPE');
   }
 
-  const folder = FOLDER_BY_TYPE[input.type] ?? 'uploads';
+  const type = normalizeMediaAssetType(input.type);
+  const folder = FOLDER_BY_TYPE[type] ?? 'uploads';
   const uploaded = await uploadToOss({
     buffer: input.buffer,
     filename: input.filename,
@@ -90,7 +104,7 @@ export async function createAdminMediaAssetFromUpload(input: {
   const [inserted] = await db
     .insert(mediaAssets)
     .values({
-      type: input.type,
+      type,
       storageKey: uploaded.key,
       filename: input.filename,
       contentType: input.contentType,
@@ -111,10 +125,11 @@ export async function createAdminMediaAssetFromKey(input: {
   if (!isMediaAssetType(input.type)) {
     throw new Error('INVALID_TYPE');
   }
+  const type = normalizeMediaAssetType(input.type);
   const [inserted] = await db
     .insert(mediaAssets)
     .values({
-      type: input.type,
+      type,
       storageKey: input.storageKey,
       filename: input.filename ?? input.storageKey.split('/').pop() ?? '',
       contentType: input.contentType ?? 'image/jpeg',

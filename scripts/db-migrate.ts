@@ -50,6 +50,16 @@ async function listMigrationTags() {
     .sort();
 }
 
+/** Drop historical tags that are no longer present as migration files. */
+async function pruneObsoleteTags(sql: SqlClient, allTags: string[]) {
+  const applied = await getAppliedTags(sql);
+  const obsolete = [...applied].filter((tag) => !allTags.includes(tag));
+  for (const tag of obsolete) {
+    await sql`DELETE FROM ${sql(MIGRATIONS_TABLE)} WHERE tag = ${tag}`;
+    console.log(`[db:migrate] Removed obsolete migration tag ${tag}`);
+  }
+}
+
 /** If schema already exists (e.g. via db:push) but current migration tags are unmarked, baseline them. */
 async function baselineIfNeeded(sql: SqlClient, allTags: string[]) {
   const applied = await getAppliedTags(sql);
@@ -73,13 +83,6 @@ async function baselineIfNeeded(sql: SqlClient, allTags: string[]) {
   for (const tag of pending) {
     await markApplied(sql, tag);
     console.log(`[db:migrate] Baseline ${tag} (schema already present)`);
-  }
-
-  // Drop obsolete historical tags if any remain from the old multi-file chain.
-  const obsolete = [...applied].filter((tag) => !allTags.includes(tag));
-  for (const tag of obsolete) {
-    await sql`DELETE FROM ${sql(MIGRATIONS_TABLE)} WHERE tag = ${tag}`;
-    console.log(`[db:migrate] Removed obsolete migration tag ${tag}`);
   }
 }
 
@@ -120,6 +123,7 @@ async function main() {
     }
 
     await baselineIfNeeded(sql, allTags);
+    await pruneObsoleteTags(sql, allTags);
 
     const applied = await getAppliedTags(sql);
     const pending = allTags.filter((tag) => !applied.has(tag));

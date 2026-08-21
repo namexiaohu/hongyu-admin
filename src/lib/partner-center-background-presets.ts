@@ -69,10 +69,17 @@ export const PARTNER_CENTER_IMAGE_PRESETS: PartnerCenterImagePreset[] = [
   { id: 'u-30', label: '云层航拍', thumbUrl: unsplash('photo-1419242902214-272b3f66ee7a', 480), fullUrl: unsplash('photo-1419242902214-272b3f66ee7a', 1920), credit: 'Unsplash' },
 ];
 
-export const MEDIA_ASSET_TYPE_PARTNER_CENTER_BACKGROUND = 'partner_center_background';
-export const MEDIA_ASSET_TYPE_BRAND_NARRATIVE_BACKGROUND = 'brand_narrative_background';
-export const MEDIA_ASSET_TYPE_SOLUTION_BACKGROUND = 'solution_background';
-export const MEDIA_ASSET_TYPE_PRODUCT_BACKGROUND = 'product_background';
+import { MEDIA_ASSET_TYPE_BACKGROUND } from '@/lib/media-assets';
+
+export { MEDIA_ASSET_TYPE_BACKGROUND };
+/** @deprecated alias — all modules share MEDIA_ASSET_TYPE_BACKGROUND */
+export const MEDIA_ASSET_TYPE_PARTNER_CENTER_BACKGROUND = MEDIA_ASSET_TYPE_BACKGROUND;
+/** @deprecated alias — all modules share MEDIA_ASSET_TYPE_BACKGROUND */
+export const MEDIA_ASSET_TYPE_BRAND_NARRATIVE_BACKGROUND = MEDIA_ASSET_TYPE_BACKGROUND;
+/** @deprecated alias — all modules share MEDIA_ASSET_TYPE_BACKGROUND */
+export const MEDIA_ASSET_TYPE_SOLUTION_BACKGROUND = MEDIA_ASSET_TYPE_BACKGROUND;
+/** @deprecated alias — all modules share MEDIA_ASSET_TYPE_BACKGROUND */
+export const MEDIA_ASSET_TYPE_PRODUCT_BACKGROUND = MEDIA_ASSET_TYPE_BACKGROUND;
 
 export function normalizeBackgroundWrite(mode: string | undefined, value: string | undefined) {
   const nextMode = (mode ?? '') as PartnerCenterBackgroundMode;
