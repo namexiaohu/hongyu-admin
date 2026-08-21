@@ -1,0 +1,24 @@
+import { NextRequest, NextResponse } from 'next/server';
+
+import { frontCorsHeaders } from '@/lib/front-cors';
+import { resolveFrontRequestLocale } from '@/lib/front-request-locale';
+import { getStorefrontPartnerCenterBySlug } from '@/server/storefront/partner-centers';
+
+export async function GET(request: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const locale = await resolveFrontRequestLocale(request);
+  const center = await getStorefrontPartnerCenterBySlug({ slug, locale });
+
+  if (!center) {
+    return NextResponse.json(
+      { code: 'NOT_FOUND', message: 'Partner center not found' },
+      { status: 404, headers: frontCorsHeaders() },
+    );
+  }
+
+  return NextResponse.json({ locale, ...center }, { headers: frontCorsHeaders() });
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: frontCorsHeaders() });
+}

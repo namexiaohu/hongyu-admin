@@ -35,9 +35,23 @@ async function upsertCenter(record: PartnerCenterSeedRecord, coverKey: string, l
       console.log(`  跳过已存在: ${record.slug}`);
       return;
     }
-    await db.update(partnerCenters).set({ region: record.region, coverImage: coverKey, logo: logoKey, sortOrder: record.sortOrder, updatedAt: now }).where(eq(partnerCenters.id, existing.id));
+    await db.update(partnerCenters).set({
+      region: record.region,
+      coverImage: coverKey,
+      logo: logoKey,
+      website: record.i18n['zh-CN']?.website || record.i18n.en?.website || '',
+      sortOrder: record.sortOrder,
+      updatedAt: now,
+    }).where(eq(partnerCenters.id, existing.id));
   } else {
-    const [inserted] = await db.insert(partnerCenters).values({ slug: record.slug, region: record.region, coverImage: coverKey, logo: logoKey, sortOrder: record.sortOrder }).returning({ id: partnerCenters.id });
+    const [inserted] = await db.insert(partnerCenters).values({
+      slug: record.slug,
+      region: record.region,
+      coverImage: coverKey,
+      logo: logoKey,
+      website: record.i18n['zh-CN']?.website || record.i18n.en?.website || '',
+      sortOrder: record.sortOrder,
+    }).returning({ id: partnerCenters.id });
     centerId = inserted.id;
   }
 

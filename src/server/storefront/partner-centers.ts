@@ -2,10 +2,10 @@ import 'server-only';
 
 import { asc, eq, inArray } from 'drizzle-orm';
 
-import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
+import { resolveOssAssetUrl, rewriteHtmlOssAssets } from '@/lib/oss-asset-url';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
-import type { CenterRegion } from '@/lib/partner-center-content';
-import { centerRegions } from '@/lib/partner-center-content';
+import type { CenterRegion, PartnerCenterMetric } from '@/lib/partner-center-content';
+import { centerRegions, normalizePartnerCenterMetrics } from '@/lib/partner-center-content';
 import { db } from '@/server/db';
 import { partnerCenters, partnerCenterTranslations } from '@/server/db/schema';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
@@ -14,16 +14,21 @@ export type StorefrontCenterItem = {
   slug: string;
   coverImage: string;
   logo: string;
+  backgroundImage: string;
   region: CenterRegion;
+  email: string;
+  website: string;
   name: string;
   description: string;
+  detailDescription: string;
   location: string;
   badgeText: string;
   address: string;
   businessHours: string;
   contact: string;
-  website: string;
   tags: string[];
+  stats: PartnerCenterMetric[];
+  cooperationInfo: PartnerCenterMetric[];
 };
 
 export type StorefrontCenterGroup = {
@@ -88,16 +93,21 @@ export async function getStorefrontPartnerCentersList(input: { locale: string })
       slug: row.slug,
       coverImage: resolveOssAssetUrl(row.coverImage),
       logo: resolveOssAssetUrl(row.logo),
+      backgroundImage: resolveOssAssetUrl(row.backgroundImage ?? ''),
       region: row.region as CenterRegion,
+      email: row.email ?? '',
+      website: (row.website || display?.website || '').trim(),
       name: display?.name ?? row.slug,
       description: display?.description ?? '',
+      detailDescription: rewriteHtmlOssAssets(display?.detailDescription ?? '', 'toPublicUrl'),
       location: display?.location ?? '',
       badgeText: display?.badgeText ?? '',
       address: display?.address ?? '',
       businessHours: display?.businessHours ?? '',
       contact: display?.contact ?? '',
-      website: display?.website ?? '',
       tags: ((display?.tags ?? []) as string[]).filter(Boolean),
+      stats: normalizePartnerCenterMetrics((display?.stats ?? []) as PartnerCenterMetric[]),
+      cooperationInfo: normalizePartnerCenterMetrics((display?.cooperationInfo ?? []) as PartnerCenterMetric[]),
     };
 
     const bucket = itemsByRegion.get(row.region as CenterRegion) ?? [];
@@ -113,4 +123,42 @@ export async function getStorefrontPartnerCentersList(input: { locale: string })
     });
 
   return { locale: input.locale, groups };
+}
+
+export async function getStorefrontPartnerCenterBySlug(input: {
+  slug: string;
+  locale: string;
+}): Promise<StorefrontCenterItem | null> {
+  const defaultLocale = await getDefaultSiteLanguageCode();
+  const [row] = await db.select().from(partnerCenters).where(eq(partnerCenters.slug, input.slug)).limit(1);
+  if (!row) return null;
+
+  const translations = await db
+    .select()
+    .from(partnerCenterTranslations)
+    .where(eq(partnerCenterTranslations.centerId, row.id));
+
+  const localeMatch = translations.find((t) => t.locale.toLowerCase() === input.locale.toLowerCase());
+  const display = localeMatch ?? pickTranslationForDisplay(translations, defaultLocale);
+
+  return {
+    slug: row.slug,
+    coverImage: resolveOssAssetUrl(row.coverImage),
+    logo: resolveOssAssetUrl(row.logo),
+    backgroundImage: resolveOssAssetUrl(row.backgroundImage ?? ''),
+    region: row.region as CenterRegion,
+    email: row.email ?? '',
+    website: (row.website || display?.website || '').trim(),
+    name: display?.name ?? row.slug,
+    description: display?.description ?? '',
+    detailDescription: rewriteHtmlOssAssets(display?.detailDescription ?? '', 'toPublicUrl'),
+    location: display?.location ?? '',
+    badgeText: display?.badgeText ?? '',
+    address: display?.address ?? '',
+    businessHours: display?.businessHours ?? '',
+    contact: display?.contact ?? '',
+    tags: ((display?.tags ?? []) as string[]).filter(Boolean),
+    stats: normalizePartnerCenterMetrics((display?.stats ?? []) as PartnerCenterMetric[]),
+    cooperationInfo: normalizePartnerCenterMetrics((display?.cooperationInfo ?? []) as PartnerCenterMetric[]),
+  };
 }

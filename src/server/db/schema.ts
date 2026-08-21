@@ -79,7 +79,9 @@ import type { AdminProductPayload } from '@/lib/product-content';
 import type { ProductStat } from '@/lib/product-content';
 import type { SolutionBlockDraft } from '@/lib/solution-blocks';
 import type { SolutionMaterial, SolutionProductParam, SolutionStat } from '@/lib/solution-content';
+import type { PartnerCenterMetric } from '@/lib/partner-center-content';
 import type { ProductCoverageBoard } from '@/lib/product-boards';
+import type { SurgeonMetric } from '@/lib/surgeon-content';
 import {
   defaultEditorialAutomationConfig,
   type EditorialAiTemplate,
@@ -1497,6 +1499,8 @@ export const surgeons = pgTable(
     slug: varchar('slug', { length: 64 }).notNull(),
     avatar: text('avatar').notNull().default(''),
     gradeKey: surgeonGradeKeyEnum('grade_key').notNull().default('silver'),
+    certificationYear: integer('certification_year'),
+    surgeryCount: integer('surgery_count'),
     sortOrder: integer('sort_order').notNull().default(0),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -1519,7 +1523,10 @@ export const surgeonTranslations = pgTable(
     expertise: varchar('expertise', { length: 300 }).notNull().default(''),
     experience: varchar('experience', { length: 300 }).notNull().default(''),
     gradeTitle: varchar('grade_title', { length: 120 }).notNull().default(''),
+    detailDescription: text('detail_description').notNull().default(''),
     tags: jsonb('tags').$type<string[]>().notNull().default([]),
+    otherCertifications: jsonb('other_certifications').$type<SurgeonMetric[]>().notNull().default([]),
+    specialties: jsonb('specialties').$type<string[]>().notNull().default([]),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -1599,8 +1606,11 @@ export const partnerCenters = pgTable(
     id: uuid('id').defaultRandom().primaryKey(),
     slug: varchar('slug', { length: 64 }).notNull(),
     region: centerRegionEnum('region').notNull().default('asia-pacific'),
+    email: varchar('email', { length: 255 }).notNull().default(''),
+    website: varchar('website', { length: 300 }).notNull().default(''),
     coverImage: text('cover_image').notNull().default(''),
     logo: text('logo').notNull().default(''),
+    backgroundImage: text('background_image').notNull().default(''),
     sortOrder: integer('sort_order').notNull().default(0),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -1609,6 +1619,20 @@ export const partnerCenters = pgTable(
     slugUnique: uniqueIndex('partner_centers_slug_unique').on(table.slug),
     regionIdx: index('partner_centers_region_idx').on(table.region),
     sortIdx: index('partner_centers_sort_idx').on(table.sortOrder),
+  }),
+);
+
+export const partnerCenterSurgeons = pgTable(
+  'partner_center_surgeons',
+  {
+    centerId: uuid('center_id').notNull().references(() => partnerCenters.id, { onDelete: 'cascade' }),
+    surgeonId: uuid('surgeon_id').notNull().references(() => surgeons.id, { onDelete: 'cascade' }),
+    sortOrder: integer('sort_order').notNull().default(0),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.centerId, table.surgeonId] }),
+    centerIdIdx: index('partner_center_surgeons_center_id_idx').on(table.centerId),
+    surgeonIdIdx: index('partner_center_surgeons_surgeon_id_idx').on(table.surgeonId),
   }),
 );
 
@@ -1725,13 +1749,17 @@ export const partnerCenterTranslations = pgTable(
     locale: varchar('locale', { length: 16 }).notNull(),
     name: varchar('name', { length: 200 }).notNull().default(''),
     description: text('description').notNull().default(''),
+    detailDescription: text('detail_description').notNull().default(''),
     location: varchar('location', { length: 300 }).notNull().default(''),
     badgeText: varchar('badge_text', { length: 120 }).notNull().default(''),
     address: varchar('address', { length: 400 }).notNull().default(''),
     businessHours: varchar('business_hours', { length: 200 }).notNull().default(''),
     contact: varchar('contact', { length: 200 }).notNull().default(''),
+    /** @deprecated moved to partner_centers.website; kept for legacy rows */
     website: varchar('website', { length: 300 }).notNull().default(''),
     tags: jsonb('tags').$type<string[]>().notNull().default([]),
+    stats: jsonb('stats').$type<PartnerCenterMetric[]>().notNull().default([]),
+    cooperationInfo: jsonb('cooperation_info').$type<PartnerCenterMetric[]>().notNull().default([]),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

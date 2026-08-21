@@ -7,15 +7,17 @@ import {
   type AdminPartnerCenterListItem,
   type AdminPartnerCenterTranslation,
   type CenterRegion,
+  type PartnerCenterMetric,
   adminPartnerCenterCreateSchema,
   adminPartnerCenterPatchSchema,
   adminPartnerCenterTranslationSchema,
+  normalizePartnerCenterMetrics,
   resolveCenterDisplayName,
 } from '@/lib/partner-center-content';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import { normalizeSlug } from '@/lib/slug';
 import { db } from '@/server/db';
-import { partnerCenters, partnerCenterTranslations } from '@/server/db/schema';
+import { partnerCenters, partnerCenterSurgeons, partnerCenterTranslations } from '@/server/db/schema';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
 
 function toIso(value: Date) {
@@ -31,8 +33,11 @@ function mapListItem(
     id: row.id,
     slug: row.slug,
     region: row.region as CenterRegion,
+    email: row.email ?? '',
+    website: row.website ?? '',
     coverImage: row.coverImage,
     logo: row.logo,
+    backgroundImage: row.backgroundImage ?? '',
     sortOrder: row.sortOrder,
     name,
     localeCount,
@@ -47,27 +52,52 @@ function mapTranslation(row: typeof partnerCenterTranslations.$inferSelect): Adm
     locale: row.locale,
     name: row.name,
     description: row.description,
+    detailDescription: row.detailDescription ?? '',
     location: row.location,
     badgeText: row.badgeText,
     address: row.address,
     businessHours: row.businessHours,
     contact: row.contact,
-    website: row.website,
     tags: (row.tags ?? []) as string[],
+    stats: normalizePartnerCenterMetrics((row.stats ?? []) as PartnerCenterMetric[]),
+    cooperationInfo: normalizePartnerCenterMetrics((row.cooperationInfo ?? []) as PartnerCenterMetric[]),
     createdAt: toIso(row.createdAt),
     updatedAt: toIso(row.updatedAt),
   };
 }
 
-function mapDetail(
+async function loadSurgeonIds(centerId: string) {
+  const rows = await db
+    .select({ surgeonId: partnerCenterSurgeons.surgeonId })
+    .from(partnerCenterSurgeons)
+    .where(eq(partnerCenterSurgeons.centerId, centerId))
+    .orderBy(asc(partnerCenterSurgeons.sortOrder), asc(partnerCenterSurgeons.surgeonId));
+  return rows.map((row) => row.surgeonId);
+}
+
+async function syncPartnerCenterSurgeons(centerId: string, surgeonIds: string[]) {
+  const uniqueIds = [...new Set(surgeonIds.filter(Boolean))];
+  await db.delete(partnerCenterSurgeons).where(eq(partnerCenterSurgeons.centerId, centerId));
+  if (!uniqueIds.length) return;
+  await db.insert(partnerCenterSurgeons).values(
+    uniqueIds.map((surgeonId, index) => ({
+      centerId,
+      surgeonId,
+      sortOrder: (index + 1) * 10,
+    })),
+  );
+}
+
+async function mapDetail(
   row: typeof partnerCenters.$inferSelect,
   translations: Array<typeof partnerCenterTranslations.$inferSelect>,
   defaultLocale: string,
-): AdminPartnerCenterDetail {
+): Promise<AdminPartnerCenterDetail> {
   const display = pickTranslationForDisplay(translations, defaultLocale);
   return {
     ...mapListItem(row, resolveCenterDisplayName(display, row.slug), translations.length),
     translations: translations.map(mapTranslation),
+    surgeonIds: await loadSurgeonIds(row.id),
   };
 }
 
@@ -120,12 +150,16 @@ export async function createAdminPartnerCenter(input: unknown) {
   const [inserted] = await db.insert(partnerCenters).values({
     slug,
     region: parsed.region ?? 'asia-pacific',
+    email: parsed.email?.trim() ?? '',
+    website: parsed.website?.trim() ?? '',
     coverImage: parsed.coverImage ?? '',
     logo: parsed.logo ?? '',
+    backgroundImage: parsed.backgroundImage ?? '',
     sortOrder: parsed.sortOrder ?? (maxSort?.sortOrder ?? 0) + 10,
   }).returning({ id: partnerCenters.id });
 
   await upsertAdminPartnerCenterTranslation(inserted.id, parsed.translation);
+  await syncPartnerCenterSurgeons(inserted.id, parsed.surgeonIds ?? []);
   return getAdminPartnerCenterDetail(inserted.id);
 }
 
@@ -148,11 +182,18 @@ export async function updateAdminPartnerCenter(id: string, input: unknown) {
   await db.update(partnerCenters).set({
     ...(parsed.slug !== undefined ? { slug: nextSlug } : {}),
     ...(parsed.region !== undefined ? { region: parsed.region } : {}),
+    ...(parsed.email !== undefined ? { email: parsed.email.trim() } : {}),
+    ...(parsed.website !== undefined ? { website: parsed.website.trim() } : {}),
     ...(parsed.coverImage !== undefined ? { coverImage: parsed.coverImage } : {}),
     ...(parsed.logo !== undefined ? { logo: parsed.logo } : {}),
+    ...(parsed.backgroundImage !== undefined ? { backgroundImage: parsed.backgroundImage } : {}),
     ...(parsed.sortOrder !== undefined ? { sortOrder: parsed.sortOrder } : {}),
     updatedAt: new Date(),
   }).where(eq(partnerCenters.id, id));
+
+  if (parsed.surgeonIds !== undefined) {
+    await syncPartnerCenterSurgeons(id, parsed.surgeonIds);
+  }
 
   return getAdminPartnerCenterDetail(id);
 }
@@ -169,13 +210,15 @@ export async function upsertAdminPartnerCenterTranslation(centerId: string, inpu
   const values = {
     name: parsed.name,
     description: parsed.description ?? '',
+    detailDescription: parsed.detailDescription ?? '',
     location: parsed.location ?? '',
     badgeText: parsed.badgeText ?? '',
     address: parsed.address ?? '',
     businessHours: parsed.businessHours ?? '',
     contact: parsed.contact ?? '',
-    website: parsed.website ?? '',
     tags: parsed.tags ?? [],
+    stats: normalizePartnerCenterMetrics(parsed.stats),
+    cooperationInfo: normalizePartnerCenterMetrics(parsed.cooperationInfo),
     updatedAt: new Date(),
   };
 

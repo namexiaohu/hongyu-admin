@@ -7,10 +7,11 @@ import {
   type AdminSurgeonListItem,
   type AdminSurgeonTranslation,
   type SurgeonGradeKey,
+  type SurgeonMetric,
   adminSurgeonCreateSchema,
   adminSurgeonPatchSchema,
-  adminSurgeonTranslationPatchSchema,
   adminSurgeonTranslationSchema,
+  normalizeSurgeonMetrics,
   resolveSurgeonDisplayName,
 } from '@/lib/surgeon-content';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
@@ -33,6 +34,8 @@ function mapListItem(
     slug: row.slug,
     avatar: row.avatar,
     gradeKey: row.gradeKey as SurgeonGradeKey,
+    certificationYear: row.certificationYear ?? null,
+    surgeryCount: row.surgeryCount ?? null,
     sortOrder: row.sortOrder,
     name,
     localeCount,
@@ -51,7 +54,10 @@ function mapTranslation(row: typeof surgeonTranslations.$inferSelect): AdminSurg
     expertise: row.expertise,
     experience: row.experience,
     gradeTitle: row.gradeTitle,
+    detailDescription: row.detailDescription ?? '',
     tags: (row.tags ?? []) as string[],
+    otherCertifications: normalizeSurgeonMetrics((row.otherCertifications ?? []) as SurgeonMetric[]),
+    specialties: ((row.specialties ?? []) as string[]).filter(Boolean),
     createdAt: toIso(row.createdAt),
     updatedAt: toIso(row.updatedAt),
   };
@@ -119,6 +125,8 @@ export async function createAdminSurgeon(input: unknown) {
     slug,
     avatar: parsed.avatar ?? '',
     gradeKey: parsed.gradeKey ?? 'silver',
+    certificationYear: parsed.certificationYear ?? null,
+    surgeryCount: parsed.surgeryCount ?? null,
     sortOrder: parsed.sortOrder ?? (maxSort?.sortOrder ?? 0) + 10,
   }).returning({ id: surgeons.id });
 
@@ -146,6 +154,8 @@ export async function updateAdminSurgeon(id: string, input: unknown) {
     ...(parsed.slug !== undefined ? { slug: nextSlug } : {}),
     ...(parsed.avatar !== undefined ? { avatar: parsed.avatar } : {}),
     ...(parsed.gradeKey !== undefined ? { gradeKey: parsed.gradeKey } : {}),
+    ...(parsed.certificationYear !== undefined ? { certificationYear: parsed.certificationYear } : {}),
+    ...(parsed.surgeryCount !== undefined ? { surgeryCount: parsed.surgeryCount } : {}),
     ...(parsed.sortOrder !== undefined ? { sortOrder: parsed.sortOrder } : {}),
     updatedAt: new Date(),
   }).where(eq(surgeons.id, id));
@@ -157,6 +167,9 @@ export async function upsertAdminSurgeonTranslation(surgeonId: string, input: un
   const parsed = adminSurgeonTranslationSchema.parse(input);
   const [surgeon] = await db.select({ id: surgeons.id }).from(surgeons).where(eq(surgeons.id, surgeonId)).limit(1);
   if (!surgeon) return null;
+
+  const otherCertifications = normalizeSurgeonMetrics(parsed.otherCertifications);
+  const specialties = (parsed.specialties ?? []).map((s) => s.trim()).filter(Boolean);
 
   const [existing] = await db.select().from(surgeonTranslations)
     .where(and(eq(surgeonTranslations.surgeonId, surgeonId), eq(surgeonTranslations.locale, parsed.locale)))
@@ -170,7 +183,10 @@ export async function upsertAdminSurgeonTranslation(surgeonId: string, input: un
       expertise: parsed.expertise ?? '',
       experience: parsed.experience ?? '',
       gradeTitle: parsed.gradeTitle ?? '',
+      detailDescription: parsed.detailDescription ?? '',
       tags: parsed.tags ?? [],
+      otherCertifications,
+      specialties,
       updatedAt: new Date(),
     }).where(eq(surgeonTranslations.id, existing.id)).returning();
     return mapTranslation(updated);
@@ -185,7 +201,10 @@ export async function upsertAdminSurgeonTranslation(surgeonId: string, input: un
     expertise: parsed.expertise ?? '',
     experience: parsed.experience ?? '',
     gradeTitle: parsed.gradeTitle ?? '',
+    detailDescription: parsed.detailDescription ?? '',
     tags: parsed.tags ?? [],
+    otherCertifications,
+    specialties,
   }).returning();
 
   return mapTranslation(inserted);
