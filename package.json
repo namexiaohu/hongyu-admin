@@ -32,6 +32,8 @@
     "db:seed:partner-center-surgeons": "tsx scripts/seed-partner-center-surgeons.ts",
     "db:seed:summits": "tsx scripts/seed-summits.ts",
     "db:import:cfvc-2025": "tsx scripts/import-cfvc-2025.ts",
+    "db:import:cfvc-past": "tsx scripts/import-cfvc-past.ts",
+    "db:prune:summits": "tsx scripts/prune-summits.ts",
     "db:seed:company": "tsx scripts/seed-company-profile.ts",
     "db:seed:social-media": "tsx scripts/seed-social-media.ts",
     "db:migrate-social-media-r2": "tsx scripts/migrate-social-media-images-to-r2.ts",

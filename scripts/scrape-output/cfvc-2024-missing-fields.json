@@ -1,0 +1,10 @@
+{
+  "emptyFields": [],
+  "skippedOnSource": [
+    "agenda",
+    "speakers",
+    "sponsors",
+    "transportation"
+  ],
+  "r2UploadFailures": []
+}
