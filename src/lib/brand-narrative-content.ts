@@ -177,7 +177,7 @@ export const adminBrandNarrativeCreateSchema = z.object({
   backgroundMode: backgroundModeSchema.optional().default(''),
   backgroundValue: z.string().optional().default(''),
   showCoverOnBackground: z.boolean().optional().default(true),
-  heroCopyStyle: heroCopyStyleSchema.optional().default('dark'),
+  heroCopyStyle: heroCopyStyleSchema.optional().default('light'),
   blocks: brandNarrativeBlocksSchema.optional(),
   translation: adminBrandNarrativeTranslationSchema,
 });

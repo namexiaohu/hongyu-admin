@@ -483,7 +483,7 @@ export function SummitEditorModal({ open, detail, activeLanguages, onClose, onSa
               <Form.Item
                 name="heroCopyStyle"
                 label="看板文案风格"
-                initialValue="dark"
+                initialValue="light"
               >
                 <HeroCopyStyleField />
               </Form.Item>

@@ -432,7 +432,7 @@ export async function createAdminBrandNarrative(input: unknown) {
       backgroundValue: bg.backgroundValue,
       backgroundImage: bg.backgroundImage,
       showCoverOnBackground: parsed.showCoverOnBackground ?? true,
-      heroCopyStyle: normalizeHeroCopyStyleForWrite(parsed.heroCopyStyle) ?? 'dark',
+      heroCopyStyle: normalizeHeroCopyStyleForWrite(parsed.heroCopyStyle) ?? 'light',
       publishedAt: (parsed.status ?? 'draft') === 'published' ? new Date() : null,
     })
     .returning({ id: brandNarratives.id });

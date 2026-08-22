@@ -217,7 +217,7 @@ export async function createAdminPartnerCenter(input: unknown) {
     backgroundValue: bg.backgroundValue,
     backgroundImage: bg.backgroundImage,
     showCoverOnBackground: parsed.showCoverOnBackground ?? true,
-    heroCopyStyle: normalizeHeroCopyStyleForWrite(parsed.heroCopyStyle) ?? 'dark',
+    heroCopyStyle: normalizeHeroCopyStyleForWrite(parsed.heroCopyStyle) ?? 'light',
     sortOrder: parsed.sortOrder ?? (maxSort?.sortOrder ?? 0) + 10,
   }).returning({ id: partnerCenters.id });
 

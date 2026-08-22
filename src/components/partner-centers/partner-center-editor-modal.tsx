@@ -497,7 +497,7 @@ export function PartnerCenterEditorModal({ open, detail, activeLanguages, onClos
             >
               <Switch checkedChildren="开" unCheckedChildren="关" />
             </Form.Item>
-            <Form.Item name="heroCopyStyle" label="看板文案风格" initialValue="dark">
+            <Form.Item name="heroCopyStyle" label="看板文案风格" initialValue="light">
               <HeroCopyStyleField />
             </Form.Item>
             <Form.Item

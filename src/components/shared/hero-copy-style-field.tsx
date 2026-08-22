@@ -14,7 +14,7 @@ type Props = {
 };
 
 export function HeroCopyStyleField({ value, onChange, disabled = false }: Props) {
-  const selected = value === 'light' ? 'light' : 'dark';
+  const selected = value === 'dark' ? 'dark' : 'light';
 
   return (
     <div>
@@ -28,7 +28,7 @@ export function HeroCopyStyleField({ value, onChange, disabled = false }: Props)
         }))}
       />
       <Typography.Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
-        明亮大背景图选暗色系（深色字）；深色或纯色背景选浅色系（浅色字）。
+        明亮大背景图选暗色字浅色底；深色或纯色背景选浅色字暗色底。
       </Typography.Text>
     </div>
   );

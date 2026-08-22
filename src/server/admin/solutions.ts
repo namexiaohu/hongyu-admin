@@ -518,7 +518,7 @@ export async function createAdminSolution(input: unknown) {
       backgroundValue: bg.backgroundValue,
       backgroundImage: bg.backgroundImage,
       showCoverOnBackground: parsed.showCoverOnBackground ?? true,
-      heroCopyStyle: normalizeHeroCopyStyleForWrite(parsed.heroCopyStyle) ?? 'dark',
+      heroCopyStyle: normalizeHeroCopyStyleForWrite(parsed.heroCopyStyle) ?? 'light',
       materials: normalizeMaterials(parsed.materials),
       publishedAt: (parsed.status ?? 'draft') === 'published' ? new Date() : null,
     })

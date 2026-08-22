@@ -148,7 +148,7 @@ export const adminPartnerCenterCreateSchema = z.object({
   backgroundMode: backgroundModeSchema.optional().default(''),
   backgroundValue: z.string().optional().default(''),
   showCoverOnBackground: z.boolean().optional().default(true),
-  heroCopyStyle: heroCopyStyleSchema.optional().default('dark'),
+  heroCopyStyle: heroCopyStyleSchema.optional().default('light'),
   sortOrder: z.number().int().optional(),
   surgeonIds: z.array(z.string().uuid()).optional().default([]),
   translation: adminPartnerCenterTranslationSchema,

@@ -124,7 +124,7 @@ export const adminSummitCreateSchema = z.object({
   backgroundMode: z.enum(['', 'solid', 'preset', 'upload']).optional().default(''),
   backgroundValue: z.string().optional().default(''),
   showCoverOnBackground: z.boolean().optional().default(true),
-  heroCopyStyle: heroCopyStyleSchema.optional().default('dark'),
+  heroCopyStyle: heroCopyStyleSchema.optional().default('light'),
   venueImage: z.string().optional().default(''),
   agenda: z.array(agendaGroupSchema).optional().default([]),
   sortOrder: z.number().int().optional(),

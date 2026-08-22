@@ -180,7 +180,7 @@ export async function createAdminSummit(input: unknown) {
     backgroundValue: bg.backgroundValue,
     backgroundImage: bg.backgroundImage,
     showCoverOnBackground: parsed.showCoverOnBackground ?? true,
-    heroCopyStyle: normalizeHeroCopyStyleForWrite(parsed.heroCopyStyle) ?? 'dark',
+    heroCopyStyle: normalizeHeroCopyStyleForWrite(parsed.heroCopyStyle) ?? 'light',
     venueImage: parsed.venueImage ?? '',
     agenda: (parsed.agenda ?? []) as AgendaGroup[],
     sortOrder: parsed.sortOrder ?? (maxSort?.sortOrder ?? 0) + 10,
