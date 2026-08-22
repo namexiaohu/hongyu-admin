@@ -5,7 +5,7 @@ import { Button, Modal, Popconfirm, Segmented, Space, Typography, Upload, messag
 import type { UploadProps } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import type { AdminMediaAsset, MediaAssetType } from '@/lib/media-assets';
+import type { AdminMediaAsset } from '@/lib/media-assets';
 import { IMAGE_UPLOAD_MIME_TYPES, MAX_IMAGE_UPLOAD_BYTES } from '@/lib/media-upload';
 import {
   getSharedBackgroundMediaAssets,
@@ -36,8 +36,6 @@ type Props = {
   disabled?: boolean;
   /** When true, "solid" applies the default page hero background without a color picker */
   solidImmediate?: boolean;
-  /** @deprecated ignored — all modules share the background library */
-  assetType?: MediaAssetType;
 };
 
 type PickerKind = 'solid' | 'preset' | 'upload';
@@ -47,10 +45,8 @@ export function PartnerCenterBackgroundField({
   onChange,
   disabled = false,
   solidImmediate = false,
-  assetType: _assetType = MEDIA_ASSET_TYPE_BACKGROUND,
 }: Props) {
   const assetType = MEDIA_ASSET_TYPE_BACKGROUND;
-  void _assetType;
   const mode = value?.mode ?? '';
   const selectedValue = value?.value ?? '';
   const [pickerOpen, setPickerOpen] = useState(false);

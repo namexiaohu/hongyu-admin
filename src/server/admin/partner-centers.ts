@@ -2,11 +2,10 @@ import 'server-only';
 
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 
+import { resolveAdminRowMediaPreviews } from '@/lib/admin-media-previews';
 import {
   normalizeBackgroundWrite,
-  resolveAdminBackgroundPreview,
 } from '@/lib/partner-center-background-presets';
-import { resolveAdminCoverPreview } from '@/lib/cover-presets';
 import { resolveOssAssetUrl, toOssStorageKey } from '@/lib/oss-asset-url';
 import {
   type AdminPartnerCenterDetail,
@@ -55,18 +54,7 @@ function mapListItem(
   name: string,
   localeCount: number,
 ): AdminPartnerCenterListItem {
-  const bg = resolveAdminBackgroundPreview({
-    mode: row.backgroundMode ?? '',
-    value: row.backgroundValue ?? '',
-    legacyBackgroundImageKey: row.backgroundImage ?? '',
-    toPublicUrl: resolveOssAssetUrl,
-  });
-  const cover = resolveAdminCoverPreview({
-    mode: row.coverMode ?? '',
-    value: row.coverValue ?? '',
-    legacyCoverImageKey: row.coverImage ?? '',
-    toPublicUrl: resolveOssAssetUrl,
-  });
+  const { background: bg, cover } = resolveAdminRowMediaPreviews(row, resolveOssAssetUrl);
 
   return {
     id: row.id,

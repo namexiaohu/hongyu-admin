@@ -15,11 +15,8 @@ import {
   resolveBrandNarrativeDisplayTitle,
   type BrandNarrativeStatus,
 } from '@/lib/brand-narrative-content';
-import {
-  normalizeBackgroundWrite,
-  resolveAdminBackgroundPreview,
-} from '@/lib/partner-center-background-presets';
-import { resolveAdminCoverPreview } from '@/lib/cover-presets';
+import { resolveAdminRowMediaPreviews } from '@/lib/admin-media-previews';
+import { normalizeBackgroundWrite } from '@/lib/partner-center-background-presets';
 import { normalizeHeroCopyStyleForWrite } from '@/lib/hero-copy-style';
 import { resolveOssAssetUrl, toOssStorageKey } from '@/lib/oss-asset-url';
 import type { ProductGalleryImage } from '@/lib/product-content';
@@ -60,19 +57,7 @@ function mapListItem(
   title: string,
   localeCount: number,
 ): AdminBrandNarrativeListItem {
-  const bg = resolveAdminBackgroundPreview({
-    mode: row.backgroundMode ?? '',
-    value: row.backgroundValue ?? '',
-    legacyBackgroundImageKey: row.backgroundImage ?? '',
-    toPublicUrl: resolveOssAssetUrl,
-  });
-
-  const cover = resolveAdminCoverPreview({
-    mode: row.coverMode ?? '',
-    value: row.coverValue ?? '',
-    legacyCoverImageKey: row.coverImage ?? '',
-    toPublicUrl: resolveOssAssetUrl,
-  });
+  const { background: bg, cover } = resolveAdminRowMediaPreviews(row, resolveOssAssetUrl);
 
   return {
     id: row.id,

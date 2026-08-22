@@ -28,7 +28,6 @@ import {
   type BrandNarrativeStatus,
 } from '@/lib/brand-narrative-content';
 import type { ProductGalleryImage } from '@/lib/product-content';
-import { MEDIA_ASSET_TYPE_BRAND_NARRATIVE_BACKGROUND } from '@/lib/partner-center-background-presets';
 import { applyNonemptyTranslatedFields } from '@/lib/content-translate-config';
 import { shouldPersistLocaleDraft } from '@/lib/locale-draft-persistence';
 import { resolveSlugForSave, textToSlug, validateSourceThenAutoSlug } from '@/lib/slug';
@@ -657,7 +656,7 @@ export function BrandNarrativeEditorModal({
                 label="大背景图（各语言共用）"
                 getValueFromEvent={(v: PartnerCenterBackgroundValue | null) => v ?? { mode: '', value: '', previewUrl: '' }}
               >
-                <PartnerCenterBackgroundField assetType={MEDIA_ASSET_TYPE_BRAND_NARRATIVE_BACKGROUND} />
+                <PartnerCenterBackgroundField />
               </Form.Item>
             </Form>
           </div>

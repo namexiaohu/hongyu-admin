@@ -1,50 +1,37 @@
+import {
+  contentBlockSplitLayouts,
+  contentBlockSummaryIcons,
+  contentBlockSummaryLayouts,
+  defaultContentBlockSummaryIcon,
+  isContentBlockSummaryIcon,
+  type ContentBlockCarouselSlide,
+  type ContentBlockLocaleCopy,
+  type ContentBlockSplitLayout,
+  type ContentBlockSummaryIcon,
+  type ContentBlockSummaryLayout,
+} from '@/lib/content-blocks-shared';
+
 export const solutionBlockTypes = ['split', 'summary', 'timeline', 'course', 'specifications', 'relatedProducts'] as const;
 export type SolutionBlockType = (typeof solutionBlockTypes)[number];
 
-export const solutionSplitLayouts = ['image-left', 'image-right'] as const;
-export type SolutionSplitLayout = (typeof solutionSplitLayouts)[number];
+export const solutionSplitLayouts = contentBlockSplitLayouts;
+export type SolutionSplitLayout = ContentBlockSplitLayout;
 
-export const solutionSummaryLayouts = ['single-row', 'multi-2', 'multi-3'] as const;
-export type SolutionSummaryLayout = (typeof solutionSummaryLayouts)[number];
+export const solutionSummaryLayouts = contentBlockSummaryLayouts;
+export type SolutionSummaryLayout = ContentBlockSummaryLayout;
 
 export type SolutionBlockLayout = SolutionSplitLayout | SolutionSummaryLayout;
 
-export const solutionSummaryIcons = [
-  'layers',
-  'check',
-  'users',
-  'award',
-  'shield',
-  'heart',
-  'globe',
-  'clock',
-  'book',
-  'flask',
-  'lightbulb',
-  'target',
-  'star',
-  'building',
-  'cpu',
-  'activity',
-] as const;
-export type SolutionSummaryIcon = (typeof solutionSummaryIcons)[number];
+export const solutionSummaryIcons = contentBlockSummaryIcons;
+export type SolutionSummaryIcon = ContentBlockSummaryIcon;
 
-export const defaultSolutionSummaryIcon: SolutionSummaryIcon = 'layers';
+export const defaultSolutionSummaryIcon = defaultContentBlockSummaryIcon;
 
 export function isSummaryIcon(value: string | undefined): value is SolutionSummaryIcon {
-  return solutionSummaryIcons.includes(value as SolutionSummaryIcon);
+  return isContentBlockSummaryIcon(value);
 }
 
-export type SolutionBlockLocaleCopy = {
-  smallTitle: string;
-  largeTitle: string;
-  description: string;
-  buttonLabel?: string;
-  badge?: string;
-  totalHours?: string;
-  teachingFormat?: string;
-  trainingCycle?: string;
-};
+export type SolutionBlockLocaleCopy = ContentBlockLocaleCopy;
 
 export type SolutionBlockItemDraft = {
   id: string;
@@ -57,10 +44,7 @@ export type SolutionBlockItemDraft = {
   locales?: Record<string, SolutionBlockLocaleCopy>;
 };
 
-export type SolutionCarouselSlide = {
-  id: string;
-  url: string;
-};
+export type SolutionCarouselSlide = ContentBlockCarouselSlide;
 
 export type SolutionBlockDraft = {
   id: string;

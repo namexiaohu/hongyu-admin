@@ -2,9 +2,9 @@ import 'server-only';
 
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 
+import { resolveAdminRowMediaPreviews } from '@/lib/admin-media-previews';
 import {
   normalizeBackgroundWrite,
-  resolveAdminBackgroundPreview,
 } from '@/lib/partner-center-background-presets';
 import {
   type AdminSummitDetail,
@@ -20,7 +20,6 @@ import {
   resolveSummitDisplayTitle,
 } from '@/lib/summit-content';
 import type { AgendaGroup } from '@/server/db/schema';
-import { resolveAdminCoverPreview } from '@/lib/cover-presets';
 import { resolveOssAssetUrl, toOssStorageKey } from '@/lib/oss-asset-url';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import { normalizeSlug } from '@/lib/slug';
@@ -44,18 +43,7 @@ function mapListItem(
   title: string,
   localeCount: number,
 ): AdminSummitListItem {
-  const cover = resolveAdminCoverPreview({
-    mode: row.coverMode ?? '',
-    value: row.coverValue ?? '',
-    legacyCoverImageKey: row.coverImage ?? '',
-    toPublicUrl: resolveOssAssetUrl,
-  });
-  const bg = resolveAdminBackgroundPreview({
-    mode: row.backgroundMode ?? '',
-    value: row.backgroundValue ?? '',
-    legacyBackgroundImageKey: row.backgroundImage ?? '',
-    toPublicUrl: resolveOssAssetUrl,
-  });
+  const { background: bg, cover } = resolveAdminRowMediaPreviews(row, resolveOssAssetUrl);
   return {
     id: row.id,
     slug: row.slug,

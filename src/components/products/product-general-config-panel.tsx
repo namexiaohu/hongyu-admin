@@ -18,7 +18,6 @@ import { ProductBoardMultiSelect, type ProductBoardOption } from '@/components/p
 import { ProductGalleryField } from '@/components/products/product-gallery-field';
 import { ProductVideoField } from '@/components/products/product-video-field';
 import type { AdminCategoryTreeNode } from '@/lib/category-content';
-import { MEDIA_ASSET_TYPE_PRODUCT_BACKGROUND } from '@/lib/partner-center-background-presets';
 import type { AdminProductPayload, ProductStatus } from '@/lib/product-content';
 
 type ProductGeneralConfigPanelProps = {
@@ -156,7 +155,6 @@ export function ProductGeneralConfigPanel({
       </Form.Item>
       <Form.Item label="大背景图" layout="vertical" style={fieldStyle}>
         <PartnerCenterBackgroundField
-          assetType={MEDIA_ASSET_TYPE_PRODUCT_BACKGROUND}
           value={background}
           onChange={onBackgroundChange}
         />

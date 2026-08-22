@@ -1,50 +1,37 @@
+import {
+  contentBlockSplitLayouts,
+  contentBlockSummaryIcons,
+  contentBlockSummaryLayouts,
+  defaultContentBlockSummaryIcon,
+  isContentBlockSummaryIcon,
+  type ContentBlockCarouselSlide,
+  type ContentBlockLocaleCopy,
+  type ContentBlockSplitLayout,
+  type ContentBlockSummaryIcon,
+  type ContentBlockSummaryLayout,
+} from '@/lib/content-blocks-shared';
+
 export const brandNarrativeBlockTypes = ['split', 'summary', 'timeline', 'course', 'cta'] as const;
 export type BrandNarrativeBlockType = (typeof brandNarrativeBlockTypes)[number];
 
-export const brandNarrativeSplitLayouts = ['image-left', 'image-right'] as const;
-export type BrandNarrativeSplitLayout = (typeof brandNarrativeSplitLayouts)[number];
+export const brandNarrativeSplitLayouts = contentBlockSplitLayouts;
+export type BrandNarrativeSplitLayout = ContentBlockSplitLayout;
 
-export const brandNarrativeSummaryLayouts = ['single-row', 'multi-2', 'multi-3'] as const;
-export type BrandNarrativeSummaryLayout = (typeof brandNarrativeSummaryLayouts)[number];
+export const brandNarrativeSummaryLayouts = contentBlockSummaryLayouts;
+export type BrandNarrativeSummaryLayout = ContentBlockSummaryLayout;
 
 export type BrandNarrativeBlockLayout = BrandNarrativeSplitLayout | BrandNarrativeSummaryLayout;
 
-export const brandNarrativeSummaryIcons = [
-  'layers',
-  'check',
-  'users',
-  'award',
-  'shield',
-  'heart',
-  'globe',
-  'clock',
-  'book',
-  'flask',
-  'lightbulb',
-  'target',
-  'star',
-  'building',
-  'cpu',
-  'activity',
-] as const;
-export type BrandNarrativeSummaryIcon = (typeof brandNarrativeSummaryIcons)[number];
+export const brandNarrativeSummaryIcons = contentBlockSummaryIcons;
+export type BrandNarrativeSummaryIcon = ContentBlockSummaryIcon;
 
-export const defaultBrandNarrativeSummaryIcon: BrandNarrativeSummaryIcon = 'layers';
+export const defaultBrandNarrativeSummaryIcon = defaultContentBlockSummaryIcon;
 
 export function isSummaryIcon(value: string | undefined): value is BrandNarrativeSummaryIcon {
-  return brandNarrativeSummaryIcons.includes(value as BrandNarrativeSummaryIcon);
+  return isContentBlockSummaryIcon(value);
 }
 
-export type BrandNarrativeBlockLocaleCopy = {
-  smallTitle: string;
-  largeTitle: string;
-  description: string;
-  buttonLabel?: string;
-  badge?: string;
-  totalHours?: string;
-  teachingFormat?: string;
-  trainingCycle?: string;
-};
+export type BrandNarrativeBlockLocaleCopy = ContentBlockLocaleCopy;
 
 export type BrandNarrativeBlockItemDraft = {
   id: string;
@@ -57,10 +44,7 @@ export type BrandNarrativeBlockItemDraft = {
   locales?: Record<string, BrandNarrativeBlockLocaleCopy>;
 };
 
-export type BrandNarrativeCarouselSlide = {
-  id: string;
-  url: string;
-};
+export type BrandNarrativeCarouselSlide = ContentBlockCarouselSlide;
 
 export type BrandNarrativeBlockDraft = {
   id: string;

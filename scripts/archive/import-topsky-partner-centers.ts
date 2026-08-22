@@ -5,7 +5,7 @@ import path from 'node:path';
 
 import { and, asc, eq, notInArray } from 'drizzle-orm';
 
-import { MEDIA_ASSET_TYPE_PARTNER_CENTER_BACKGROUND } from '@/lib/partner-center-background-presets';
+import { MEDIA_ASSET_TYPE_BACKGROUND } from '@/lib/media-assets';
 import type { CenterRegion } from '@/lib/partner-center-content';
 import { db } from '@/server/db';
 import {
@@ -493,7 +493,7 @@ async function createBackgroundMediaAsset(input: {
   const [inserted] = await db
     .insert(mediaAssets)
     .values({
-      type: MEDIA_ASSET_TYPE_PARTNER_CENTER_BACKGROUND,
+      type: MEDIA_ASSET_TYPE_BACKGROUND,
       storageKey: input.storageKey,
       filename: input.filename,
       contentType: input.contentType,

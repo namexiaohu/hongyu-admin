@@ -1388,4 +1388,30 @@ CREATE UNIQUE INDEX "users_email_unique" ON "users" USING btree ("email");--> st
 CREATE INDEX "users_industry_idx" ON "users" USING btree ("industry");--> statement-breakpoint
 CREATE INDEX "users_company_country_code_idx" ON "users" USING btree ("company_country_code");--> statement-breakpoint
 CREATE INDEX "users_status_idx" ON "users" USING btree ("status");--> statement-breakpoint
-CREATE UNIQUE INDEX "wishlists_user_product_unique" ON "wishlists" USING btree ("user_id","product_id");
+CREATE UNIQUE INDEX "wishlists_user_product_unique" ON "wishlists" USING btree ("user_id","product_id");--> statement-breakpoint
+ALTER TABLE "brand_narratives" ADD COLUMN IF NOT EXISTS "cover_mode" text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE "brand_narratives" ADD COLUMN IF NOT EXISTS "cover_value" text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE "editorial_contents" ADD COLUMN IF NOT EXISTS "cover_mode" text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE "editorial_contents" ADD COLUMN IF NOT EXISTS "cover_value" text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE "partner_centers" ADD COLUMN IF NOT EXISTS "cover_mode" text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE "partner_centers" ADD COLUMN IF NOT EXISTS "cover_value" text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "cover_image" text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "cover_mode" text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "cover_value" text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE "solutions" ADD COLUMN IF NOT EXISTS "cover_mode" text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE "solutions" ADD COLUMN IF NOT EXISTS "cover_value" text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE "summits" ADD COLUMN IF NOT EXISTS "cover_mode" text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE "summits" ADD COLUMN IF NOT EXISTS "cover_value" text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE "summits_i18n" ADD COLUMN IF NOT EXISTS "stats" jsonb DEFAULT '[]'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "summits_i18n" ADD COLUMN IF NOT EXISTS "sponsors" jsonb DEFAULT '[]'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "summits_i18n" ADD COLUMN IF NOT EXISTS "detail_description" text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE "summits" ADD COLUMN IF NOT EXISTS "video_url" text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE "summits" ADD COLUMN IF NOT EXISTS "background_image" text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE "summits" ADD COLUMN IF NOT EXISTS "background_mode" text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE "summits" ADD COLUMN IF NOT EXISTS "background_value" text DEFAULT '' NOT NULL;--> statement-breakpoint
+ALTER TABLE "summits" ADD COLUMN IF NOT EXISTS "show_cover_on_background" boolean DEFAULT true NOT NULL;--> statement-breakpoint
+ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "hero_copy_style" text;--> statement-breakpoint
+ALTER TABLE "brand_narratives" ADD COLUMN IF NOT EXISTS "hero_copy_style" text;--> statement-breakpoint
+ALTER TABLE "solutions" ADD COLUMN IF NOT EXISTS "hero_copy_style" text;--> statement-breakpoint
+ALTER TABLE "summits" ADD COLUMN IF NOT EXISTS "hero_copy_style" text;--> statement-breakpoint
+ALTER TABLE "partner_centers" ADD COLUMN IF NOT EXISTS "hero_copy_style" text;

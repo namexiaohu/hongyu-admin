@@ -73,14 +73,6 @@ import { MEDIA_ASSET_TYPE_BACKGROUND } from '@/lib/media-assets';
 import { resolveUploadStorageKey } from '@/lib/upload-storage-key';
 
 export { MEDIA_ASSET_TYPE_BACKGROUND } from '@/lib/media-assets';
-/** @deprecated alias — all modules share MEDIA_ASSET_TYPE_BACKGROUND */
-export const MEDIA_ASSET_TYPE_PARTNER_CENTER_BACKGROUND = MEDIA_ASSET_TYPE_BACKGROUND;
-/** @deprecated alias — all modules share MEDIA_ASSET_TYPE_BACKGROUND */
-export const MEDIA_ASSET_TYPE_BRAND_NARRATIVE_BACKGROUND = MEDIA_ASSET_TYPE_BACKGROUND;
-/** @deprecated alias — all modules share MEDIA_ASSET_TYPE_BACKGROUND */
-export const MEDIA_ASSET_TYPE_SOLUTION_BACKGROUND = MEDIA_ASSET_TYPE_BACKGROUND;
-/** @deprecated alias — all modules share MEDIA_ASSET_TYPE_BACKGROUND */
-export const MEDIA_ASSET_TYPE_PRODUCT_BACKGROUND = MEDIA_ASSET_TYPE_BACKGROUND;
 
 /** Summit / module default: page-native dark hero, no preset gradient picker */
 export const SOLID_BACKGROUND_DEFAULT = 'default';
@@ -104,10 +96,6 @@ export function normalizeBackgroundWrite(mode: string | undefined, value: string
     backgroundValue: nextValue,
     backgroundImage: nextMode === 'upload' ? nextValue : '',
   };
-}
-
-export function resolveBackgroundFieldsForWrite(mode: string | undefined, value: string | undefined) {
-  return normalizeBackgroundWrite(mode, value);
 }
 
 export function getPartnerCenterSolidPreset(id: string) {
