@@ -11,8 +11,8 @@ import {
   resolvePartnerCenterBackgroundDisplay,
 } from '@/lib/partner-center-background-presets';
 import { resolveStorefrontCoverUrl } from '@/lib/cover-presets';
+import { resolveUploadStorageKey } from '@/lib/upload-storage-key';
 import type { SurgeonGradeKey } from '@/lib/surgeon-content';
-import { getAdminMediaAssetStorageKeys } from '@/server/admin/media-assets';
 import { db } from '@/server/db';
 import {
   partnerCenters,
@@ -120,13 +120,12 @@ function shuffleIds<T>(items: T[]): T[] {
 function mapCenterItem(
   row: typeof partnerCenters.$inferSelect,
   display: typeof partnerCenterTranslations.$inferSelect | null | undefined,
-  uploadKeyById: Map<string, string>,
 ): StorefrontCenterItem {
   const mode = row.backgroundMode ?? '';
   const value = row.backgroundValue ?? '';
   let uploadUrl = '';
   if (mode === 'upload' && value) {
-    const key = uploadKeyById.get(value);
+    const key = resolveUploadStorageKey(value, row.backgroundImage);
     uploadUrl = key ? resolveOssAssetUrl(key) : '';
   }
 
@@ -144,7 +143,6 @@ function mapCenterItem(
       mode: row.coverMode,
       value: row.coverValue,
       legacyCoverImageKey: row.coverImage,
-      uploadKeyById,
       toPublicUrl: resolveOssAssetUrl,
     }),
     gallery: ((row.gallery ?? []) as Array<{ url?: string; alt?: string }>)
@@ -174,16 +172,6 @@ function mapCenterItem(
     stats: normalizePartnerCenterMetrics((display?.stats ?? []) as PartnerCenterMetric[]),
     cooperationInfo: normalizePartnerCenterMetrics((display?.cooperationInfo ?? []) as PartnerCenterMetric[]),
   };
-}
-
-async function loadUploadKeysForCenterRows(rows: Array<typeof partnerCenters.$inferSelect>) {
-  const ids = rows.flatMap((row) => {
-    const next: string[] = [];
-    if (row.backgroundMode === 'upload' && row.backgroundValue) next.push(row.backgroundValue);
-    if (row.coverMode === 'upload' && row.coverValue) next.push(row.coverValue);
-    return next;
-  });
-  return getAdminMediaAssetStorageKeys(ids);
 }
 
 async function loadCenterSurgeons(input: {
@@ -289,7 +277,6 @@ async function loadRelatedCenters(input: {
 export async function getStorefrontPartnerCentersList(input: { locale: string }): Promise<StorefrontPartnerCentersResponse> {
   const defaultLocale = await getDefaultSiteLanguageCode();
   const rows = await db.select().from(partnerCenters).orderBy(asc(partnerCenters.sortOrder), asc(partnerCenters.slug));
-  const uploadKeys = await loadUploadKeysForCenterRows(rows);
 
   const ids = rows.map((r) => r.id);
   const translations = ids.length
@@ -309,7 +296,7 @@ export async function getStorefrontPartnerCentersList(input: { locale: string })
     const rowT = byId.get(row.id) ?? [];
     const localeMatch = rowT.find((t) => t.locale.toLowerCase() === input.locale.toLowerCase());
     const display = localeMatch ?? pickTranslationForDisplay(rowT, defaultLocale);
-    const item = mapCenterItem(row, display, uploadKeys);
+    const item = mapCenterItem(row, display);
 
     const bucket = itemsByRegion.get(row.region as CenterRegion) ?? [];
     bucket.push(item);
@@ -342,7 +329,6 @@ export async function getStorefrontPartnerCenterBySlug(input: {
   const localeMatch = translations.find((t) => t.locale.toLowerCase() === input.locale.toLowerCase());
   const display = localeMatch ?? pickTranslationForDisplay(translations, defaultLocale);
   const region = row.region as CenterRegion;
-  const uploadKeys = await loadUploadKeysForCenterRows([row]);
 
   const [surgeonsList, relatedCenters] = await Promise.all([
     loadCenterSurgeons({
@@ -359,7 +345,7 @@ export async function getStorefrontPartnerCenterBySlug(input: {
   ]);
 
   return {
-    ...mapCenterItem(row, display, uploadKeys),
+    ...mapCenterItem(row, display),
     regionLabel: resolveRegionLabel(region, input.locale),
     surgeons: surgeonsList,
     relatedCenters,

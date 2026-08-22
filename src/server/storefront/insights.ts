@@ -15,8 +15,6 @@ import {
   editorialCoverageBoards,
   editorialCoverageBoardTranslations,
 } from '@/server/db/schema';
-import { getAdminMediaAssetStorageKeys } from '@/server/admin/media-assets';
-import { collectCoverUploadIds } from '@/server/admin/cover-images';
 
 import {
   buildAuthor,
@@ -185,7 +183,6 @@ function mapListItem(
   picked: TranslationRow,
   boardKey: string,
   boardName: string,
-  uploadKeyById?: Map<string, string>,
 ): StorefrontInsightListItem {
   const payload = normalizePayload(picked.payload);
   return {
@@ -199,7 +196,6 @@ function mapListItem(
       mode: content.coverMode,
       value: content.coverValue,
       legacyCoverImageKey: content.coverImage,
-      uploadKeyById,
       toPublicUrl: resolveOssAssetUrl,
     }) || null,
     author: buildAuthor(payload),
@@ -213,7 +209,6 @@ function mapRelatedItem(
   picked: TranslationRow,
   boardKey: string,
   boardName: string,
-  uploadKeyById?: Map<string, string>,
 ): StorefrontInsightRelatedItem {
   return {
     id: content.id,
@@ -225,7 +220,6 @@ function mapRelatedItem(
       mode: content.coverMode,
       value: content.coverValue,
       legacyCoverImageKey: content.coverImage,
-      uploadKeyById,
       toPublicUrl: resolveOssAssetUrl,
     }) || null,
     createdAt: content.createdAt?.toISOString() ?? null,
@@ -249,11 +243,8 @@ export async function getStorefrontInsightsList(input: {
   ]);
 
   const grouped = groupInsightRows(rows, locale);
-  const uploadKeyById = await getAdminMediaAssetStorageKeys(
-    collectCoverUploadIds(grouped.map((item) => item.content)),
-  );
   const items = grouped.map(({ content, picked, boardKey: key }) =>
-    mapListItem(content, picked, key, boardNameFromMap(boardNames, key), uploadKeyById),
+    mapListItem(content, picked, key, boardNameFromMap(boardNames, key)),
   );
 
   const total = items.length;
@@ -332,14 +323,11 @@ export async function getStorefrontRandomInsights(input: {
 
   const boardNames = await loadBoardNameMap(locale);
   const grouped = groupInsightRows(rows, locale).slice(0, limit);
-  const uploadKeyById = await getAdminMediaAssetStorageKeys(
-    collectCoverUploadIds(grouped.map((item) => item.content)),
-  );
 
   return {
     locale,
     items: grouped.map(({ content, picked, boardKey }) =>
-      mapRelatedItem(content, picked, boardKey, boardNameFromMap(boardNames, boardKey), uploadKeyById),
+      mapRelatedItem(content, picked, boardKey, boardNameFromMap(boardNames, boardKey)),
     ),
   };
 }
@@ -428,10 +416,6 @@ export async function getStorefrontInsightDetailBySlug(slugInput: string, locale
     locale,
   });
 
-  const uploadKeyById = await getAdminMediaAssetStorageKeys(
-    collectCoverUploadIds([content, ...relatedGrouped.map((item) => item.content)]),
-  );
-
   const detail: StorefrontInsightDetail = {
     id: content.id,
     title: picked.title,
@@ -447,7 +431,6 @@ export async function getStorefrontInsightDetailBySlug(slugInput: string, locale
       mode: content.coverMode,
       value: content.coverValue,
       legacyCoverImageKey: content.coverImage,
-      uploadKeyById,
       toPublicUrl: resolveOssAssetUrl,
     }) || null,
     author: buildAuthor(payload),
@@ -461,7 +444,7 @@ export async function getStorefrontInsightDetailBySlug(slugInput: string, locale
     tags: payload.tags,
     relatedProductSlugs: payload.relatedProductSlugs,
     relatedReading: relatedGrouped.map(({ content: c, picked: t, boardKey: key }) =>
-      mapRelatedItem(c, t, key, boardNameFromMap(boardNames, key), uploadKeyById),
+      mapRelatedItem(c, t, key, boardNameFromMap(boardNames, key)),
     ),
     relatedArticles: randomResult.items,
   };

@@ -2,11 +2,10 @@ import '@/lib/env';
 
 import { and, eq } from 'drizzle-orm';
 
-import { MEDIA_ASSET_TYPE_PARTNER_CENTER_BACKGROUND } from '@/lib/partner-center-background-presets';
+import { MEDIA_ASSET_TYPE_BACKGROUND } from '@/lib/partner-center-background-presets';
 import { PARTNER_CENTER_PROFILE_SEED_RECORDS } from '@/lib/partner-center-profile-seed-data';
-import { createAdminMediaAssetFromKey } from '@/server/admin/media-assets';
 import { db } from '@/server/db';
-import { partnerCenters, partnerCenterTranslations } from '@/server/db/schema';
+import { mediaAssets, partnerCenters, partnerCenterTranslations } from '@/server/db/schema';
 import { putStorageObject } from '@/server/oss';
 
 async function downloadBuffer(url: string) {
@@ -45,8 +44,8 @@ async function main() {
 
     const now = new Date();
     const backgroundKey = await uploadBackground(record.slug, record.backgroundUrl);
-    const asset = await createAdminMediaAssetFromKey({
-      type: MEDIA_ASSET_TYPE_PARTNER_CENTER_BACKGROUND,
+    await db.insert(mediaAssets).values({
+      type: MEDIA_ASSET_TYPE_BACKGROUND,
       storageKey: backgroundKey,
       filename: `${record.slug}-background.jpg`,
       contentType: 'image/jpeg',
@@ -60,7 +59,7 @@ async function main() {
         ...(record.website ? { website: record.website } : {}),
         backgroundImage: backgroundKey,
         backgroundMode: 'upload',
-        backgroundValue: asset.id,
+        backgroundValue: backgroundKey,
         updatedAt: now,
       })
       .where(eq(partnerCenters.id, row.id));

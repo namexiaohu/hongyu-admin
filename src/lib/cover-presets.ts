@@ -1,3 +1,5 @@
+import { resolveUploadStorageKey } from '@/lib/upload-storage-key';
+
 export type CoverImageMode = 'preset' | 'upload' | '';
 
 export type CoverImagePreset = {
@@ -69,7 +71,7 @@ export function normalizeCoverWrite(mode: string | undefined, value: string | un
   return {
     coverMode: nextMode,
     coverValue: nextValue,
-    coverImage: '',
+    coverImage: nextMode === 'upload' ? nextValue : '',
   };
 }
 
@@ -103,14 +105,13 @@ export function resolveStorefrontCoverUrl(input: {
   mode?: string | null;
   value?: string | null;
   legacyCoverImageKey?: string | null;
-  uploadKeyById?: Map<string, string>;
   toPublicUrl: (storageKey: string) => string;
 }): string {
   const mode = input.mode ?? '';
   const value = (input.value ?? '').trim();
   let uploadUrl = '';
-  if (mode === 'upload' && value && input.uploadKeyById) {
-    const key = input.uploadKeyById.get(value);
+  if (mode === 'upload' && value) {
+    const key = resolveUploadStorageKey(value, input.legacyCoverImageKey);
     uploadUrl = key ? input.toPublicUrl(key) : '';
   }
   const legacyKey = input.legacyCoverImageKey?.trim() ?? '';
@@ -126,14 +127,13 @@ export function resolveAdminCoverPreview(input: {
   mode: string;
   value: string;
   legacyCoverImageKey: string;
-  uploadKeyById: Map<string, string>;
   toPublicUrl: (storageKey: string) => string;
 }): { mode: CoverImageMode; value: string; previewUrl: string } {
   const mode = (input.mode ?? '') as CoverImageMode;
   const value = (input.value ?? '').trim();
   let uploadUrl = '';
   if (mode === 'upload' && value) {
-    const key = input.uploadKeyById.get(value);
+    const key = resolveUploadStorageKey(value, input.legacyCoverImageKey);
     uploadUrl = key ? input.toPublicUrl(key) : '';
   }
   const legacyKey = input.legacyCoverImageKey?.trim() ?? '';

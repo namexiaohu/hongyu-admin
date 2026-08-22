@@ -6,6 +6,7 @@ import { resolvePartnerCenterBackgroundDisplay } from '@/lib/partner-center-back
 import { rewriteHtmlOssAssets, resolveOssAssetUrl } from '@/lib/oss-asset-url';
 import { resolveStorefrontCoverUrl } from '@/lib/cover-presets';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
+import { resolveUploadStorageKey } from '@/lib/upload-storage-key';
 import {
   localizeAgendaGroups,
   normalizeSpeakerItems,
@@ -17,7 +18,6 @@ import {
   type SummitStat,
   type SummitStatus,
 } from '@/lib/summit-content';
-import { getAdminMediaAssetStorageKeys } from '@/server/admin/media-assets';
 import { db } from '@/server/db';
 import { summits, summitTranslations } from '@/server/db/schema';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
@@ -88,15 +88,6 @@ function resolveTranslation(
     ?? pickTranslationForDisplay(rows, defaultLocale);
 }
 
-function collectSummitUploadIds(rows: Array<typeof summits.$inferSelect>): string[] {
-  const ids: string[] = [];
-  for (const row of rows) {
-    if (row.coverMode === 'upload' && row.coverValue) ids.push(row.coverValue);
-    if (row.backgroundMode === 'upload' && row.backgroundValue) ids.push(row.backgroundValue);
-  }
-  return ids;
-}
-
 function mapSpeakers(speakers: SpeakerItem[]): StorefrontSpeakerItem[] {
   return normalizeSpeakerItems(speakers).map((speaker) => ({
     id: speaker.id,
@@ -124,7 +115,6 @@ function mapSponsors(sponsors: SponsorItem[]): StorefrontSponsorItem[] {
 function mapToItem(
   row: typeof summits.$inferSelect,
   t: typeof summitTranslations.$inferSelect | null | undefined,
-  uploadKeyById?: Map<string, string>,
 ): StorefrontSummitItem {
   return {
     slug: row.slug,
@@ -135,7 +125,6 @@ function mapToItem(
       mode: row.coverMode,
       value: row.coverValue,
       legacyCoverImageKey: row.coverImage,
-      uploadKeyById,
       toPublicUrl: resolveOssAssetUrl,
     }),
     title: t?.title ?? row.slug,
@@ -149,7 +138,6 @@ function mapToItem(
 export async function getStorefrontSummitsList(input: { locale: string }): Promise<StorefrontSummitsResponse> {
   const defaultLocale = await getDefaultSiteLanguageCode();
   const rows = await db.select().from(summits).orderBy(asc(summits.sortOrder));
-  const uploadKeyById = await getAdminMediaAssetStorageKeys(collectSummitUploadIds(rows));
 
   const ids = rows.map((r) => r.id);
   const translations = ids.length
@@ -169,7 +157,7 @@ export async function getStorefrontSummitsList(input: { locale: string }): Promi
   for (const row of rows) {
     const rowT = byId.get(row.id) ?? [];
     const display = resolveTranslation(rowT, input.locale, defaultLocale);
-    const item = mapToItem(row, display, uploadKeyById);
+    const item = mapToItem(row, display);
 
     if (row.status === 'completed') {
       completed.push(item);
@@ -208,13 +196,9 @@ export async function getStorefrontSummitDetail(input: { slug: string; locale: s
     .orderBy(asc(summitTranslations.locale));
 
   const display = resolveTranslation(translations, input.locale, defaultLocale);
-  const uploadKeyById = await getAdminMediaAssetStorageKeys(collectSummitUploadIds([row]));
 
-  let uploadUrl = '';
-  if (row.backgroundMode === 'upload' && row.backgroundValue) {
-    const key = uploadKeyById.get(row.backgroundValue);
-    uploadUrl = key ? resolveOssAssetUrl(key) : '';
-  }
+  const bgKey = resolveUploadStorageKey(row.backgroundValue, row.backgroundImage);
+  const uploadUrl = bgKey ? resolveOssAssetUrl(bgKey) : '';
 
   const bg = resolvePartnerCenterBackgroundDisplay({
     mode: row.backgroundMode ?? '',
@@ -226,7 +210,7 @@ export async function getStorefrontSummitDetail(input: { slug: string; locale: s
   const useDefaultSolidHero = row.backgroundMode === 'solid';
 
   return {
-    ...mapToItem(row, display, uploadKeyById),
+    ...mapToItem(row, display),
     videoUrl: row.videoUrl?.trim() ? resolveOssAssetUrl(row.videoUrl) : '',
     backgroundImage: useDefaultSolidHero ? '' : bg.imageUrl,
     backgroundSolidCss: '',

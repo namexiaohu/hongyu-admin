@@ -24,9 +24,7 @@ import { resolveOssAssetUrl, toOssStorageKey } from '@/lib/oss-asset-url';
 import type { ProductGalleryImage } from '@/lib/product-content';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import { normalizeSlug } from '@/lib/slug';
-import { getAdminMediaAssetStorageKeys } from '@/server/admin/media-assets';
 import {
-  collectCoverUploadIdsFromBlocks,
   mapBlocksCoverForAdmin,
   resolveBlockItemCoversForWrite,
   resolveCoverFieldsForWrite,
@@ -60,13 +58,11 @@ function mapListItem(
   row: typeof brandNarratives.$inferSelect,
   title: string,
   localeCount: number,
-  uploadKeyById: Map<string, string>,
 ): AdminBrandNarrativeListItem {
   const bg = resolveAdminBackgroundPreview({
     mode: row.backgroundMode ?? '',
     value: row.backgroundValue ?? '',
     legacyBackgroundImageKey: row.backgroundImage ?? '',
-    uploadKeyById,
     toPublicUrl: resolveOssAssetUrl,
   });
 
@@ -74,7 +70,6 @@ function mapListItem(
     mode: row.coverMode ?? '',
     value: row.coverValue ?? '',
     legacyCoverImageKey: row.coverImage ?? '',
-    uploadKeyById,
     toPublicUrl: resolveOssAssetUrl,
   });
 
@@ -99,16 +94,6 @@ function mapListItem(
     publishedAt: row.publishedAt ? toIso(row.publishedAt) : null,
     updatedAt: toIso(row.updatedAt),
   };
-}
-
-async function loadUploadKeysForRows(rows: Array<typeof brandNarratives.$inferSelect>) {
-  const ids = rows.flatMap((row) => {
-    const next: string[] = [];
-    if (row.backgroundMode === 'upload' && row.backgroundValue) next.push(row.backgroundValue);
-    if (row.coverMode === 'upload' && row.coverValue) next.push(row.coverValue);
-    return next;
-  });
-  return getAdminMediaAssetStorageKeys(ids);
 }
 
 function mapTranslation(row: typeof brandNarrativeTranslations.$inferSelect): AdminBrandNarrativeTranslation {
@@ -143,12 +128,9 @@ async function mapDetail(
 ): Promise<AdminBrandNarrativeDetail> {
   const display = pickTranslationForDisplay(translations, defaultLocale);
   const blocks = await getBlocksForNarrative(row.id);
-  const uploadKeys = await loadUploadKeysForRows([row]);
-  const blockCoverKeys = await getAdminMediaAssetStorageKeys(collectCoverUploadIdsFromBlocks(blocks));
-  const mergedKeys = new Map([...uploadKeys, ...blockCoverKeys]);
   return {
-    ...mapListItem(row, resolveBrandNarrativeDisplayTitle(display, row.slug), translations.length, uploadKeys),
-    blocks: mapBlocksCoverForAdmin(blocks, mergedKeys),
+    ...mapListItem(row, resolveBrandNarrativeDisplayTitle(display, row.slug), translations.length),
+    blocks: mapBlocksCoverForAdmin(blocks),
     translations: translations.map(mapTranslation),
   };
 }
@@ -168,7 +150,6 @@ export async function getAdminBrandNarrativeList(params?: {
   const translations = narrativeIds.length
     ? await db.select().from(brandNarrativeTranslations).where(inArray(brandNarrativeTranslations.narrativeId, narrativeIds))
     : [];
-  const uploadKeys = await loadUploadKeysForRows(rows);
 
   const translationsByNarrative = new Map<string, typeof brandNarrativeTranslations.$inferSelect[]>();
   for (const translation of translations) {
@@ -180,7 +161,7 @@ export async function getAdminBrandNarrativeList(params?: {
   let items = rows.map((row) => {
     const rowTranslations = translationsByNarrative.get(row.id) ?? [];
     const display = pickTranslationForDisplay(rowTranslations, defaultLocale);
-    return mapListItem(row, resolveBrandNarrativeDisplayTitle(display, row.slug), rowTranslations.length, uploadKeys);
+    return mapListItem(row, resolveBrandNarrativeDisplayTitle(display, row.slug), rowTranslations.length);
   });
 
   if (params?.status) {
@@ -279,12 +260,7 @@ export async function updateAdminBrandNarrative(id: string, input: unknown) {
     );
     bgPatch.backgroundMode = bg.backgroundMode;
     bgPatch.backgroundValue = bg.backgroundValue;
-    if (bg.backgroundMode === 'upload' && bg.backgroundValue) {
-      const keys = await getAdminMediaAssetStorageKeys([bg.backgroundValue]);
-      bgPatch.backgroundImage = keys.get(bg.backgroundValue) ?? '';
-    } else {
-      bgPatch.backgroundImage = '';
-    }
+    bgPatch.backgroundImage = bg.backgroundImage;
   }
 
   const coverPatch: {
@@ -430,11 +406,6 @@ export async function createAdminBrandNarrative(input: unknown) {
     .limit(1);
 
   const bg = normalizeBackgroundWrite(parsed.backgroundMode, parsed.backgroundValue);
-  let backgroundImage = bg.backgroundImage;
-  if (bg.backgroundMode === 'upload' && bg.backgroundValue) {
-    const keys = await getAdminMediaAssetStorageKeys([bg.backgroundValue]);
-    backgroundImage = keys.get(bg.backgroundValue) ?? '';
-  }
 
   const cover = await resolveCoverFieldsForWrite({
     coverMode: parsed.coverMode,
@@ -454,7 +425,7 @@ export async function createAdminBrandNarrative(input: unknown) {
       videoUrl: normalizeVideoUrl(parsed.videoUrl),
       backgroundMode: bg.backgroundMode,
       backgroundValue: bg.backgroundValue,
-      backgroundImage,
+      backgroundImage: bg.backgroundImage,
       showCoverOnBackground: parsed.showCoverOnBackground ?? true,
       publishedAt: (parsed.status ?? 'draft') === 'published' ? new Date() : null,
     })

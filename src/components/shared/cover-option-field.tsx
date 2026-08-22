@@ -47,7 +47,7 @@ export function CoverOptionField({ value, onChange, disabled = false }: Props) {
 
   const preset = mode === 'preset' ? getCoverImagePreset(selectedValue) : null;
   const previewUrl = mode === 'upload'
-    ? (value?.previewUrl || uploadItems.find((item) => item.id === selectedValue)?.url || '')
+    ? (value?.previewUrl || uploadItems.find((item) => item.storageKey === selectedValue)?.url || '')
     : (preset?.fullUrl ?? '');
 
   useEffect(() => {
@@ -131,8 +131,8 @@ export function CoverOptionField({ value, onChange, disabled = false }: Props) {
   }
 
   function selectUpload(asset: AdminMediaAsset) {
-    setModeCache((prev) => ({ ...prev, upload: { value: asset.id, previewUrl: asset.url } }));
-    onChange?.({ mode: 'upload', value: asset.id, previewUrl: asset.url });
+    setModeCache((prev) => ({ ...prev, upload: { value: asset.storageKey, previewUrl: asset.url } }));
+    onChange?.({ mode: 'upload', value: asset.storageKey, previewUrl: asset.url });
     setPickerOpen(false);
   }
 
@@ -146,7 +146,7 @@ export function CoverOptionField({ value, onChange, disabled = false }: Props) {
 
       const next = removeSharedCoverMediaAsset(asset.id);
       setUploadItems(next);
-      if (mode === 'upload' && selectedValue === asset.id) {
+      if (mode === 'upload' && selectedValue === asset.storageKey) {
         clear();
       }
       void message.success('已删除');
@@ -190,8 +190,8 @@ export function CoverOptionField({ value, onChange, disabled = false }: Props) {
         const items = await getSharedCoverMediaAssets({ force: true });
         setSharedCoverMediaAssets(items);
         setUploadItems(items);
-        onChange?.({ mode: 'upload', value: asset.id, previewUrl: asset.url });
-        setModeCache((prev) => ({ ...prev, upload: { value: asset.id, previewUrl: asset.url } }));
+        onChange?.({ mode: 'upload', value: asset.storageKey, previewUrl: asset.url });
+        setModeCache((prev) => ({ ...prev, upload: { value: asset.storageKey, previewUrl: asset.url } }));
         setPickerOpen(false);
         onSuccess?.(asset);
         void message.success('封面图上传成功');
@@ -344,7 +344,7 @@ export function CoverOptionField({ value, onChange, disabled = false }: Props) {
                 }}
               >
                 {uploadItems.map((item) => {
-                  const active = selectedValue === item.id;
+                  const active = selectedValue === item.storageKey;
                   const deleting = deletingId === item.id;
                   return (
                     <div

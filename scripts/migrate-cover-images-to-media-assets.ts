@@ -1,3 +1,7 @@
+/**
+ * @deprecated Superseded by migrate-upload-values-to-storage-keys.ts
+ * Old migration wrote media_assets.id into coverValue — entities should store R2 keys instead.
+ */
 import '@/lib/env';
 
 import { and, eq } from 'drizzle-orm';

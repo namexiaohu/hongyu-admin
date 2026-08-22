@@ -70,8 +70,9 @@ export const PARTNER_CENTER_IMAGE_PRESETS: PartnerCenterImagePreset[] = [
 ];
 
 import { MEDIA_ASSET_TYPE_BACKGROUND } from '@/lib/media-assets';
+import { resolveUploadStorageKey } from '@/lib/upload-storage-key';
 
-export { MEDIA_ASSET_TYPE_BACKGROUND };
+export { MEDIA_ASSET_TYPE_BACKGROUND } from '@/lib/media-assets';
 /** @deprecated alias — all modules share MEDIA_ASSET_TYPE_BACKGROUND */
 export const MEDIA_ASSET_TYPE_PARTNER_CENTER_BACKGROUND = MEDIA_ASSET_TYPE_BACKGROUND;
 /** @deprecated alias — all modules share MEDIA_ASSET_TYPE_BACKGROUND */
@@ -101,8 +102,12 @@ export function normalizeBackgroundWrite(mode: string | undefined, value: string
   return {
     backgroundMode: nextMode,
     backgroundValue: nextValue,
-    backgroundImage: '',
+    backgroundImage: nextMode === 'upload' ? nextValue : '',
   };
+}
+
+export function resolveBackgroundFieldsForWrite(mode: string | undefined, value: string | undefined) {
+  return normalizeBackgroundWrite(mode, value);
 }
 
 export function getPartnerCenterSolidPreset(id: string) {
@@ -116,7 +121,7 @@ export function getPartnerCenterImagePreset(id: string) {
 export function resolvePartnerCenterBackgroundDisplay(input: {
   mode: string;
   value: string;
-  /** Resolved public URL for upload mode (from media_assets.storage_key) */
+  /** Resolved public URL for upload mode (from R2 storage key in value) */
   uploadUrl?: string;
   /** Legacy R2 key / URL fallback */
   legacyBackgroundImage?: string;
@@ -161,14 +166,13 @@ export function resolveAdminBackgroundPreview(input: {
   mode: string;
   value: string;
   legacyBackgroundImageKey: string;
-  uploadKeyById: Map<string, string>;
   toPublicUrl: (storageKey: string) => string;
 }): { mode: PartnerCenterBackgroundMode; value: string; previewUrl: string } {
   const mode = (input.mode ?? '') as PartnerCenterBackgroundMode;
   const value = (input.value ?? '').trim();
   let uploadUrl = '';
   if (mode === 'upload' && value) {
-    const key = input.uploadKeyById.get(value);
+    const key = resolveUploadStorageKey(value, input.legacyBackgroundImageKey);
     uploadUrl = key ? input.toPublicUrl(key) : '';
   }
   const legacyKey = input.legacyBackgroundImageKey?.trim() ?? '';

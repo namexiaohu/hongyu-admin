@@ -8,10 +8,9 @@ import {
   resolvePartnerCenterBackgroundDisplay,
 } from '@/lib/partner-center-background-presets';
 import { resolveStorefrontCoverUrl } from '@/lib/cover-presets';
+import { resolveUploadStorageKey } from '@/lib/upload-storage-key';
 import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
-import { getAdminMediaAssetStorageKeys } from '@/server/admin/media-assets';
-import { collectCoverUploadIds, collectCoverUploadIdsFromBlocks } from '@/server/admin/cover-images';
 import { db } from '@/server/db';
 import { brandNarrativeContents, brandNarrativeTranslations, brandNarratives } from '@/server/db/schema';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
@@ -48,19 +47,15 @@ function text(value: string | undefined, fallback = '') {
   return value?.trim() || fallback;
 }
 
-function resolveBlockItemCover(
-  item: {
-    coverMode?: string;
-    coverValue?: string;
-    coverImage?: string;
-  },
-  uploadKeyById?: Map<string, string>,
-) {
+function resolveBlockItemCover(item: {
+  coverMode?: string;
+  coverValue?: string;
+  coverImage?: string;
+}) {
   return resolveStorefrontCoverUrl({
     mode: item.coverMode,
     value: item.coverValue,
     legacyCoverImageKey: item.coverImage,
-    uploadKeyById,
     toPublicUrl: resolveOssAssetUrl,
   });
 }
@@ -98,7 +93,7 @@ function mapSplitSection(
   };
 }
 
-function mapSummarySection(block: BrandNarrativeBlockDraft, locale: string, uploadKeyById?: Map<string, string>) {
+function mapSummarySection(block: BrandNarrativeBlockDraft, locale: string) {
   const copy = pickLocaleCopy(block.locales, locale);
   const eyebrow = text(copy.smallTitle);
   const title = text(copy.largeTitle, eyebrow);
@@ -159,7 +154,7 @@ function mapSummarySection(block: BrandNarrativeBlockDraft, locale: string, uplo
           year: text(itemCopy.smallTitle),
           title: text(itemCopy.largeTitle, text(itemCopy.smallTitle)),
           body: text(itemCopy.description),
-          image: resolveBlockItemCover(item, uploadKeyById),
+          image: resolveBlockItemCover(item),
           imageAlt: text(itemCopy.largeTitle),
           icon: isSummaryIcon(item.icon) ? item.icon : null,
         };
@@ -210,7 +205,7 @@ function mapSummarySection(block: BrandNarrativeBlockDraft, locale: string, uplo
   };
 }
 
-function mapTimelineSection(block: BrandNarrativeBlockDraft, locale: string, uploadKeyById?: Map<string, string>) {
+function mapTimelineSection(block: BrandNarrativeBlockDraft, locale: string) {
   const copy = pickLocaleCopy(block.locales, locale);
   const eyebrow = text(copy.smallTitle);
   const title = text(copy.largeTitle, eyebrow);
@@ -228,7 +223,7 @@ function mapTimelineSection(block: BrandNarrativeBlockDraft, locale: string, upl
         year: text(itemCopy.smallTitle, ' '),
         title: text(itemCopy.largeTitle, text(itemCopy.smallTitle, ' ')),
         body: text(itemCopy.description, ' '),
-        image: resolveBlockItemCover(item, uploadKeyById) || undefined,
+        image: resolveBlockItemCover(item) || undefined,
         imageAlt: text(itemCopy.largeTitle) || undefined,
         tags: [] as string[],
       };
@@ -236,7 +231,7 @@ function mapTimelineSection(block: BrandNarrativeBlockDraft, locale: string, upl
   };
 }
 
-function mapCourseSection(block: BrandNarrativeBlockDraft, locale: string, uploadKeyById?: Map<string, string>) {
+function mapCourseSection(block: BrandNarrativeBlockDraft, locale: string) {
   const copy = pickLocaleCopy(block.locales, locale);
   const eyebrow = text(copy.smallTitle);
   const title = text(copy.largeTitle, eyebrow);
@@ -257,7 +252,7 @@ function mapCourseSection(block: BrandNarrativeBlockDraft, locale: string, uploa
         kicker: kicker && kicker !== courseTitle ? kicker : '',
         title: courseTitle || ' ',
         description: text(itemCopy.description),
-        image: resolveBlockItemCover(item, uploadKeyById),
+        image: resolveBlockItemCover(item),
         meta: [text(itemCopy.totalHours), text(itemCopy.teachingFormat), text(itemCopy.trainingCycle)].filter(Boolean),
       };
     }),
@@ -268,7 +263,6 @@ function mapBlocksToSections(
   blocks: BrandNarrativeBlockDraft[],
   locale: string,
   slug = '',
-  uploadKeyById?: Map<string, string>,
 ) {
   const sections: Array<Record<string, unknown>> = [];
 
@@ -299,18 +293,18 @@ function mapBlocksToSections(
           }),
         });
       } else {
-        sections.push(mapSummarySection(block, locale, uploadKeyById));
+        sections.push(mapSummarySection(block, locale));
       }
       continue;
     }
 
     if (block.type === 'timeline') {
-      sections.push(mapTimelineSection(block, locale, uploadKeyById));
+      sections.push(mapTimelineSection(block, locale));
       continue;
     }
 
     if (block.type === 'course') {
-      sections.push(mapCourseSection(block, locale, uploadKeyById));
+      sections.push(mapCourseSection(block, locale));
       continue;
     }
 
@@ -339,7 +333,6 @@ function mapPageData(
   blocks: BrandNarrativeBlockDraft[],
   requestedLocale: string,
   bg: { imageUrl: string; solidCss: string },
-  uploadKeyById?: Map<string, string>,
 ): BrandNarrativePageData {
   const pageTitle = text(translation.title);
   const headline = text(translation.largeTitle, pageTitle);
@@ -362,7 +355,6 @@ function mapPageData(
         mode: row.coverMode,
         value: row.coverValue,
         legacyCoverImageKey: row.coverImage,
-        uploadKeyById,
         toPublicUrl: resolveOssAssetUrl,
       }),
       imageAlt: headline,
@@ -378,15 +370,14 @@ function mapPageData(
         .filter((item) => item.url),
     },
     stats: stats.length ? stats.map((item) => ({ label: item.label, value: item.value })) : null,
-    sections: mapBlocksToSections(blocks, sectionLocale, row.slug, uploadKeyById),
+    sections: mapBlocksToSections(blocks, sectionLocale, row.slug),
   };
 }
 
 async function resolveNarrativeBackground(row: typeof brandNarratives.$inferSelect) {
   let uploadUrl = '';
   if (row.backgroundMode === 'upload' && row.backgroundValue) {
-    const keys = await getAdminMediaAssetStorageKeys([row.backgroundValue]);
-    const key = keys.get(row.backgroundValue);
+    const key = resolveUploadStorageKey(row.backgroundValue, row.backgroundImage);
     uploadUrl = key ? resolveOssAssetUrl(key) : '';
   }
   return resolvePartnerCenterBackgroundDisplay({
@@ -430,28 +421,23 @@ export async function getStorefrontBrandNarrativeBySlug(
 
   const blocks = ((contentRow[0]?.blocks ?? []) as BrandNarrativeBlockDraft[]);
   const bg = await resolveNarrativeBackground(row);
-  const coverUploadIds = [
-    ...collectCoverUploadIds([row]),
-    ...collectCoverUploadIdsFromBlocks(blocks),
-  ];
-  const uploadKeyById = await getAdminMediaAssetStorageKeys(coverUploadIds);
 
   const normalized = requestedLocale.trim().toLowerCase();
   const exact = translations.find((item) => item.locale.toLowerCase() === normalized);
-  if (exact) return mapPageData(row, exact, blocks, requestedLocale, bg, uploadKeyById);
+  if (exact) return mapPageData(row, exact, blocks, requestedLocale, bg);
 
   const prefix = normalized.split('-')[0];
   const prefixMatch = translations.find((item) => {
     const locale = item.locale.toLowerCase();
     return locale === prefix || locale.startsWith(`${prefix}-`);
   });
-  if (prefixMatch) return mapPageData(row, prefixMatch, blocks, requestedLocale, bg, uploadKeyById);
+  if (prefixMatch) return mapPageData(row, prefixMatch, blocks, requestedLocale, bg);
 
   const defaultLocale = await getDefaultSiteLanguageCode();
   const fallback = pickTranslationForDisplay(translations, defaultLocale);
   if (!fallback) return null;
 
-  return mapPageData(row, fallback, blocks, requestedLocale, bg, uploadKeyById);
+  return mapPageData(row, fallback, blocks, requestedLocale, bg);
 }
 
 export async function listPublishedBrandNarrativeSlugs() {

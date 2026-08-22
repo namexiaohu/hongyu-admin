@@ -45,7 +45,6 @@ import { getAdminCategoryOptions } from '@/server/admin/categories';
 import { countProductFeatureAssignmentsByProductIds } from '@/server/admin/product-features';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
 import { validateProductBoardKeys, getEnabledProductBoardOptions } from '@/server/admin/product-boards';
-import { getAdminMediaAssetStorageKeys } from '@/server/admin/media-assets';
 import { resolveCoverFieldsForWrite } from '@/server/admin/cover-images';
 import { db } from '@/server/db';
 import { brands, categories, productBoardAssignments, productCategories, productTranslations, products } from '@/server/db/schema';
@@ -349,7 +348,6 @@ function normalizeTranslationRow(product: ProductRow, translation: TranslationRo
     mode: product.coverMode ?? '',
     value: product.coverValue ?? '',
     legacyCoverImageKey: product.coverImage || (payload.data as AdminProductPayload).coverUrl || '',
-    uploadKeyById: new Map(),
     toPublicUrl: resolveOssAssetUrl,
   });
 
@@ -408,7 +406,6 @@ function toListItem(
   categoryIds?: string[],
   boardKeys: string[] = [],
   boardLabels: string[] = [],
-  uploadKeyById: Map<string, string> = new Map(),
 ): AdminProductListItem | null {
   const primary = pickTranslationForDisplay(translations, displayLocale);
   if (!primary) return null;
@@ -417,7 +414,6 @@ function toListItem(
     mode: product.backgroundMode ?? '',
     value: product.backgroundValue ?? '',
     legacyBackgroundImageKey: product.backgroundImage ?? '',
-    uploadKeyById,
     toPublicUrl: resolveOssAssetUrl,
   });
 
@@ -425,7 +421,6 @@ function toListItem(
     mode: product.coverMode ?? '',
     value: product.coverValue ?? '',
     legacyCoverImageKey: product.coverImage || payload.coverUrl || '',
-    uploadKeyById,
     toPublicUrl: resolveOssAssetUrl,
   });
 
@@ -667,16 +662,6 @@ export async function getAdminProductsPaginated(query: ProductListQuery): Promis
     getAdminProductStats(),
   ]);
 
-  const uploadIds = productRows
-    .map((row) => row.product)
-    .flatMap((product) => {
-      const ids: string[] = [];
-      if (product.backgroundMode === 'upload' && product.backgroundValue) ids.push(product.backgroundValue);
-      if (product.coverMode === 'upload' && product.coverValue) ids.push(product.coverValue);
-      return ids;
-    });
-  const uploadKeyById = await getAdminMediaAssetStorageKeys(uploadIds);
-
   const boardOptions = await getEnabledProductBoardOptions();
   const boardTitleByKey = new Map(boardOptions.map((board) => [board.key, board.title]));
 
@@ -694,7 +679,6 @@ export async function getAdminProductsPaginated(query: ProductListQuery): Promis
         undefined,
         boardKeys,
         boardLabels,
-        uploadKeyById,
       );
     })
     .filter((item): item is AdminProductListItem => Boolean(item));
@@ -738,14 +722,6 @@ export async function getAdminProductListItem(productId: string) {
   const boardTitleByKey = new Map(boardOptions.map((board) => [board.key, board.title]));
   const boardLabels = boardKeys.map((key) => boardTitleByKey.get(key) ?? key);
 
-  const uploadIds = [
-    ...(row.product.backgroundMode === 'upload' && row.product.backgroundValue
-      ? [row.product.backgroundValue]
-      : []),
-    ...(row.product.coverMode === 'upload' && row.product.coverValue ? [row.product.coverValue] : []),
-  ];
-  const uploadKeyById = await getAdminMediaAssetStorageKeys(uploadIds);
-
   return toListItem(
     row.product,
     translations,
@@ -756,7 +732,6 @@ export async function getAdminProductListItem(productId: string) {
     categoryIds,
     boardKeys,
     boardLabels,
-    uploadKeyById,
   );
 }
 

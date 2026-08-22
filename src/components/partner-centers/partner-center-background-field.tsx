@@ -65,7 +65,7 @@ export function PartnerCenterBackgroundField({
   const isSolidDefault = solidImmediate && mode === 'solid';
   const preset = mode === 'preset' ? getPartnerCenterImagePreset(selectedValue) : null;
   const previewUrl = mode === 'upload'
-    ? (value?.previewUrl || uploadItems.find((item) => item.id === selectedValue)?.url || '')
+    ? (value?.previewUrl || uploadItems.find((item) => item.storageKey === selectedValue)?.url || '')
     : (preset?.fullUrl ?? '');
 
   useEffect(() => {
@@ -165,8 +165,8 @@ export function PartnerCenterBackgroundField({
   }
 
   function selectUpload(asset: AdminMediaAsset) {
-    setModeCache((prev) => ({ ...prev, upload: { value: asset.id, previewUrl: asset.url } }));
-    onChange?.({ mode: 'upload', value: asset.id, previewUrl: asset.url });
+    setModeCache((prev) => ({ ...prev, upload: { value: asset.storageKey, previewUrl: asset.url } }));
+    onChange?.({ mode: 'upload', value: asset.storageKey, previewUrl: asset.url });
     setPickerOpen(false);
   }
 
@@ -180,7 +180,7 @@ export function PartnerCenterBackgroundField({
 
       const next = removeSharedBackgroundMediaAsset(asset.id);
       setUploadItems(next);
-      if (mode === 'upload' && selectedValue === asset.id) {
+      if (mode === 'upload' && selectedValue === asset.storageKey) {
         clear();
       }
       void message.success('已删除');
@@ -225,8 +225,8 @@ export function PartnerCenterBackgroundField({
         const items = await getSharedBackgroundMediaAssets({ force: true });
         setSharedBackgroundMediaAssets(items);
         setUploadItems(items);
-        onChange?.({ mode: 'upload', value: asset.id, previewUrl: asset.url });
-        setModeCache((prev) => ({ ...prev, upload: { value: asset.id, previewUrl: asset.url } }));
+        onChange?.({ mode: 'upload', value: asset.storageKey, previewUrl: asset.url });
+        setModeCache((prev) => ({ ...prev, upload: { value: asset.storageKey, previewUrl: asset.url } }));
         setPickerOpen(false);
         onSuccess?.(asset);
         void message.success('大背景图上传成功');
@@ -420,7 +420,7 @@ export function PartnerCenterBackgroundField({
                 }}
               >
                 {uploadItems.map((item) => {
-                  const active = selectedValue === item.id;
+                  const active = selectedValue === item.storageKey;
                   const deleting = deletingId === item.id;
                   return (
                     <div

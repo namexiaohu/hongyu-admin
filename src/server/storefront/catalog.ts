@@ -3,6 +3,7 @@ import { and, asc, count, desc, eq, exists, ilike, inArray, or, sql as drizzleSq
 import type { SolutionBlockDraft } from '@/lib/solution-blocks';
 import { resolveOssAssetUrl, rewriteHtmlOssAssets } from '@/lib/oss-asset-url';
 import { resolvePartnerCenterBackgroundDisplay } from '@/lib/partner-center-background-presets';
+import { resolveUploadStorageKey } from '@/lib/upload-storage-key';
 import { db } from '@/server/db';
 import {
   attachments,
@@ -34,7 +35,6 @@ import {
   resolveProductCoverImage,
 } from '@/server/products/load-product-translations';
 import { getStorefrontProductFeatureOptions, getStorefrontProductFeatures } from '@/server/admin/product-features';
-import { getAdminMediaAssetStorageKeys } from '@/server/admin/media-assets';
 import {
   footerContactBlocks,
   footerCopyright,
@@ -1027,8 +1027,7 @@ export async function getProductBySlug(slug: string, localeInput?: string | null
 
     let uploadUrl = '';
     if (product.backgroundMode === 'upload' && product.backgroundValue) {
-      const keys = await getAdminMediaAssetStorageKeys([product.backgroundValue]);
-      const key = keys.get(product.backgroundValue);
+      const key = resolveUploadStorageKey(product.backgroundValue, product.backgroundImage);
       uploadUrl = key ? resolveOssAssetUrl(key) : '';
     }
     const bg = resolvePartnerCenterBackgroundDisplay({

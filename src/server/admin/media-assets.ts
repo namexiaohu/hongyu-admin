@@ -58,8 +58,11 @@ export async function getAdminMediaAssetById(id: string): Promise<AdminMediaAsse
   return row ? mapAsset(row) : null;
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** @deprecated Entity fields store R2 keys directly; kept for one-off migration scripts only. */
 export async function getAdminMediaAssetStorageKeys(ids: string[]) {
-  const unique = [...new Set(ids.filter(Boolean))];
+  const unique = [...new Set(ids.filter((id) => id && UUID_RE.test(id)))];
   if (!unique.length) return new Map<string, string>();
   const rows = await db
     .select({ id: mediaAssets.id, storageKey: mediaAssets.storageKey })

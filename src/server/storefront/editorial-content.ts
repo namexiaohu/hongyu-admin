@@ -8,8 +8,6 @@ import {
 } from '@/lib/editorial-content';
 import { resolveOssAssetUrl, rewriteHtmlOssAssets } from '@/lib/oss-asset-url';
 import { resolveStorefrontCoverUrl } from '@/lib/cover-presets';
-import { getAdminMediaAssetStorageKeys } from '@/server/admin/media-assets';
-import { collectCoverUploadIds } from '@/server/admin/cover-images';
 import { db } from '@/server/db';
 import {
   editorialContentBoards,
@@ -162,10 +160,6 @@ export async function getStorefrontBoardBlogs(boardKeyInput: string, localeInput
     grouped.set(row.content.id, bucket);
   }
 
-  const uploadKeyById = await getAdminMediaAssetStorageKeys(
-    collectCoverUploadIds([...grouped.values()].map((entry) => entry.content)),
-  );
-
   const items = [...grouped.values()].map(({ content, translations }) => {
     const picked = pickTranslation(translations, locale)!;
     const payload = normalizePayload(picked.payload);
@@ -181,7 +175,6 @@ export async function getStorefrontBoardBlogs(boardKeyInput: string, localeInput
         mode: content.coverMode,
         value: content.coverValue,
         legacyCoverImageKey: content.coverImage,
-        uploadKeyById,
         toPublicUrl: resolveOssAssetUrl,
       }) || null,
       author: buildAuthor(payload),

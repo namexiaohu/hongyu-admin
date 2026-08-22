@@ -426,13 +426,13 @@ export const products = pgTable(
     backgroundImage: text('background_image').notNull().default(''),
     /** solid | preset | upload | '' */
     backgroundMode: text('background_mode').notNull().default(''),
-    /** solid token | preset id | media_assets.id */
+    /** solid token | preset id | R2 storage key when mode=upload */
     backgroundValue: text('background_value').notNull().default(''),
     showCoverOnBackground: boolean('show_cover_on_background').notNull().default(true),
     coverImage: text('cover_image').notNull().default(''),
     /** preset | upload | '' */
     coverMode: text('cover_mode').notNull().default(''),
-    /** preset id | media_assets.id */
+    /** preset id | R2 storage key when mode=upload */
     coverValue: text('cover_value').notNull().default(''),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -1237,7 +1237,7 @@ export const editorialContents = pgTable(
     coverImage: text('cover_image').notNull().default(''),
     /** preset | upload | '' */
     coverMode: text('cover_mode').notNull().default(''),
-    /** preset id | media_assets.id */
+    /** preset id | R2 storage key when mode=upload */
     coverValue: text('cover_value').notNull().default(''),
     status: cmsStatusEnum('status').notNull().default('draft'),
     publishedAt: timestamp('published_at', { withTimezone: true }),
@@ -1404,7 +1404,7 @@ export const brandNarratives = pgTable(
     coverImage: text('cover_image').notNull().default(''),
     /** preset | upload | '' */
     coverMode: text('cover_mode').notNull().default(''),
-    /** preset id | media_assets.id */
+    /** preset id | R2 storage key when mode=upload */
     coverValue: text('cover_value').notNull().default(''),
     gallery: jsonb('gallery').$type<ProductGalleryImage[]>().notNull().default([]),
     videoUrl: text('video_url').notNull().default(''),
@@ -1412,7 +1412,7 @@ export const brandNarratives = pgTable(
     backgroundImage: text('background_image').notNull().default(''),
     /** solid | preset | upload | '' */
     backgroundMode: text('background_mode').notNull().default(''),
-    /** solid token | preset id | media_assets.id */
+    /** solid token | preset id | R2 storage key when mode=upload */
     backgroundValue: text('background_value').notNull().default(''),
     showCoverOnBackground: boolean('show_cover_on_background').notNull().default(true),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -1473,7 +1473,7 @@ export const solutions = pgTable(
     coverImage: text('cover_image').notNull().default(''),
     /** preset | upload | '' */
     coverMode: text('cover_mode').notNull().default(''),
-    /** preset id | media_assets.id */
+    /** preset id | R2 storage key when mode=upload */
     coverValue: text('cover_value').notNull().default(''),
     gallery: jsonb('gallery').$type<ProductGalleryImage[]>().notNull().default([]),
     videoUrl: text('video_url').notNull().default(''),
@@ -1481,7 +1481,7 @@ export const solutions = pgTable(
     backgroundImage: text('background_image').notNull().default(''),
     /** solid | preset | upload | '' */
     backgroundMode: text('background_mode').notNull().default(''),
-    /** solid token | preset id | media_assets.id */
+    /** solid token | preset id | R2 storage key when mode=upload */
     backgroundValue: text('background_value').notNull().default(''),
     showCoverOnBackground: boolean('show_cover_on_background').notNull().default(true),
     materials: jsonb('materials').$type<SolutionMaterial[]>().notNull().default([]),
@@ -1613,14 +1613,14 @@ export const summits = pgTable(
     coverImage: text('cover_image').notNull().default(''),
     /** preset | upload | '' */
     coverMode: text('cover_mode').notNull().default(''),
-    /** preset id | media_assets.id */
+    /** preset id | R2 storage key when mode=upload */
     coverValue: text('cover_value').notNull().default(''),
     videoUrl: text('video_url').notNull().default(''),
     /** @deprecated use backgroundMode + backgroundValue */
     backgroundImage: text('background_image').notNull().default(''),
     /** solid | preset | upload | '' */
     backgroundMode: text('background_mode').notNull().default(''),
-    /** solid token | preset id | media_assets.id */
+    /** solid token | preset id | R2 storage key when mode=upload */
     backgroundValue: text('background_value').notNull().default(''),
     showCoverOnBackground: boolean('show_cover_on_background').notNull().default(true),
     venueImage: text('venue_image').notNull().default(''),
@@ -1701,7 +1701,7 @@ export const partnerCenters = pgTable(
     coverImage: text('cover_image').notNull().default(''),
     /** preset | upload | '' */
     coverMode: text('cover_mode').notNull().default(''),
-    /** preset id | media_assets.id */
+    /** preset id | R2 storage key when mode=upload */
     coverValue: text('cover_value').notNull().default(''),
     gallery: jsonb('gallery').$type<ProductGalleryImage[]>().notNull().default([]),
     videoUrl: text('video_url').notNull().default(''),
@@ -1710,7 +1710,7 @@ export const partnerCenters = pgTable(
     backgroundImage: text('background_image').notNull().default(''),
     /** solid | preset | upload | '' */
     backgroundMode: text('background_mode').notNull().default(''),
-    /** solid token | preset id | media_assets.id */
+    /** solid token | preset id | R2 storage key when mode=upload */
     backgroundValue: text('background_value').notNull().default(''),
     /** When true, detail hero shows cover image on the right over the background */
     showCoverOnBackground: boolean('show_cover_on_background').notNull().default(true),

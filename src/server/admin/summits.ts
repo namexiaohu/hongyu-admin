@@ -27,7 +27,6 @@ import { normalizeSlug } from '@/lib/slug';
 import { db } from '@/server/db';
 import { summits, summitTranslations } from '@/server/db/schema';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
-import { getAdminMediaAssetStorageKeys } from '@/server/admin/media-assets';
 import { resolveCoverFieldsForWrite } from '@/server/admin/cover-images';
 
 function toIso(value: Date | null | undefined): string | null {
@@ -39,33 +38,21 @@ function normalizeVideoUrl(value: string | undefined): string {
   return trimmed ? toOssStorageKey(trimmed) : '';
 }
 
-function collectSummitUploadIds(rows: Array<typeof summits.$inferSelect>): string[] {
-  const ids: string[] = [];
-  for (const row of rows) {
-    if (row.coverMode === 'upload' && row.coverValue) ids.push(row.coverValue);
-    if (row.backgroundMode === 'upload' && row.backgroundValue) ids.push(row.backgroundValue);
-  }
-  return ids;
-}
-
 function mapListItem(
   row: typeof summits.$inferSelect,
   title: string,
   localeCount: number,
-  uploadKeyById: Map<string, string>,
 ): AdminSummitListItem {
   const cover = resolveAdminCoverPreview({
     mode: row.coverMode ?? '',
     value: row.coverValue ?? '',
     legacyCoverImageKey: row.coverImage ?? '',
-    uploadKeyById,
     toPublicUrl: resolveOssAssetUrl,
   });
   const bg = resolveAdminBackgroundPreview({
     mode: row.backgroundMode ?? '',
     value: row.backgroundValue ?? '',
     legacyBackgroundImageKey: row.backgroundImage ?? '',
-    uploadKeyById,
     toPublicUrl: resolveOssAssetUrl,
   });
   return {
@@ -116,11 +103,10 @@ function mapDetail(
   row: typeof summits.$inferSelect,
   translations: Array<typeof summitTranslations.$inferSelect>,
   defaultLocale: string,
-  uploadKeyById: Map<string, string>,
 ): AdminSummitDetail {
   const display = pickTranslationForDisplay(translations, defaultLocale);
   return {
-    ...mapListItem(row, resolveSummitDisplayTitle(display, row.slug), translations.length, uploadKeyById),
+    ...mapListItem(row, resolveSummitDisplayTitle(display, row.slug), translations.length),
     agenda: (row.agenda ?? []) as AgendaGroup[],
     translations: translations.map(mapTranslation),
   };
@@ -129,7 +115,6 @@ function mapDetail(
 export async function getAdminSummitList() {
   const defaultLocale = await getDefaultSiteLanguageCode();
   const rows = await db.select().from(summits).orderBy(asc(summits.sortOrder), asc(summits.slug));
-  const uploadKeyById = await getAdminMediaAssetStorageKeys(collectSummitUploadIds(rows));
 
   const ids = rows.map((r) => r.id);
   const translations = ids.length
@@ -146,7 +131,7 @@ export async function getAdminSummitList() {
   const items = rows.map((row) => {
     const rowT = byId.get(row.id) ?? [];
     const display = pickTranslationForDisplay(rowT, defaultLocale);
-    return mapListItem(row, resolveSummitDisplayTitle(display, row.slug), rowT.length, uploadKeyById);
+    return mapListItem(row, resolveSummitDisplayTitle(display, row.slug), rowT.length);
   });
 
   return { items, total: items.length };
@@ -160,8 +145,7 @@ export async function getAdminSummitDetail(id: string): Promise<AdminSummitDetai
     .where(eq(summitTranslations.summitId, id))
     .orderBy(asc(summitTranslations.locale));
   const defaultLocale = await getDefaultSiteLanguageCode();
-  const uploadKeyById = await getAdminMediaAssetStorageKeys(collectSummitUploadIds([row]));
-  return mapDetail(row, translations, defaultLocale, uploadKeyById);
+  return mapDetail(row, translations, defaultLocale);
 }
 
 export async function createAdminSummit(input: unknown) {
@@ -180,12 +164,6 @@ export async function createAdminSummit(input: unknown) {
   });
   const bg = normalizeBackgroundWrite(parsed.backgroundMode, parsed.backgroundValue);
 
-  let backgroundImage = bg.backgroundImage;
-  if (bg.backgroundMode === 'upload' && bg.backgroundValue) {
-    const keys = await getAdminMediaAssetStorageKeys([bg.backgroundValue]);
-    backgroundImage = keys.get(bg.backgroundValue) ?? '';
-  }
-
   const [inserted] = await db.insert(summits).values({
     slug,
     status: parsed.status ?? 'upcoming',
@@ -197,7 +175,7 @@ export async function createAdminSummit(input: unknown) {
     videoUrl: normalizeVideoUrl(parsed.videoUrl),
     backgroundMode: bg.backgroundMode,
     backgroundValue: bg.backgroundValue,
-    backgroundImage,
+    backgroundImage: bg.backgroundImage,
     showCoverOnBackground: parsed.showCoverOnBackground ?? true,
     venueImage: parsed.venueImage ?? '',
     agenda: (parsed.agenda ?? []) as AgendaGroup[],
@@ -247,12 +225,7 @@ export async function updateAdminSummit(id: string, input: unknown) {
     );
     bgPatch.backgroundMode = bg.backgroundMode;
     bgPatch.backgroundValue = bg.backgroundValue;
-    if (bg.backgroundMode === 'upload' && bg.backgroundValue) {
-      const keys = await getAdminMediaAssetStorageKeys([bg.backgroundValue]);
-      bgPatch.backgroundImage = keys.get(bg.backgroundValue) ?? '';
-    } else {
-      bgPatch.backgroundImage = '';
-    }
+    bgPatch.backgroundImage = bg.backgroundImage;
   }
 
   await db.update(summits).set({
