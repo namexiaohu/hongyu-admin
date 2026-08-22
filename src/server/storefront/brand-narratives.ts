@@ -7,6 +7,7 @@ import { isSummaryIcon, pickBlockLocaleCopy, summaryItemUsesCoverImage } from '@
 import {
   resolvePartnerCenterBackgroundDisplay,
 } from '@/lib/partner-center-background-presets';
+import { resolveStorefrontCoverUrl } from '@/lib/cover-presets';
 import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import { getAdminMediaAssetStorageKeys } from '@/server/admin/media-assets';
@@ -44,6 +45,19 @@ function pickLocaleCopy(
 
 function text(value: string | undefined, fallback = '') {
   return value?.trim() || fallback;
+}
+
+function resolveBlockItemCover(item: {
+  coverMode?: string;
+  coverValue?: string;
+  coverImage?: string;
+}) {
+  return resolveStorefrontCoverUrl({
+    mode: item.coverMode,
+    value: item.coverValue,
+    legacyCoverImageKey: item.coverImage,
+    toPublicUrl: resolveOssAssetUrl,
+  });
 }
 
 function isPatentId(value: string) {
@@ -140,7 +154,7 @@ function mapSummarySection(block: BrandNarrativeBlockDraft, locale: string) {
           year: text(itemCopy.smallTitle),
           title: text(itemCopy.largeTitle, text(itemCopy.smallTitle)),
           body: text(itemCopy.description),
-          image: resolveOssAssetUrl(item.coverImage),
+          image: resolveBlockItemCover(item),
           imageAlt: text(itemCopy.largeTitle),
           icon: isSummaryIcon(item.icon) ? item.icon : null,
         };
@@ -209,7 +223,7 @@ function mapTimelineSection(block: BrandNarrativeBlockDraft, locale: string) {
         year: text(itemCopy.smallTitle, ' '),
         title: text(itemCopy.largeTitle, text(itemCopy.smallTitle, ' ')),
         body: text(itemCopy.description, ' '),
-        image: resolveOssAssetUrl(item.coverImage) || undefined,
+        image: resolveBlockItemCover(item) || undefined,
         imageAlt: text(itemCopy.largeTitle) || undefined,
         tags: [] as string[],
       };
@@ -238,7 +252,7 @@ function mapCourseSection(block: BrandNarrativeBlockDraft, locale: string) {
         kicker: kicker && kicker !== courseTitle ? kicker : '',
         title: courseTitle || ' ',
         description: text(itemCopy.description),
-        image: resolveOssAssetUrl(item.coverImage),
+        image: resolveBlockItemCover(item),
         meta: [text(itemCopy.totalHours), text(itemCopy.teachingFormat), text(itemCopy.trainingCycle)].filter(Boolean),
       };
     }),
@@ -333,7 +347,12 @@ function mapPageData(
       eyebrow: pageTitle,
       title: headline,
       lead: text(translation.description),
-      image: resolveOssAssetUrl(row.coverImage),
+      image: resolveStorefrontCoverUrl({
+        mode: row.coverMode,
+        value: row.coverValue,
+        legacyCoverImageKey: row.coverImage,
+        toPublicUrl: resolveOssAssetUrl,
+      }),
       imageAlt: headline,
       backgroundImage: bg.imageUrl,
       backgroundSolidCss: bg.solidCss,

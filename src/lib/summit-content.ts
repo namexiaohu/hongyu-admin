@@ -70,6 +70,8 @@ export const adminSummitPatchSchema = z.object({
   startDate: z.string().nullable().optional(),
   endDate: z.string().nullable().optional(),
   coverImage: z.string().optional(),
+  coverMode: z.enum(['preset', 'upload', '']).optional(),
+  coverValue: z.string().optional(),
   venueImage: z.string().optional(),
   agenda: z.array(agendaGroupSchema).optional(),
   sortOrder: z.number().int().optional(),
@@ -81,6 +83,8 @@ export const adminSummitCreateSchema = z.object({
   startDate: z.string().nullable().optional(),
   endDate: z.string().nullable().optional(),
   coverImage: z.string().optional().default(''),
+  coverMode: z.enum(['preset', 'upload', '']).optional().default(''),
+  coverValue: z.string().optional().default(''),
   venueImage: z.string().optional().default(''),
   agenda: z.array(agendaGroupSchema).optional().default([]),
   sortOrder: z.number().int().optional(),
@@ -112,6 +116,9 @@ export type AdminSummitListItem = {
   startDate: string | null;
   endDate: string | null;
   coverImage: string;
+  coverMode: '' | 'preset' | 'upload';
+  coverValue: string;
+  coverPreviewUrl: string;
   venueImage: string;
   sortOrder: number;
   title: string;

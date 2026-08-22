@@ -19,11 +19,14 @@ import {
 } from '@/lib/editorial-content';
 import { hasMeaningfulHtmlBody } from '@/lib/editorial-html';
 import { rewriteHtmlOssAssets, toOssStorageKey } from '@/lib/oss-asset-url';
+import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
+import { resolveAdminCoverPreview } from '@/lib/cover-presets';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import { extractSummaryFromHtmlBody } from '@/lib/editorial-summary';
 import { db } from '@/server/db';
 import { editorialContentBoards, editorialContentTranslations, editorialContents } from '@/server/db/schema';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
+import { resolveCoverFieldsForWrite } from '@/server/admin/cover-images';
 
 const payloadSchema = z.object({
   body: z.string().trim().refine(hasMeaningfulHtmlBody, { message: 'Body is required' }),
@@ -51,6 +54,8 @@ const adminEditorialContentTranslationBaseSchema = z.object({
   seoDescription: z.string().trim().nullable().optional(),
   publishedAt: z.coerce.date().nullable().optional(),
   coverImage: z.string().trim().optional(),
+  coverMode: z.enum(['preset', 'upload', '']).optional(),
+  coverValue: z.string().trim().optional(),
   payload: payloadSchema,
 });
 
@@ -68,6 +73,8 @@ export const adminEditorialContentPatchSchema = z.object({
   status: z.enum(editorialEntryStatuses).optional(),
   publishedAt: z.coerce.date().nullable().optional(),
   coverImage: z.string().trim().optional(),
+  coverMode: z.enum(['preset', 'upload', '']).optional(),
+  coverValue: z.string().trim().optional(),
 });
 
 /** @deprecated */
@@ -239,6 +246,8 @@ function sanitizeTranslationInput(input: TranslationCreateInput) {
       ? normalizeDateValue(input.publishedAt) ?? new Date().toISOString()
       : normalizeDateValue(input.publishedAt),
     coverImage: normalizeCoverImage(input.coverImage),
+    coverMode: input.coverMode ?? '',
+    coverValue: input.coverValue ?? '',
     payload: normalizedPayload,
   };
 }
@@ -269,6 +278,15 @@ function normalizeTranslationRow(
     seoDescription: translation.seoDescription,
     publishedAt: content.publishedAt?.toISOString() ?? null,
     coverImage: content.coverImage ?? '',
+    coverMode: (content.coverMode ?? '') as AdminEditorialContentTranslation['coverMode'],
+    coverValue: content.coverValue ?? '',
+    coverPreviewUrl: resolveAdminCoverPreview({
+      mode: content.coverMode ?? '',
+      value: content.coverValue ?? '',
+      legacyCoverImageKey: content.coverImage ?? '',
+      uploadKeyById: new Map(),
+      toPublicUrl: resolveOssAssetUrl,
+    }).previewUrl,
     payload: mergePayload(payload.data),
     createdAt: translation.createdAt.toISOString(),
     updatedAt: Math.max(content.updatedAt.getTime(), translation.updatedAt.getTime()) === translation.updatedAt.getTime()
@@ -295,6 +313,15 @@ function toListItem(
     boardKey: resolvedBoardKeys[0] ?? normalizeBoardKey(content.boardKey),
     boardKeys: resolvedBoardKeys,
     coverImage: content.coverImage ?? '',
+    coverMode: (content.coverMode ?? '') as AdminEditorialContentListItem['coverMode'],
+    coverValue: content.coverValue ?? '',
+    coverPreviewUrl: resolveAdminCoverPreview({
+      mode: content.coverMode ?? '',
+      value: content.coverValue ?? '',
+      legacyCoverImageKey: content.coverImage ?? '',
+      uploadKeyById: new Map(),
+      toPublicUrl: resolveOssAssetUrl,
+    }).previewUrl,
     status: content.status,
     title: primary.title,
     slug: primary.slug,
@@ -649,6 +676,10 @@ export async function findAdminEditorialContentEntryByGroupAndLocale(groupId: st
 
 export async function createAdminEditorialContentTranslation(input: TranslationCreateInput) {
   const next = sanitizeTranslationInput(input);
+  const cover = await resolveCoverFieldsForWrite({
+    coverMode: next.coverMode,
+    coverValue: next.coverValue,
+  });
 
   if (input.contentId) {
     const existingLocale = await findAdminEditorialContentTranslationByContentAndLocale(
@@ -668,7 +699,9 @@ export async function createAdminEditorialContentTranslation(input: TranslationC
         contentType: 'content',
         contentModule: next.contentModule,
         boardKey: next.boardKey,
-        coverImage: next.coverImage,
+        coverImage: cover.coverImage,
+        coverMode: cover.coverMode,
+        coverValue: cover.coverValue,
         status: next.status,
         publishedAt: next.publishedAt ? new Date(next.publishedAt) : null,
       })
@@ -692,7 +725,9 @@ export async function createAdminEditorialContentTranslation(input: TranslationC
       .set({
         contentModule: next.contentModule,
         boardKey: next.boardKey,
-        coverImage: next.coverImage,
+        coverImage: cover.coverImage,
+        coverMode: cover.coverMode,
+        coverValue: cover.coverValue,
         status: next.status,
         publishedAt: next.publishedAt ? new Date(next.publishedAt) : null,
         updatedAt: new Date(),
@@ -759,7 +794,14 @@ export async function updateAdminEditorialContentTranslation(translationId: stri
     seoDescription: input.seoDescription === undefined ? current.seoDescription : input.seoDescription,
     publishedAt: input.publishedAt === undefined ? (current.publishedAt ? new Date(current.publishedAt) : null) : input.publishedAt,
     coverImage: input.coverImage === undefined ? current.coverImage : input.coverImage,
+    coverMode: input.coverMode === undefined ? current.coverMode : input.coverMode,
+    coverValue: input.coverValue === undefined ? current.coverValue : input.coverValue,
     payload: input.payload ?? current.payload,
+  });
+
+  const cover = await resolveCoverFieldsForWrite({
+    coverMode: merged.coverMode,
+    coverValue: merged.coverValue,
   });
 
   await db
@@ -767,7 +809,9 @@ export async function updateAdminEditorialContentTranslation(translationId: stri
     .set({
       contentModule: merged.contentModule,
       boardKey: merged.boardKey,
-      coverImage: merged.coverImage,
+      coverImage: cover.coverImage,
+      coverMode: cover.coverMode,
+      coverValue: cover.coverValue,
       status: merged.status,
       publishedAt: merged.publishedAt ? new Date(merged.publishedAt) : null,
       updatedAt: new Date(),
@@ -836,11 +880,24 @@ export async function updateAdminEditorialContent(contentId: string, input: Cont
     ? current.publishedAt
     : normalizeDateValue(input.publishedAt);
 
+  const coverPatch: Partial<{ coverMode: string; coverValue: string; coverImage: string }> = {};
+  if (input.coverMode !== undefined || input.coverValue !== undefined) {
+    const cover = await resolveCoverFieldsForWrite({
+      coverMode: input.coverMode ?? current.coverMode,
+      coverValue: input.coverValue ?? current.coverValue,
+    });
+    coverPatch.coverMode = cover.coverMode;
+    coverPatch.coverValue = cover.coverValue;
+    coverPatch.coverImage = cover.coverImage;
+  } else if (input.coverImage !== undefined) {
+    coverPatch.coverImage = normalizeCoverImage(input.coverImage);
+  }
+
   const [updated] = await db
     .update(editorialContents)
     .set({
       boardKey: input.boardKey ? normalizeBoardKey(input.boardKey) : current.boardKey,
-      coverImage: input.coverImage === undefined ? current.coverImage : normalizeCoverImage(input.coverImage),
+      ...coverPatch,
       status: nextStatus,
       publishedAt: nextStatus === 'published'
         ? new Date(nextPublishedAt ?? new Date().toISOString())

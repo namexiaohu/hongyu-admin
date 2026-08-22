@@ -4,11 +4,14 @@ import { Col, Form, Input, Row, Switch } from 'antd';
 
 import { BrandPickerField } from '@/components/brands/brand-picker-field';
 import { CategoryPickerField } from '@/components/categories/category-picker-field';
-import { CoverImageField } from '@/components/editorial/cover-image-field';
 import {
   PartnerCenterBackgroundField,
   type PartnerCenterBackgroundValue,
 } from '@/components/partner-centers/partner-center-background-field';
+import {
+  CoverOptionField,
+  type CoverOptionValue,
+} from '@/components/shared/cover-option-field';
 import { ProductBoardMultiSelect, type ProductBoardOption } from '@/components/products/product-board-multi-select';
 import { ProductGalleryField } from '@/components/products/product-gallery-field';
 import { ProductVideoField } from '@/components/products/product-video-field';
@@ -29,8 +32,8 @@ type ProductGeneralConfigPanelProps = {
   onBoardKeysChange: (value: string[]) => void;
   status: ProductStatus;
   onStatusChange: (nextStatus: ProductStatus) => void;
-  coverUrl: string;
-  onCoverUrlChange: (value: string) => void;
+  cover: CoverOptionValue;
+  onCoverChange: (value: CoverOptionValue) => void;
   gallery: AdminProductPayload['gallery'];
   onGalleryChange: (value: AdminProductPayload['gallery']) => void;
   videoUrl: string;
@@ -56,8 +59,8 @@ export function ProductGeneralConfigPanel({
   onBoardKeysChange,
   status,
   onStatusChange,
-  coverUrl,
-  onCoverUrlChange,
+  cover,
+  onCoverChange,
   gallery,
   onGalleryChange,
   videoUrl,
@@ -117,11 +120,7 @@ export function ProductGeneralConfigPanel({
       </Row>
 
       <Form.Item label="封面图" layout="vertical" style={fieldStyle}>
-        <CoverImageField
-          folder="products/covers"
-          value={coverUrl || null}
-          onChange={(value) => onCoverUrlChange(value ?? '')}
-        />
+        <CoverOptionField value={cover} onChange={onCoverChange} />
       </Form.Item>
       <Form.Item label="轮播图" layout="vertical" style={fieldStyle}>
         <ProductGalleryField value={gallery} onChange={(value) => onGalleryChange(value ?? [])} />

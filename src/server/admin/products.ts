@@ -39,12 +39,14 @@ import {
   normalizeBackgroundWrite,
   resolveAdminBackgroundPreview,
 } from '@/lib/partner-center-background-presets';
+import { resolveAdminCoverPreview } from '@/lib/cover-presets';
 import { getAdminBrandOptions } from '@/server/admin/brands';
 import { getAdminCategoryOptions } from '@/server/admin/categories';
 import { countProductFeatureAssignmentsByProductIds } from '@/server/admin/product-features';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
 import { validateProductBoardKeys, getEnabledProductBoardOptions } from '@/server/admin/product-boards';
 import { getAdminMediaAssetStorageKeys } from '@/server/admin/media-assets';
+import { resolveCoverFieldsForWrite } from '@/server/admin/cover-images';
 import { db } from '@/server/db';
 import { brands, categories, productBoardAssignments, productCategories, productTranslations, products } from '@/server/db/schema';
 import { brandNameSql } from '@/server/brands/resolve-brand-translation';
@@ -130,6 +132,8 @@ export const adminProductPatchSchema = z.object({
   backgroundMode: z.enum(['', 'solid', 'preset', 'upload']).optional(),
   backgroundValue: z.string().trim().optional(),
   showCoverOnBackground: z.boolean().optional(),
+  coverMode: z.enum(['', 'preset', 'upload']).optional(),
+  coverValue: z.string().trim().optional(),
 });
 
 type TranslationCreateInput = z.infer<typeof adminProductTranslationSchema>;
@@ -170,7 +174,12 @@ function parseDate(value: string | null | undefined) {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-function normalizePayload(payload: AdminProductPayload | undefined): AdminProductPayload {
+function withProductCoverUrl(payload: AdminProductPayload, product: ProductRow): AdminProductPayload {
+  return {
+    ...payload,
+    coverUrl: product.coverImage || null,
+  };
+}
   const base = payload ?? defaultProductPayload();
   return {
     coverUrl: normalizeText(base.coverUrl) ? toOssStorageKey(base.coverUrl!) : null,
@@ -334,6 +343,13 @@ function sanitizeTranslationInput(input: TranslationCreateInput) {
 function normalizeTranslationRow(product: ProductRow, translation: TranslationRow): AdminProductTranslation | null {
   const payload = payloadSchema.safeParse(translation.payload ?? defaultProductPayload());
   if (!payload.success) return null;
+  const cover = resolveAdminCoverPreview({
+    mode: product.coverMode ?? '',
+    value: product.coverValue ?? '',
+    legacyCoverImageKey: product.coverImage || (payload.data as AdminProductPayload).coverUrl || '',
+    uploadKeyById: new Map(),
+    toPublicUrl: resolveOssAssetUrl,
+  });
 
   return {
     id: translation.id,
@@ -361,6 +377,9 @@ function normalizeTranslationRow(product: ProductRow, translation: TranslationRo
     lastTimeBuyDate: translation.lastTimeBuyDate ? translation.lastTimeBuyDate.toISOString() : null,
     efficiencyClass: translation.efficiencyClass,
     payload: normalizePayload(payload.data as AdminProductPayload),
+    coverMode: cover.mode,
+    coverValue: cover.value,
+    coverPreviewUrl: cover.previewUrl,
     spu: product.spu,
     brandId: product.brandId,
     defaultCategoryId: product.defaultCategoryId,
@@ -400,12 +419,23 @@ function toListItem(
     toPublicUrl: resolveOssAssetUrl,
   });
 
+  const cover = resolveAdminCoverPreview({
+    mode: product.coverMode ?? '',
+    value: product.coverValue ?? '',
+    legacyCoverImageKey: product.coverImage || payload.coverUrl || '',
+    uploadKeyById,
+    toPublicUrl: resolveOssAssetUrl,
+  });
+
   return {
     id: product.id,
     name: primary.name,
     slug: primary.slug,
     spu: product.spu,
-    coverUrl: payload.coverUrl,
+    coverUrl: cover.previewUrl || payload.coverUrl,
+    coverMode: cover.mode,
+    coverValue: cover.value,
+    coverPreviewUrl: cover.previewUrl,
     purchaseMode: product.purchaseMode as ProductPurchaseMode,
     stockQuantity: primary.stockQuantity,
     price: primary.price ?? '0',
@@ -637,8 +667,12 @@ export async function getAdminProductsPaginated(query: ProductListQuery): Promis
 
   const uploadIds = productRows
     .map((row) => row.product)
-    .filter((product) => product.backgroundMode === 'upload' && product.backgroundValue)
-    .map((product) => product.backgroundValue);
+    .flatMap((product) => {
+      const ids: string[] = [];
+      if (product.backgroundMode === 'upload' && product.backgroundValue) ids.push(product.backgroundValue);
+      if (product.coverMode === 'upload' && product.coverValue) ids.push(product.coverValue);
+      return ids;
+    });
   const uploadKeyById = await getAdminMediaAssetStorageKeys(uploadIds);
 
   const boardOptions = await getEnabledProductBoardOptions();
@@ -702,10 +736,12 @@ export async function getAdminProductListItem(productId: string) {
   const boardTitleByKey = new Map(boardOptions.map((board) => [board.key, board.title]));
   const boardLabels = boardKeys.map((key) => boardTitleByKey.get(key) ?? key);
 
-  const uploadIds =
-    row.product.backgroundMode === 'upload' && row.product.backgroundValue
+  const uploadIds = [
+    ...(row.product.backgroundMode === 'upload' && row.product.backgroundValue
       ? [row.product.backgroundValue]
-      : [];
+      : []),
+    ...(row.product.coverMode === 'upload' && row.product.coverValue ? [row.product.coverValue] : []),
+  ];
   const uploadKeyById = await getAdminMediaAssetStorageKeys(uploadIds);
 
   return toListItem(
@@ -858,6 +894,9 @@ export async function createAdminProductTranslation(input: TranslationCreateInpu
 
   await syncProductCategories(productId, next.categoryIds);
 
+  const [product] = await db.select().from(products).where(eq(products.id, productId)).limit(1);
+  if (!product) return null;
+
   const [translation] = await db
     .insert(productTranslations)
     .values({
@@ -884,14 +923,11 @@ export async function createAdminProductTranslation(input: TranslationCreateInpu
       eolDate: next.eolDate,
       lastTimeBuyDate: next.lastTimeBuyDate,
       efficiencyClass: next.efficiencyClass,
-      payload: next.payload,
+      payload: withProductCoverUrl(next.payload, product),
     })
     .returning();
 
   if (!translation) return null;
-
-  const [product] = await db.select().from(products).where(eq(products.id, productId)).limit(1);
-  if (!product) return null;
 
   return normalizeTranslationRow(product, translation);
 }
@@ -961,6 +997,9 @@ export async function updateAdminProductTranslation(translationId: string, input
 
   await syncProductCategories(existing.productId, next.categoryIds);
 
+  const [product] = await db.select().from(products).where(eq(products.id, existing.productId)).limit(1);
+  if (!product) return null;
+
   const [translation] = await db
     .update(productTranslations)
     .set({
@@ -985,16 +1024,13 @@ export async function updateAdminProductTranslation(translationId: string, input
       eolDate: next.eolDate,
       lastTimeBuyDate: next.lastTimeBuyDate,
       efficiencyClass: next.efficiencyClass,
-      payload: next.payload,
+      payload: withProductCoverUrl(next.payload, product),
       updatedAt: new Date(),
     })
     .where(eq(productTranslations.id, translationId))
     .returning();
 
   if (!translation) return null;
-
-  const [product] = await db.select().from(products).where(eq(products.id, existing.productId)).limit(1);
-  if (!product) return null;
 
   return normalizeTranslationRow(product, translation);
 }
@@ -1015,12 +1051,22 @@ export async function updateAdminProductShared(productId: string, input: Product
     backgroundMode,
     backgroundValue,
     showCoverOnBackground,
+    coverMode,
+    coverValue,
     ...productFields
   } = parsed;
 
   const backgroundWrite =
     backgroundMode !== undefined || backgroundValue !== undefined
       ? normalizeBackgroundWrite(backgroundMode, backgroundValue)
+      : null;
+
+  const coverWrite =
+    coverMode !== undefined || coverValue !== undefined
+      ? await resolveCoverFieldsForWrite({
+          coverMode: coverMode ?? '',
+          coverValue: coverValue ?? '',
+        })
       : null;
 
   const [product] = await db
@@ -1033,6 +1079,13 @@ export async function updateAdminProductShared(productId: string, input: Product
             backgroundMode: backgroundWrite.backgroundMode,
             backgroundValue: backgroundWrite.backgroundValue,
             backgroundImage: backgroundWrite.backgroundImage,
+          }
+        : {}),
+      ...(coverWrite
+        ? {
+            coverMode: coverWrite.coverMode,
+            coverValue: coverWrite.coverValue,
+            coverImage: coverWrite.coverImage,
           }
         : {}),
       ...(showCoverOnBackground !== undefined ? { showCoverOnBackground } : {}),
@@ -1053,6 +1106,23 @@ export async function updateAdminProductShared(productId: string, input: Product
         throw new Error('INVALID_BOARD_KEY');
       }
       throw error;
+    }
+  }
+
+  if (product && coverWrite) {
+    const translations = await db
+      .select()
+      .from(productTranslations)
+      .where(eq(productTranslations.productId, productId));
+    for (const translation of translations) {
+      const payload = payloadSchema.safeParse(translation.payload ?? defaultProductPayload());
+      const nextPayload = payload.success
+        ? { ...(payload.data as AdminProductPayload), coverUrl: coverWrite.coverImage }
+        : { ...defaultProductPayload(), coverUrl: coverWrite.coverImage };
+      await db
+        .update(productTranslations)
+        .set({ payload: nextPayload, updatedAt: new Date() })
+        .where(eq(productTranslations.id, translation.id));
     }
   }
 

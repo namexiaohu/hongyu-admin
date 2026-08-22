@@ -7,6 +7,7 @@ import type { AdminMediaAsset, MediaAssetType } from '@/lib/media-assets';
 import {
   LEGACY_BACKGROUND_MEDIA_TYPES,
   MEDIA_ASSET_TYPE_BACKGROUND,
+  MEDIA_ASSET_TYPE_COVER,
   MEDIA_ASSET_TYPES,
   isBackgroundMediaType,
   normalizeMediaAssetType,
@@ -71,6 +72,7 @@ export async function getAdminMediaAssetStorageKeys(ids: string[]) {
 
 const FOLDER_BY_TYPE: Record<string, string> = {
   [MEDIA_ASSET_TYPE_BACKGROUND]: 'backgrounds',
+  [MEDIA_ASSET_TYPE_COVER]: 'covers',
   partner_center_background: 'backgrounds',
   brand_narrative_background: 'backgrounds',
   solution_background: 'backgrounds',

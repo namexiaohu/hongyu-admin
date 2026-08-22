@@ -5,6 +5,7 @@ import { and, asc, desc, eq, inArray, ne, sql } from 'drizzle-orm';
 import { resolveBlogCategorySlug } from '@/lib/blog-categories';
 import { type EditorialContentPayload } from '@/lib/editorial-content';
 import { resolveOssAssetUrl, rewriteHtmlOssAssets } from '@/lib/oss-asset-url';
+import { resolveStorefrontCoverUrl } from '@/lib/cover-presets';
 import { normalizeSlug } from '@/lib/slug';
 import { db } from '@/server/db';
 import {
@@ -191,7 +192,12 @@ function mapListItem(
     slug: picked.slug,
     boardKey,
     boardName,
-    coverImage: resolveOssAssetUrl(content.coverImage) || null,
+    coverImage: resolveStorefrontCoverUrl({
+      mode: content.coverMode,
+      value: content.coverValue,
+      legacyCoverImageKey: content.coverImage,
+      toPublicUrl: resolveOssAssetUrl,
+    }) || null,
     author: buildAuthor(payload),
     createdAt: content.createdAt?.toISOString() ?? null,
     publishedAt: content.publishedAt?.toISOString() ?? null,
@@ -210,7 +216,12 @@ function mapRelatedItem(
     slug: picked.slug,
     boardKey,
     boardName,
-    coverImage: resolveOssAssetUrl(content.coverImage) || null,
+    coverImage: resolveStorefrontCoverUrl({
+      mode: content.coverMode,
+      value: content.coverValue,
+      legacyCoverImageKey: content.coverImage,
+      toPublicUrl: resolveOssAssetUrl,
+    }) || null,
     createdAt: content.createdAt?.toISOString() ?? null,
   };
 }
@@ -415,7 +426,12 @@ export async function getStorefrontInsightDetailBySlug(slugInput: string, locale
     category: payload.category,
     categorySlug: resolveBlogCategorySlug(payload.category),
     coverStyle: payload.coverStyle,
-    coverImage: resolveOssAssetUrl(content.coverImage) || null,
+    coverImage: resolveStorefrontCoverUrl({
+      mode: content.coverMode,
+      value: content.coverValue,
+      legacyCoverImageKey: content.coverImage,
+      toPublicUrl: resolveOssAssetUrl,
+    }) || null,
     author: buildAuthor(payload),
     seo: {
       title: picked.seoTitle,

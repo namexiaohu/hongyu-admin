@@ -60,6 +60,9 @@ export type AdminEditorialContentListItem = {
   boardKey: string;
   boardKeys: string[];
   coverImage: string;
+  coverMode: '' | 'preset' | 'upload';
+  coverValue: string;
+  coverPreviewUrl: string;
   status: EditorialEntryStatus;
   title: string;
   slug: string;
@@ -88,6 +91,9 @@ export type AdminEditorialContentTranslation = {
   seoDescription: string | null;
   publishedAt: string | null;
   coverImage: string;
+  coverMode: '' | 'preset' | 'upload';
+  coverValue: string;
+  coverPreviewUrl: string;
   payload: EditorialContentPayload;
   createdAt: string;
   updatedAt: string;

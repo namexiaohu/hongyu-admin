@@ -6,6 +6,7 @@ import {
   normalizeBackgroundWrite,
   resolveAdminBackgroundPreview,
 } from '@/lib/partner-center-background-presets';
+import { resolveAdminCoverPreview } from '@/lib/cover-presets';
 import { resolveOssAssetUrl, toOssStorageKey } from '@/lib/oss-asset-url';
 import {
   type AdminPartnerCenterDetail,
@@ -23,6 +24,7 @@ import type { ProductGalleryImage } from '@/lib/product-content';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import { normalizeSlug } from '@/lib/slug';
 import { getAdminMediaAssetStorageKeys } from '@/server/admin/media-assets';
+import { resolveCoverFieldsForWrite } from '@/server/admin/cover-images';
 import { db } from '@/server/db';
 import { partnerCenters, partnerCenterSurgeons, partnerCenterTranslations } from '@/server/db/schema';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
@@ -61,6 +63,13 @@ function mapListItem(
     uploadKeyById,
     toPublicUrl: resolveOssAssetUrl,
   });
+  const cover = resolveAdminCoverPreview({
+    mode: row.coverMode ?? '',
+    value: row.coverValue ?? '',
+    legacyCoverImageKey: row.coverImage ?? '',
+    uploadKeyById,
+    toPublicUrl: resolveOssAssetUrl,
+  });
 
   return {
     id: row.id,
@@ -69,6 +78,9 @@ function mapListItem(
     email: row.email ?? '',
     website: row.website ?? '',
     coverImage: row.coverImage,
+    coverMode: cover.mode,
+    coverValue: cover.value,
+    coverPreviewUrl: cover.previewUrl,
     gallery: (row.gallery ?? []) as ProductGalleryImage[],
     videoUrl: row.videoUrl ?? '',
     logo: row.logo,
@@ -128,9 +140,12 @@ async function syncPartnerCenterSurgeons(centerId: string, surgeonIds: string[])
 }
 
 async function loadUploadKeysForRows(rows: Array<typeof partnerCenters.$inferSelect>) {
-  const ids = rows
-    .filter((row) => row.backgroundMode === 'upload' && row.backgroundValue)
-    .map((row) => row.backgroundValue);
+  const ids = rows.flatMap((row) => {
+    const next: string[] = [];
+    if (row.backgroundMode === 'upload' && row.backgroundValue) next.push(row.backgroundValue);
+    if (row.coverMode === 'upload' && row.coverValue) next.push(row.coverValue);
+    return next;
+  });
   return getAdminMediaAssetStorageKeys(ids);
 }
 
@@ -202,12 +217,19 @@ export async function createAdminPartnerCenter(input: unknown) {
     backgroundImage = keys.get(bg.backgroundValue) ?? '';
   }
 
+  const cover = await resolveCoverFieldsForWrite({
+    coverMode: parsed.coverMode,
+    coverValue: parsed.coverValue,
+  });
+
   const [inserted] = await db.insert(partnerCenters).values({
     slug,
     region: parsed.region ?? 'asia-pacific',
     email: parsed.email?.trim() ?? '',
     website: parsed.website?.trim() ?? '',
-    coverImage: toOssStorageKey(parsed.coverImage ?? ''),
+    coverImage: cover.coverImage,
+    coverMode: cover.coverMode,
+    coverValue: cover.coverValue,
     gallery: normalizeGallery(parsed.gallery),
     videoUrl: normalizeVideoUrl(parsed.videoUrl),
     logo: toOssStorageKey(parsed.logo ?? ''),
@@ -259,12 +281,27 @@ export async function updateAdminPartnerCenter(id: string, input: unknown) {
     }
   }
 
+  const coverPatch: Partial<{
+    coverMode: string;
+    coverValue: string;
+    coverImage: string;
+  }> = {};
+  if (parsed.coverMode !== undefined || parsed.coverValue !== undefined) {
+    const cover = await resolveCoverFieldsForWrite({
+      coverMode: parsed.coverMode ?? current.coverMode,
+      coverValue: parsed.coverValue ?? current.coverValue,
+    });
+    coverPatch.coverMode = cover.coverMode;
+    coverPatch.coverValue = cover.coverValue;
+    coverPatch.coverImage = cover.coverImage;
+  }
+
   await db.update(partnerCenters).set({
     ...(parsed.slug !== undefined ? { slug: nextSlug } : {}),
     ...(parsed.region !== undefined ? { region: parsed.region } : {}),
     ...(parsed.email !== undefined ? { email: parsed.email.trim() } : {}),
     ...(parsed.website !== undefined ? { website: parsed.website.trim() } : {}),
-    ...(parsed.coverImage !== undefined ? { coverImage: toOssStorageKey(parsed.coverImage) } : {}),
+    ...coverPatch,
     ...(parsed.gallery !== undefined ? { gallery: normalizeGallery(parsed.gallery) } : {}),
     ...(parsed.videoUrl !== undefined ? { videoUrl: normalizeVideoUrl(parsed.videoUrl) } : {}),
     ...(parsed.logo !== undefined ? { logo: toOssStorageKey(parsed.logo) } : {}),

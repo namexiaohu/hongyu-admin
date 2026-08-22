@@ -1,14 +1,37 @@
 import { asc, inArray } from 'drizzle-orm';
 
 import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
+import { resolveStorefrontCoverUrl } from '@/lib/cover-presets';
 import { defaultProductPayload, type AdminProductPayload } from '@/lib/product-content';
 import { db } from '@/server/db';
-import { productTranslations } from '@/server/db/schema';
+import { products, productTranslations } from '@/server/db/schema';
 import type { StorefrontImage } from '@/server/storefront/types';
 
 import { DEFAULT_PRODUCT_LOCALE } from './resolve-product-translation';
 
 type ProductTranslationRow = typeof productTranslations.$inferSelect;
+
+export async function loadProductCoverFieldsByIds(productIds: string[]) {
+  if (!productIds.length) {
+    return new Map<string, {
+      coverMode: string | null;
+      coverValue: string | null;
+      coverImage: string | null;
+    }>();
+  }
+
+  const rows = await db
+    .select({
+      id: products.id,
+      coverMode: products.coverMode,
+      coverValue: products.coverValue,
+      coverImage: products.coverImage,
+    })
+    .from(products)
+    .where(inArray(products.id, productIds));
+
+  return new Map(rows.map((row) => [row.id, row]));
+}
 
 export async function loadProductTranslationsByProductIds(productIds: string[]) {
   if (!productIds.length) {
@@ -77,6 +100,35 @@ export function coverImageFromPayload(
   };
 }
 
+export function coverImageFromProductFields(
+  productId: string,
+  productName: string,
+  product: {
+    coverMode?: string | null;
+    coverValue?: string | null;
+    coverImage?: string | null;
+  },
+  payload: unknown,
+): StorefrontImage | null {
+  const fromFields = resolveStorefrontCoverUrl({
+    mode: product.coverMode,
+    value: product.coverValue,
+    legacyCoverImageKey: product.coverImage,
+    toPublicUrl: resolveOssAssetUrl,
+  });
+  if (fromFields) {
+    const data = normalizePayload(payload);
+    return {
+      id: `${productId}-cover`,
+      url: fromFields,
+      alt: data.coverAlt?.trim() || productName,
+      width: null,
+      height: null,
+    };
+  }
+  return coverImageFromPayload(productId, productName, payload);
+}
+
 export function galleryFromPayload(
   productId: string,
   productName: string,
@@ -99,9 +151,18 @@ export function resolveProductCoverImage(
   productName: string,
   tableImage: StorefrontImage | undefined | null,
   payload: unknown,
+  productCover?: {
+    coverMode?: string | null;
+    coverValue?: string | null;
+    coverImage?: string | null;
+  } | null,
 ): StorefrontImage | null {
   const normalizedTableImage = tableImage?.url?.trim() ? tableImage : null;
-  return normalizedTableImage ?? coverImageFromPayload(productId, productName, payload);
+  if (normalizedTableImage) return normalizedTableImage;
+  if (productCover) {
+    return coverImageFromProductFields(productId, productName, productCover, payload);
+  }
+  return coverImageFromPayload(productId, productName, payload);
 }
 
 /** Ensure storefront gallery leads with the resolved cover image. */

@@ -5,6 +5,7 @@ import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm';
 import type { SolutionBlockDraft, SolutionBlockLocaleCopy } from '@/lib/solution-blocks';
 import { isSummaryIcon, pickBlockLocaleCopy, summaryItemUsesCoverImage } from '@/lib/solution-blocks';
 import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
+import { resolveStorefrontCoverUrl } from '@/lib/cover-presets';
 import {
   resolvePartnerCenterBackgroundDisplay,
 } from '@/lib/partner-center-background-presets';
@@ -23,7 +24,7 @@ import {
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
 import { getAdminMediaAssetStorageKeys } from '@/server/admin/media-assets';
 import {
-  coverImageFromPayload,
+  coverImageFromProductFields,
   loadProductTranslationsByProductIds,
   pickProductTranslation,
 } from '@/server/products/load-product-translations';
@@ -174,7 +175,12 @@ function mapSummarySection(block: SolutionBlockDraft, locale: string) {
     const itemCopy = pickLocaleCopy(item.locales, locale);
     return {
       icon: isSummaryIcon(item.icon) ? item.icon : null,
-      image: resolveOssAssetUrl(item.coverImage ?? ''),
+      image: resolveStorefrontCoverUrl({
+        mode: item.coverMode,
+        value: item.coverValue,
+        legacyCoverImageKey: item.coverImage,
+        toPublicUrl: resolveOssAssetUrl,
+      }),
       imageAlt: text(itemCopy.largeTitle, itemCopy.smallTitle),
       title: text(itemCopy.largeTitle, itemCopy.smallTitle) || ' ',
       body: text(itemCopy.description, ' '),
@@ -218,10 +224,16 @@ async function mapRelatedProductsSection(
   if (!productIds.length) return null;
 
   const activeRows = await db
-    .select({ id: products.id })
+    .select({
+      id: products.id,
+      coverMode: products.coverMode,
+      coverValue: products.coverValue,
+      coverImage: products.coverImage,
+    })
     .from(products)
     .where(and(inArray(products.id, productIds), eq(products.status, 'active')));
   const activeIdSet = new Set(activeRows.map((row) => row.id));
+  const coverById = new Map(activeRows.map((row) => [row.id, row]));
   if (!activeIdSet.size) return null;
 
   const translationMap = await loadProductTranslationsByProductIds(
@@ -232,7 +244,7 @@ async function mapRelatedProductsSection(
     if (!activeIdSet.has(id)) return [];
     const translation = pickProductTranslation(translationMap.get(id), locale);
     if (!translation) return [];
-    const cover = coverImageFromPayload(id, translation.name, translation.payload);
+    const cover = coverImageFromProductFields(id, translation.name, coverById.get(id) ?? {}, translation.payload);
     return [{
       slug: translation.slug,
       href: `/products/${translation.slug}`,
@@ -323,7 +335,7 @@ async function loadFirstBoardLabel(solutionId: string, locale: string) {
 
 function mapListItem(
   slug: string,
-  coverImage: string,
+  cover: { coverMode?: string | null; coverValue?: string | null; coverImage?: string | null },
   translation: typeof solutionTranslations.$inferSelect,
   board: { name: string; slug: string },
 ): StorefrontSolutionListItem {
@@ -331,7 +343,12 @@ function mapListItem(
   return {
     slug,
     href: `/solutions/${slug}`,
-    coverImage: resolveOssAssetUrl(coverImage),
+    coverImage: resolveStorefrontCoverUrl({
+      mode: cover.coverMode,
+      value: cover.coverValue,
+      legacyCoverImageKey: cover.coverImage,
+      toPublicUrl: resolveOssAssetUrl,
+    }),
     badgeText: text(translation.badgeText),
     categorySlug: board.slug,
     categoryLabel: board.name || board.slug,
@@ -403,7 +420,12 @@ export async function getStorefrontSolutionBySlug(
       eyebrow: board.name ? `Solution · ${board.name}` : 'Solution',
       title: headline,
       lead: text(translation.description),
-      image: resolveOssAssetUrl(row.coverImage),
+      image: resolveStorefrontCoverUrl({
+        mode: row.coverMode,
+        value: row.coverValue,
+        legacyCoverImageKey: row.coverImage,
+        toPublicUrl: resolveOssAssetUrl,
+      }),
       imageAlt: headline,
       backgroundImage: bg.imageUrl,
       backgroundSolidCss: bg.solidCss,
@@ -498,7 +520,7 @@ export async function getStorefrontSolutionsList(input: {
     if (!boardEntries.length) {
       // Solution not linked to any board — include in "all" only
       return [{
-        item: mapListItem(entry.solution.slug, entry.solution.coverImage, translation, { name: '', slug: '' }),
+        item: mapListItem(entry.solution.slug, entry.solution, translation, { name: '', slug: '' }),
         boardKeys: [] as string[],
       }];
     }
@@ -512,7 +534,7 @@ export async function getStorefrontSolutionsList(input: {
     };
 
     return [{
-      item: mapListItem(entry.solution.slug, entry.solution.coverImage, translation, board),
+      item: mapListItem(entry.solution.slug, entry.solution, translation, board),
       boardKeys: boardEntries.map((b) => b.key),
     }];
   });
@@ -657,7 +679,7 @@ export async function getStorefrontRandomSolutions(input: {
     const translation = pickLocaleRow(translations, locale);
     if (!translation) continue;
     const board = await loadFirstBoardLabel(row.id, locale);
-    items.push(mapListItem(row.slug, row.coverImage, translation, board));
+    items.push(mapListItem(row.slug, row, translation, board));
   }
   return items;
 }

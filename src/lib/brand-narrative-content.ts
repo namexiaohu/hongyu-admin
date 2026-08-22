@@ -48,6 +48,9 @@ export type AdminBrandNarrativeListItem = {
   sortOrder: number;
   status: BrandNarrativeStatus;
   coverImage: string;
+  coverMode: '' | 'preset' | 'upload';
+  coverValue: string;
+  coverPreviewUrl: string;
   gallery: ProductGalleryImage[];
   videoUrl: string;
   backgroundMode: '' | 'solid' | 'preset' | 'upload';
@@ -91,9 +94,13 @@ const localeCopySchema = z.object({
   trainingCycle: z.string().optional().default(''),
 });
 
+const coverModeSchema = z.enum(['preset', 'upload', '']);
+
 const blockItemSchema = z.object({
   id: z.string().trim().min(1),
   icon: z.enum(brandNarrativeSummaryIcons).optional(),
+  coverMode: coverModeSchema.optional(),
+  coverValue: z.string().optional(),
   coverImage: z.string().optional(),
   locales: z.record(localeCopySchema).optional(),
 });
@@ -145,6 +152,8 @@ export const adminBrandNarrativePatchSchema = z.object({
   status: z.enum(brandNarrativeStatuses).optional(),
   sortOrder: z.number().int().optional(),
   coverImage: z.string().optional(),
+  coverMode: coverModeSchema.optional(),
+  coverValue: z.string().optional(),
   gallery: z.array(galleryItemSchema).optional(),
   videoUrl: z.string().optional(),
   backgroundMode: backgroundModeSchema.optional(),
@@ -158,6 +167,8 @@ export const adminBrandNarrativeCreateSchema = z.object({
   slug: z.string().trim().min(1).max(64),
   status: z.enum(brandNarrativeStatuses).optional(),
   coverImage: z.string().optional().default(''),
+  coverMode: coverModeSchema.optional().default(''),
+  coverValue: z.string().optional().default(''),
   gallery: z.array(galleryItemSchema).optional().default([]),
   videoUrl: z.string().optional().default(''),
   backgroundMode: backgroundModeSchema.optional().default(''),

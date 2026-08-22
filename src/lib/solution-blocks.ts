@@ -49,7 +49,11 @@ export type SolutionBlockLocaleCopy = {
 export type SolutionBlockItemDraft = {
   id: string;
   icon?: SolutionSummaryIcon;
+  coverMode?: '' | 'preset' | 'upload';
+  coverValue?: string;
   coverImage?: string;
+  /** Admin-only resolved preview URL */
+  coverPreviewUrl?: string;
   locales?: Record<string, SolutionBlockLocaleCopy>;
 };
 

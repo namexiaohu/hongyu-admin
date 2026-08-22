@@ -15,6 +15,13 @@
       "when": 1787307000000,
       "tag": "0001_entity_gallery_video",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787374611105,
+      "tag": "0002_cover_optionization",
+      "breakpoints": true
     }
   ]
 }

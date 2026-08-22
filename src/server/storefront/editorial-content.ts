@@ -7,6 +7,7 @@ import {
   type EditorialContentPayload,
 } from '@/lib/editorial-content';
 import { resolveOssAssetUrl, rewriteHtmlOssAssets } from '@/lib/oss-asset-url';
+import { resolveStorefrontCoverUrl } from '@/lib/cover-presets';
 import { db } from '@/server/db';
 import {
   editorialContentBoards,
@@ -170,7 +171,12 @@ export async function getStorefrontBoardBlogs(boardKeyInput: string, localeInput
       category: payload.category,
       categorySlug: resolveBlogCategorySlug(payload.category),
       coverStyle: payload.coverStyle,
-      coverImage: resolveOssAssetUrl(content.coverImage) || null,
+      coverImage: resolveStorefrontCoverUrl({
+        mode: content.coverMode,
+        value: content.coverValue,
+        legacyCoverImageKey: content.coverImage,
+        toPublicUrl: resolveOssAssetUrl,
+      }) || null,
       author: buildAuthor(payload),
       tags: payload.tags,
       publishedAt: content.publishedAt?.toISOString() ?? null,

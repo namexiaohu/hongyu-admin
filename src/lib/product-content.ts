@@ -49,6 +49,9 @@ export type AdminProductListItem = {
   slug: string;
   spu: string;
   coverUrl: string | null;
+  coverMode: '' | 'preset' | 'upload';
+  coverValue: string;
+  coverPreviewUrl: string;
   purchaseMode: ProductPurchaseMode;
   stockQuantity: number;
   price: string;
@@ -105,6 +108,9 @@ export type AdminProductTranslation = {
   lastTimeBuyDate: string | null;
   efficiencyClass: string | null;
   payload: AdminProductPayload;
+  coverMode: '' | 'preset' | 'upload';
+  coverValue: string;
+  coverPreviewUrl: string;
   spu: string;
   brandId: string | null;
   defaultCategoryId: string | null;

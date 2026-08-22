@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import type { CoverImageMode } from '@/lib/cover-presets';
 import type { PartnerCenterBackgroundMode } from '@/lib/partner-center-background-presets';
 import type { ProductGalleryImage } from '@/lib/product-content';
 
@@ -37,6 +38,9 @@ export type AdminPartnerCenterListItem = {
   email: string;
   website: string;
   coverImage: string;
+  coverMode: CoverImageMode;
+  coverValue: string;
+  coverPreviewUrl: string;
   gallery: ProductGalleryImage[];
   videoUrl: string;
   logo: string;
@@ -100,6 +104,7 @@ export const adminPartnerCenterTranslationSchema = z.object({
 export const adminPartnerCenterTranslationPatchSchema = adminPartnerCenterTranslationSchema.partial();
 
 const backgroundModeSchema = z.enum(['solid', 'preset', 'upload', '']);
+const coverModeSchema = z.enum(['preset', 'upload', '']);
 
 const galleryItemSchema = z.object({
   url: z.string().trim().min(1),
@@ -114,6 +119,8 @@ export const adminPartnerCenterPatchSchema = z.object({
   email: z.string().optional(),
   website: z.string().optional(),
   coverImage: z.string().optional(),
+  coverMode: coverModeSchema.optional(),
+  coverValue: z.string().optional(),
   gallery: z.array(galleryItemSchema).optional(),
   videoUrl: z.string().optional(),
   logo: z.string().optional(),
@@ -130,6 +137,8 @@ export const adminPartnerCenterCreateSchema = z.object({
   email: z.string().optional().default(''),
   website: z.string().optional().default(''),
   coverImage: z.string().optional().default(''),
+  coverMode: coverModeSchema.optional().default(''),
+  coverValue: z.string().optional().default(''),
   gallery: z.array(galleryItemSchema).optional().default([]),
   videoUrl: z.string().optional().default(''),
   logo: z.string().optional().default(''),

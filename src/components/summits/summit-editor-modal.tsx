@@ -8,6 +8,10 @@ import { useEffect, useState, useTransition } from 'react';
 import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
 import { ContentTranslateButton } from '@/components/admin/content-translate-button';
 import { CoverImageField } from '@/components/editorial/cover-image-field';
+import {
+  CoverOptionField,
+  type CoverOptionValue,
+} from '@/components/shared/cover-option-field';
 import { applyNonemptyTranslatedFields } from '@/lib/content-translate-config';
 import { deserializeSpeakers, serializeSpeakers } from '@/lib/content-translate-serialize';
 import { AgendaGroupDrawer } from '@/components/summits/agenda-group-drawer';
@@ -41,7 +45,7 @@ type SharedFormValues = {
   status: string;
   startDate: dayjs.Dayjs | null;
   endDate: dayjs.Dayjs | null;
-  coverImage: string;
+  cover: CoverOptionValue;
   venueImage: string;
 };
 
@@ -152,7 +156,11 @@ export function SummitEditorModal({ open, detail, activeLanguages, onClose, onSa
       status: detail?.status ?? 'upcoming',
       startDate: detail?.startDate ? dayjs(detail.startDate) : null,
       endDate: detail?.endDate ? dayjs(detail.endDate) : null,
-      coverImage: detail?.coverImage ?? '',
+      cover: {
+        mode: detail?.coverMode ?? '',
+        value: detail?.coverValue ?? '',
+        previewUrl: detail?.coverPreviewUrl ?? '',
+      },
       venueImage: detail?.venueImage ?? '',
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -212,7 +220,8 @@ export function SummitEditorModal({ open, detail, activeLanguages, onClose, onSa
           status: shared.status ?? 'upcoming',
           startDate: shared.startDate ? (shared.startDate as dayjs.Dayjs).toISOString() : null,
           endDate: shared.endDate ? (shared.endDate as dayjs.Dayjs).toISOString() : null,
-          coverImage: shared.coverImage?.trim() ?? '',
+          coverMode: shared.cover?.mode ?? '',
+          coverValue: shared.cover?.value?.trim() ?? '',
           venueImage: shared.venueImage?.trim() ?? '',
           agenda,
         };
@@ -325,8 +334,12 @@ export function SummitEditorModal({ open, detail, activeLanguages, onClose, onSa
                   <DatePicker showTime format="YYYY-MM-DD HH:mm" style={{ width: '100%' }} />
                 </Form.Item>
               </div>
-              <Form.Item name="coverImage" label="封面图（各语言共用）" getValueFromEvent={(v: string | null) => v ?? ''}>
-                <CoverImageField folder="summits/covers" />
+              <Form.Item
+                name="cover"
+                label="封面图（各语言共用）"
+                getValueFromEvent={(v: CoverOptionValue | null) => v ?? { mode: '', value: '', previewUrl: '' }}
+              >
+                <CoverOptionField />
               </Form.Item>
               <Form.Item name="venueImage" label="地点图（各语言共用）" getValueFromEvent={(v: string | null) => v ?? ''}>
                 <CoverImageField folder="summits/venues" />

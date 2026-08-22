@@ -49,7 +49,11 @@ export type BrandNarrativeBlockLocaleCopy = {
 export type BrandNarrativeBlockItemDraft = {
   id: string;
   icon?: BrandNarrativeSummaryIcon;
+  coverMode?: '' | 'preset' | 'upload';
+  coverValue?: string;
   coverImage?: string;
+  /** Admin-only resolved preview URL */
+  coverPreviewUrl?: string;
   locales?: Record<string, BrandNarrativeBlockLocaleCopy>;
 };
 

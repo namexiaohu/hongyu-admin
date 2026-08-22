@@ -13,11 +13,15 @@ import {
   resolveSummitDisplayTitle,
 } from '@/lib/summit-content';
 import type { AgendaGroup, SpeakerItem } from '@/server/db/schema';
+import { resolveAdminCoverPreview } from '@/lib/cover-presets';
+import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import { normalizeSlug } from '@/lib/slug';
 import { db } from '@/server/db';
 import { summits, summitTranslations } from '@/server/db/schema';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
+import { getAdminMediaAssetStorageKeys } from '@/server/admin/media-assets';
+import { resolveCoverFieldsForWrite } from '@/server/admin/cover-images';
 
 function toIso(value: Date | null | undefined): string | null {
   return value ? value.toISOString() : null;
@@ -27,7 +31,15 @@ function mapListItem(
   row: typeof summits.$inferSelect,
   title: string,
   localeCount: number,
+  uploadKeyById: Map<string, string>,
 ): AdminSummitListItem {
+  const cover = resolveAdminCoverPreview({
+    mode: row.coverMode ?? '',
+    value: row.coverValue ?? '',
+    legacyCoverImageKey: row.coverImage ?? '',
+    uploadKeyById,
+    toPublicUrl: resolveOssAssetUrl,
+  });
   return {
     id: row.id,
     slug: row.slug,
@@ -35,6 +47,9 @@ function mapListItem(
     startDate: toIso(row.startDate),
     endDate: toIso(row.endDate),
     coverImage: row.coverImage,
+    coverMode: cover.mode,
+    coverValue: cover.value,
+    coverPreviewUrl: cover.previewUrl,
     venueImage: row.venueImage,
     sortOrder: row.sortOrder,
     title,
@@ -65,10 +80,11 @@ function mapDetail(
   row: typeof summits.$inferSelect,
   translations: Array<typeof summitTranslations.$inferSelect>,
   defaultLocale: string,
+  uploadKeyById: Map<string, string>,
 ): AdminSummitDetail {
   const display = pickTranslationForDisplay(translations, defaultLocale);
   return {
-    ...mapListItem(row, resolveSummitDisplayTitle(display, row.slug), translations.length),
+    ...mapListItem(row, resolveSummitDisplayTitle(display, row.slug), translations.length, uploadKeyById),
     agenda: (row.agenda ?? []) as AgendaGroup[],
     translations: translations.map(mapTranslation),
   };
@@ -77,6 +93,9 @@ function mapDetail(
 export async function getAdminSummitList() {
   const defaultLocale = await getDefaultSiteLanguageCode();
   const rows = await db.select().from(summits).orderBy(asc(summits.sortOrder), asc(summits.slug));
+  const uploadKeyById = await getAdminMediaAssetStorageKeys(
+    rows.filter((row) => row.coverMode === 'upload' && row.coverValue).map((row) => row.coverValue),
+  );
 
   const ids = rows.map((r) => r.id);
   const translations = ids.length
@@ -93,7 +112,7 @@ export async function getAdminSummitList() {
   const items = rows.map((row) => {
     const rowT = byId.get(row.id) ?? [];
     const display = pickTranslationForDisplay(rowT, defaultLocale);
-    return mapListItem(row, resolveSummitDisplayTitle(display, row.slug), rowT.length);
+    return mapListItem(row, resolveSummitDisplayTitle(display, row.slug), rowT.length, uploadKeyById);
   });
 
   return { items, total: items.length };
@@ -107,7 +126,10 @@ export async function getAdminSummitDetail(id: string): Promise<AdminSummitDetai
     .where(eq(summitTranslations.summitId, id))
     .orderBy(asc(summitTranslations.locale));
   const defaultLocale = await getDefaultSiteLanguageCode();
-  return mapDetail(row, translations, defaultLocale);
+  const uploadKeyById = await getAdminMediaAssetStorageKeys(
+    row.coverMode === 'upload' && row.coverValue ? [row.coverValue] : [],
+  );
+  return mapDetail(row, translations, defaultLocale, uploadKeyById);
 }
 
 export async function createAdminSummit(input: unknown) {
@@ -120,12 +142,19 @@ export async function createAdminSummit(input: unknown) {
 
   const [maxSort] = await db.select({ sortOrder: summits.sortOrder }).from(summits).orderBy(desc(summits.sortOrder)).limit(1);
 
+  const cover = await resolveCoverFieldsForWrite({
+    coverMode: parsed.coverMode,
+    coverValue: parsed.coverValue,
+  });
+
   const [inserted] = await db.insert(summits).values({
     slug,
     status: parsed.status ?? 'upcoming',
     startDate: parsed.startDate ? new Date(parsed.startDate) : null,
     endDate: parsed.endDate ? new Date(parsed.endDate) : null,
-    coverImage: parsed.coverImage ?? '',
+    coverImage: cover.coverImage,
+    coverMode: cover.coverMode,
+    coverValue: cover.coverValue,
     venueImage: parsed.venueImage ?? '',
     agenda: (parsed.agenda ?? []) as AgendaGroup[],
     sortOrder: parsed.sortOrder ?? (maxSort?.sortOrder ?? 0) + 10,
@@ -151,12 +180,23 @@ export async function updateAdminSummit(id: string, input: unknown) {
     }
   }
 
+  const coverPatch: Partial<{ coverMode: string; coverValue: string; coverImage: string }> = {};
+  if (parsed.coverMode !== undefined || parsed.coverValue !== undefined) {
+    const cover = await resolveCoverFieldsForWrite({
+      coverMode: parsed.coverMode ?? current.coverMode,
+      coverValue: parsed.coverValue ?? current.coverValue,
+    });
+    coverPatch.coverMode = cover.coverMode;
+    coverPatch.coverValue = cover.coverValue;
+    coverPatch.coverImage = cover.coverImage;
+  }
+
   await db.update(summits).set({
     ...(parsed.slug !== undefined ? { slug: nextSlug } : {}),
     ...(parsed.status !== undefined ? { status: parsed.status } : {}),
     ...(parsed.startDate !== undefined ? { startDate: parsed.startDate ? new Date(parsed.startDate) : null } : {}),
     ...(parsed.endDate !== undefined ? { endDate: parsed.endDate ? new Date(parsed.endDate) : null } : {}),
-    ...(parsed.coverImage !== undefined ? { coverImage: parsed.coverImage } : {}),
+    ...coverPatch,
     ...(parsed.venueImage !== undefined ? { venueImage: parsed.venueImage } : {}),
     ...(parsed.agenda !== undefined ? { agenda: parsed.agenda as AgendaGroup[] } : {}),
     ...(parsed.sortOrder !== undefined ? { sortOrder: parsed.sortOrder } : {}),

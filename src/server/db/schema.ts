@@ -412,6 +412,11 @@ export const products = pgTable(
     /** solid token | preset id | media_assets.id */
     backgroundValue: text('background_value').notNull().default(''),
     showCoverOnBackground: boolean('show_cover_on_background').notNull().default(true),
+    coverImage: text('cover_image').notNull().default(''),
+    /** preset | upload | '' */
+    coverMode: text('cover_mode').notNull().default(''),
+    /** preset id | media_assets.id */
+    coverValue: text('cover_value').notNull().default(''),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -1213,6 +1218,10 @@ export const editorialContents = pgTable(
     contentModule: editorialContentModuleEnum('content_module').notNull().default('editorial'),
     boardKey: varchar('board_key', { length: 100 }).notNull().default('content'),
     coverImage: text('cover_image').notNull().default(''),
+    /** preset | upload | '' */
+    coverMode: text('cover_mode').notNull().default(''),
+    /** preset id | media_assets.id */
+    coverValue: text('cover_value').notNull().default(''),
     status: cmsStatusEnum('status').notNull().default('draft'),
     publishedAt: timestamp('published_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -1376,6 +1385,10 @@ export const brandNarratives = pgTable(
     status: cmsStatusEnum('status').notNull().default('draft'),
     publishedAt: timestamp('published_at', { withTimezone: true }),
     coverImage: text('cover_image').notNull().default(''),
+    /** preset | upload | '' */
+    coverMode: text('cover_mode').notNull().default(''),
+    /** preset id | media_assets.id */
+    coverValue: text('cover_value').notNull().default(''),
     gallery: jsonb('gallery').$type<ProductGalleryImage[]>().notNull().default([]),
     videoUrl: text('video_url').notNull().default(''),
     /** @deprecated use backgroundMode + backgroundValue */
@@ -1441,6 +1454,10 @@ export const solutions = pgTable(
     status: cmsStatusEnum('status').notNull().default('draft'),
     publishedAt: timestamp('published_at', { withTimezone: true }),
     coverImage: text('cover_image').notNull().default(''),
+    /** preset | upload | '' */
+    coverMode: text('cover_mode').notNull().default(''),
+    /** preset id | media_assets.id */
+    coverValue: text('cover_value').notNull().default(''),
     gallery: jsonb('gallery').$type<ProductGalleryImage[]>().notNull().default([]),
     videoUrl: text('video_url').notNull().default(''),
     /** @deprecated use backgroundMode + backgroundValue */
@@ -1577,6 +1594,10 @@ export const summits = pgTable(
     startDate: timestamp('start_date', { withTimezone: true }),
     endDate: timestamp('end_date', { withTimezone: true }),
     coverImage: text('cover_image').notNull().default(''),
+    /** preset | upload | '' */
+    coverMode: text('cover_mode').notNull().default(''),
+    /** preset id | media_assets.id */
+    coverValue: text('cover_value').notNull().default(''),
     venueImage: text('venue_image').notNull().default(''),
     agenda: jsonb('agenda').$type<AgendaGroup[]>().notNull().default([]),
     sortOrder: integer('sort_order').notNull().default(0),
@@ -1651,6 +1672,10 @@ export const partnerCenters = pgTable(
     email: varchar('email', { length: 255 }).notNull().default(''),
     website: varchar('website', { length: 300 }).notNull().default(''),
     coverImage: text('cover_image').notNull().default(''),
+    /** preset | upload | '' */
+    coverMode: text('cover_mode').notNull().default(''),
+    /** preset id | media_assets.id */
+    coverValue: text('cover_value').notNull().default(''),
     gallery: jsonb('gallery').$type<ProductGalleryImage[]>().notNull().default([]),
     videoUrl: text('video_url').notNull().default(''),
     logo: text('logo').notNull().default(''),

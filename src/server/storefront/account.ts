@@ -4,6 +4,7 @@ import { normalizeLocale, type Locale } from '@/lib/i18n';
 import { db } from '@/server/db';
 import { productCurrencyCodeSql, productNameSql, productPriceSql, productShortDescriptionSql, productSlugSql, productStockQuantitySql } from '@/server/products/resolve-product-translation';
 import {
+  loadProductCoverFieldsByIds,
   loadProductTranslationsByProductIds,
   pickProductTranslation,
   resolveProductCoverImage,
@@ -334,6 +335,7 @@ export async function getWishlistByUser(userId: string, localeInput?: string | n
     ]),
   );
   const translationsByProductId = await loadProductTranslationsByProductIds(productIds);
+  const coverByProductId = await loadProductCoverFieldsByIds(productIds);
 
   return rows.map((row) => {
     const translation = pickProductTranslation(translationsByProductId.get(row.productId), locale);
@@ -342,6 +344,7 @@ export async function getWishlistByUser(userId: string, localeInput?: string | n
       row.name,
       tableImageByProductId.get(row.productId),
       translation?.payload,
+      coverByProductId.get(row.productId),
     );
 
     return {

@@ -10,6 +10,7 @@ import {
   type PartnerCenterBackgroundMode,
   resolvePartnerCenterBackgroundDisplay,
 } from '@/lib/partner-center-background-presets';
+import { resolveStorefrontCoverUrl } from '@/lib/cover-presets';
 import type { SurgeonGradeKey } from '@/lib/surgeon-content';
 import { getAdminMediaAssetStorageKeys } from '@/server/admin/media-assets';
 import { db } from '@/server/db';
@@ -139,7 +140,13 @@ function mapCenterItem(
 
   return {
     slug: row.slug,
-    coverImage: resolveOssAssetUrl(row.coverImage),
+    coverImage: resolveStorefrontCoverUrl({
+      mode: row.coverMode,
+      value: row.coverValue,
+      legacyCoverImageKey: row.coverImage,
+      uploadKeyById,
+      toPublicUrl: resolveOssAssetUrl,
+    }),
     gallery: ((row.gallery ?? []) as Array<{ url?: string; alt?: string }>)
       .map((item) => ({
         url: item.url?.trim() ? resolveOssAssetUrl(item.url) : '',
@@ -170,9 +177,12 @@ function mapCenterItem(
 }
 
 async function loadUploadKeysForCenterRows(rows: Array<typeof partnerCenters.$inferSelect>) {
-  const ids = rows
-    .filter((row) => row.backgroundMode === 'upload' && row.backgroundValue)
-    .map((row) => row.backgroundValue);
+  const ids = rows.flatMap((row) => {
+    const next: string[] = [];
+    if (row.backgroundMode === 'upload' && row.backgroundValue) next.push(row.backgroundValue);
+    if (row.coverMode === 'upload' && row.coverValue) next.push(row.coverValue);
+    return next;
+  });
   return getAdminMediaAssetStorageKeys(ids);
 }
 
@@ -264,7 +274,12 @@ async function loadRelatedCenters(input: {
     const display = localeMatch ?? pickTranslationForDisplay(rowT, input.defaultLocale);
     return {
       slug: row.slug,
-      coverImage: resolveOssAssetUrl(row.coverImage),
+      coverImage: resolveStorefrontCoverUrl({
+        mode: row.coverMode,
+        value: row.coverValue,
+        legacyCoverImageKey: row.coverImage,
+        toPublicUrl: resolveOssAssetUrl,
+      }),
       name: display?.name ?? row.slug,
       location: display?.location ?? '',
     };

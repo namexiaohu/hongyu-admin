@@ -3,6 +3,7 @@ import 'server-only';
 import { asc, desc, eq, inArray } from 'drizzle-orm';
 
 import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
+import { resolveStorefrontCoverUrl } from '@/lib/cover-presets';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import { localizeAgendaGroups, type AgendaGroup, type SpeakerItem, type SummitStatus } from '@/lib/summit-content';
 import { db } from '@/server/db';
@@ -66,7 +67,12 @@ function mapToItem(
     status: row.status as SummitStatus,
     startDate: toIso(row.startDate),
     endDate: toIso(row.endDate),
-    coverImage: resolveOssAssetUrl(row.coverImage),
+    coverImage: resolveStorefrontCoverUrl({
+      mode: row.coverMode,
+      value: row.coverValue,
+      legacyCoverImageKey: row.coverImage,
+      toPublicUrl: resolveOssAssetUrl,
+    }),
     title: t?.title ?? row.slug,
     description: t?.description ?? '',
     scale: t?.scale ?? '',

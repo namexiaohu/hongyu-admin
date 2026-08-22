@@ -14,6 +14,7 @@ import { getCountryContinentByIso } from '@/server/geo/country-continents';
 import { getSiteSettings } from '@/server/site/settings';
 import { db } from '@/server/db';
 import {
+  loadProductCoverFieldsByIds,
   loadProductTranslationsByProductIds,
   pickProductTranslation,
   resolveProductCoverImage,
@@ -256,6 +257,7 @@ export async function getCartDetail(cartId: string, localeInput?: string | null)
   }
 
   const translationsByProductId = await loadProductTranslationsByProductIds(productIds);
+  const coverByProductId = await loadProductCoverFieldsByIds(productIds);
 
   const pricedItems = items.map((item) => {
     const basePriceAmount = Number(item.basePrice);
@@ -329,6 +331,7 @@ export async function getCartDetail(cartId: string, localeInput?: string | null)
         item.productName,
         firstImageByProductId.get(item.productId),
         translation?.payload,
+        coverByProductId.get(item.productId),
       );
       return {
         id: item.id,
@@ -397,6 +400,9 @@ export async function buildBuyNowCartPreview(input: {
       spu: products.spu,
       shortDescription: productShortDescriptionSql(products.id, locale),
       stockQuantity: productStockQuantitySql(products.id, locale),
+      coverMode: products.coverMode,
+      coverValue: products.coverValue,
+      coverImageKey: products.coverImage,
       currencyCode: productCurrencyCodeSql(products.id, locale),
       basePrice: productPriceSql(products.id, locale),
       compareAtPrice: productCompareAtPriceSql(products.id, locale),
@@ -437,6 +443,11 @@ export async function buildBuyNowCartPreview(input: {
     product.productName,
     imageRow ? { id: imageRow.id, url: imageRow.url, alt: imageRow.alt, width: imageRow.width, height: imageRow.height } : undefined,
     translation?.payload,
+    {
+      coverMode: product.coverMode,
+      coverValue: product.coverValue,
+      coverImage: product.coverImageKey,
+    },
   );
 
   const featureSelections = validation.featureSelections;
@@ -1136,6 +1147,7 @@ export async function buildQuoteCartPreview(input: {
   }
 
   const translationsByProductId = await loadProductTranslationsByProductIds(productIds);
+  const coverByProductId = await loadProductCoverFieldsByIds(productIds);
   let subtotal = 0;
   let listSubtotal = 0;
   const currencyCode = inquiry.quotedLines[0]?.currency ?? 'USD';
@@ -1163,6 +1175,7 @@ export async function buildQuoteCartPreview(input: {
       quotedLine.name || product.productName,
       imageRow ? { id: imageRow.id, url: imageRow.url, alt: imageRow.alt, width: imageRow.width, height: imageRow.height } : undefined,
       translation?.payload,
+      coverByProductId.get(quotedLine.productId),
     );
 
     items.push({

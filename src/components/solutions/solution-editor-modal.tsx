@@ -7,11 +7,14 @@ import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 
 import { ContentTranslateButton } from '@/components/admin/content-translate-button';
 import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
-import { CoverImageField } from '@/components/editorial/cover-image-field';
 import {
   PartnerCenterBackgroundField,
   type PartnerCenterBackgroundValue,
 } from '@/components/partner-centers/partner-center-background-field';
+import {
+  CoverOptionField,
+  type CoverOptionValue,
+} from '@/components/shared/cover-option-field';
 import { ProductBoardMultiSelect, type ProductBoardOption } from '@/components/products/product-board-multi-select';
 import { ProductGalleryField } from '@/components/products/product-gallery-field';
 import { ProductVideoField } from '@/components/products/product-video-field';
@@ -102,7 +105,7 @@ type LocaleDraft = {
 };
 
 type SharedFormValues = {
-  coverImage: string;
+  cover: CoverOptionValue;
   gallery: ProductGalleryImage[];
   videoUrl: string;
   slug: string;
@@ -406,7 +409,11 @@ export function SolutionEditorModal({
     blocksRef.current = detail?.blocks ?? [];
     form.setFieldsValue(draftToFormValues(nextDrafts[firstLocale] ?? emptyDraft()));
     sharedForm.setFieldsValue({
-      coverImage: detail?.coverImage ?? '',
+      cover: {
+        mode: detail?.coverMode ?? '',
+        value: detail?.coverValue ?? '',
+        previewUrl: detail?.coverPreviewUrl ?? '',
+      },
       gallery: detail?.gallery ?? [],
       videoUrl: detail?.videoUrl ?? '',
       slug: detail?.slug ?? '',
@@ -502,14 +509,23 @@ export function SolutionEditorModal({
           return next;
         })();
 
-        const coverImage = sharedValues.coverImage?.trim() ?? '';
+        const coverMode = sharedValues.cover?.mode ?? '';
+        const coverValue = sharedValues.cover?.value?.trim() ?? '';
         const gallery = (sharedValues.gallery ?? []).filter((item) => item.url?.trim());
         const videoUrl = sharedValues.videoUrl?.trim() ?? '';
         const materials = (sharedValues.materials ?? []).filter((item) => item.url?.trim());
         const showCoverOnBackground = Boolean(sharedValues.showCoverOnBackground);
         const backgroundMode = sharedValues.background?.mode ?? '';
         const backgroundValue = sharedValues.background?.value?.trim() ?? '';
-        const sharedBgPayload = { showCoverOnBackground, backgroundMode, backgroundValue, gallery, videoUrl };
+        const sharedBgPayload = {
+          coverMode,
+          coverValue,
+          showCoverOnBackground,
+          backgroundMode,
+          backgroundValue,
+          gallery,
+          videoUrl,
+        };
 
         async function upsertTranslation(solutionId: string, locale: string, draft: LocaleDraft) {
           const saveDraft = draft.heroTitle.trim()
@@ -536,7 +552,6 @@ export function SolutionEditorModal({
               slug: resolvedSlug,
               boardKeys,
               status,
-              coverImage,
               ...sharedBgPayload,
               materials,
               blocks: blocksToSave,
@@ -565,7 +580,6 @@ export function SolutionEditorModal({
             status,
             blocks: blocksToSave,
             slug: resolvedSlug,
-            coverImage,
             ...sharedBgPayload,
             boardKeys,
             materials,
@@ -689,11 +703,13 @@ export function SolutionEditorModal({
                 />
               </Form.Item>
               <Form.Item
-                name="coverImage"
+                name="cover"
                 label="封面图（各语言共用）"
-                getValueFromEvent={(value: string | null) => value ?? ''}
+                getValueFromEvent={(value: CoverOptionValue | null) =>
+                  value ?? { mode: '', value: '', previewUrl: '' }
+                }
               >
-                <CoverImageField folder="solutions/covers" />
+                <CoverOptionField />
               </Form.Item>
               <Form.Item
                 name="gallery"

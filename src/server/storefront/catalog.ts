@@ -26,6 +26,7 @@ import {
 
 import {
   coverImageFromPayload,
+  coverImageFromProductFields,
   galleryFromPayload,
   loadProductTranslationsByProductIds,
   mergeGalleryWithCover,
@@ -240,6 +241,9 @@ export async function getHomeData(localeInput?: string | null): Promise<HomeData
         price: productPriceSql(products.id, locale),
         compareAtPrice: productCompareAtPriceSql(products.id, locale),
         currencyCode: productCurrencyCodeSql(products.id, locale),
+        coverMode: products.coverMode,
+        coverValue: products.coverValue,
+        coverImage: products.coverImage,
         brandId: products.brandId,
         brandName: brandNameSql(brands.id, locale),
         brandSlug: brandSlugSql(brands.id, locale),
@@ -267,6 +271,9 @@ export async function getHomeData(localeInput?: string | null): Promise<HomeData
               price: productPriceSql(products.id, locale),
               compareAtPrice: productCompareAtPriceSql(products.id, locale),
               currencyCode: productCurrencyCodeSql(products.id, locale),
+              coverMode: products.coverMode,
+              coverValue: products.coverValue,
+              coverImage: products.coverImage,
               brandId: products.brandId,
               brandName: brandNameSql(brands.id, locale),
               brandSlug: brandSlugSql(brands.id, locale),
@@ -318,6 +325,7 @@ export async function getHomeData(localeInput?: string | null): Promise<HomeData
         item.name,
         firstImageByProductId.get(item.id),
         translation?.payload,
+        item,
       ),
       price: asMoney(item.price, item.currencyCode),
       compareAtPrice: item.compareAtPrice ? asMoney(item.compareAtPrice, item.currencyCode) : null,
@@ -599,6 +607,9 @@ export async function getProductList(input: {
       price: productPriceSql(products.id, locale),
       compareAtPrice: productCompareAtPriceSql(products.id, locale),
       currencyCode: productCurrencyCodeSql(products.id, locale),
+      coverMode: products.coverMode,
+      coverValue: products.coverValue,
+      coverImage: products.coverImage,
       brandId: brands.id,
       brandName: brandNameSql(brands.id, locale),
       brandSlug: brandSlugSql(brands.id, locale),
@@ -729,6 +740,7 @@ export async function getProductList(input: {
           item.name,
           listImageByProductId.get(item.id),
           translation?.payload,
+          item,
         ),
         price: asMoney(item.price, item.currencyCode),
         compareAtPrice: item.compareAtPrice ? asMoney(item.compareAtPrice, item.currencyCode) : null,
@@ -858,10 +870,16 @@ export async function getSiblingProductsBySolution(
     }
 
     const activeRows = await db
-      .select({ id: products.id })
+      .select({
+        id: products.id,
+        coverMode: products.coverMode,
+        coverValue: products.coverValue,
+        coverImage: products.coverImage,
+      })
       .from(products)
       .where(and(inArray(products.id, selectedIds), eq(products.status, 'active')));
     const activeIdSet = new Set(activeRows.map((row) => row.id));
+    const coverById = new Map(activeRows.map((row) => [row.id, row]));
     const translationMap = await loadProductTranslationsByProductIds(
       selectedIds.filter((id) => activeIdSet.has(id)),
     );
@@ -870,13 +888,14 @@ export async function getSiblingProductsBySolution(
       if (!activeIdSet.has(id)) return [];
       const translation = pickProductTranslation(translationMap.get(id), locale);
       if (!translation) return [];
+      const coverRow = coverById.get(id);
       return [{
         id,
         name: translation.name,
         slug: translation.slug,
         badgeText: translation.badgeText || undefined,
         extraText: translation.extraText || undefined,
-        coverImage: coverImageFromPayload(id, translation.name, translation.payload),
+        coverImage: coverImageFromProductFields(id, translation.name, coverRow ?? {}, translation.payload),
       }];
     });
 
@@ -925,6 +944,9 @@ export async function getProductBySlug(slug: string, localeInput?: string | null
         backgroundValue: products.backgroundValue,
         backgroundImage: products.backgroundImage,
         showCoverOnBackground: products.showCoverOnBackground,
+        coverMode: products.coverMode,
+        coverValue: products.coverValue,
+        coverImageKey: products.coverImage,
         brandId: brands.id,
         brandName: brandNameSql(brands.id, locale),
         brandSlug: brandSlugSql(brands.id, locale),
@@ -977,7 +999,11 @@ export async function getProductBySlug(slug: string, localeInput?: string | null
     const tableCover = images[0] ? toImage(images[0]) : null;
     const tableGallery = images.map(toImage);
     const payloadGallery = galleryFromPayload(product.id, product.name, product.payload);
-    const coverImage = resolveProductCoverImage(product.id, product.name, tableCover, product.payload);
+    const coverImage = resolveProductCoverImage(product.id, product.name, tableCover, product.payload, {
+      coverMode: product.coverMode,
+      coverValue: product.coverValue,
+      coverImage: product.coverImageKey,
+    });
     const baseGallery = tableGallery.length ? tableGallery : payloadGallery;
 
     const tableAttachments = attachmentRows.map((item) => ({

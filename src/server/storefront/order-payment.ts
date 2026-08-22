@@ -6,6 +6,7 @@ import { normalizeLocale, type Locale } from '@/lib/i18n';
 import { db } from '@/server/db';
 import { orderItems, productImages } from '@/server/db/schema';
 import {
+  loadProductCoverFieldsByIds,
   loadProductTranslationsByProductIds,
   pickProductTranslation,
   resolveProductCoverImage,
@@ -45,6 +46,7 @@ export async function enrichOrderItemsWithCoverImages(
   }
 
   const translationsByProductId = await loadProductTranslationsByProductIds(productIds);
+  const coverByProductId = await loadProductCoverFieldsByIds(productIds);
 
   return items.map((item) => {
     const translation = pickProductTranslation(translationsByProductId.get(item.productId), locale);
@@ -62,6 +64,7 @@ export async function enrichOrderItemsWithCoverImages(
           }
         : undefined,
       translation?.payload,
+      coverByProductId.get(item.productId),
     );
 
     return {

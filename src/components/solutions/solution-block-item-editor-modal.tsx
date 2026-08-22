@@ -6,7 +6,7 @@ import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'reac
 import { ContentTranslateButton } from '@/components/admin/content-translate-button';
 import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
 import { SolutionSummaryIconPicker } from '@/components/solutions/solution-summary-icons';
-import { CoverImageField } from '@/components/editorial/cover-image-field';
+import { CoverOptionField } from '@/components/shared/cover-option-field';
 import {
   createEmptyBlockLocaleCopy,
   hasLocaleCopyContent,
@@ -200,10 +200,23 @@ export function SolutionBlockItemEditorModal({
               />
             ) : null}
             {media === 'cover' && item ? (
-              <CoverImageField
-                folder="solutions/covers"
-                value={item.coverImage ?? ''}
-                onChange={(next) => emit(mergeCurrentLocale({ ...item, coverImage: next ?? '' }))}
+              <CoverOptionField
+                value={{
+                  mode: item.coverMode ?? '',
+                  value: item.coverValue ?? '',
+                  previewUrl: item.coverPreviewUrl ?? '',
+                }}
+                onChange={(next) =>
+                  emit(
+                    mergeCurrentLocale({
+                      ...item,
+                      coverMode: next.mode,
+                      coverValue: next.value,
+                      coverPreviewUrl: next.previewUrl ?? '',
+                      coverImage: next.mode === 'upload' ? (item.coverImage ?? '') : '',
+                    }),
+                  )
+                }
               />
             ) : null}
           </Space>

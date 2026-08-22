@@ -22,6 +22,7 @@
     "db:import:topsky-news": "tsx scripts/import-topsky-news.ts",
     "db:import:topsky-centers": "tsx scripts/import-topsky-partner-centers.ts",
     "db:migrate:partner-center-bg-cover": "tsx scripts/migrate-partner-center-bg-to-cover.ts",
+    "db:migrate:cover-optionization": "tsx scripts/migrate-cover-images-to-media-assets.ts",
     "db:seed:solutions": "tsx scripts/seed-solutions.ts",
     "db:seed:solution-products": "tsx scripts/seed-solution-products.ts",
     "db:seed:surgeons": "tsx scripts/seed-surgeons.ts",

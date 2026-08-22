@@ -12,6 +12,10 @@ import {
   PartnerCenterBackgroundField,
   type PartnerCenterBackgroundValue,
 } from '@/components/partner-centers/partner-center-background-field';
+import {
+  CoverOptionField,
+  type CoverOptionValue,
+} from '@/components/shared/cover-option-field';
 import { ProductGalleryField } from '@/components/products/product-gallery-field';
 import { ProductVideoField } from '@/components/products/product-video-field';
 import { SurgeonPickerField } from '@/components/surgeons/surgeon-picker-field';
@@ -67,7 +71,7 @@ type SharedFormValues = {
   region: CenterRegion;
   email: string;
   website: string;
-  coverImage: string;
+  cover: CoverOptionValue;
   gallery: ProductGalleryImage[];
   videoUrl: string;
   logo: string;
@@ -291,7 +295,11 @@ export function PartnerCenterEditorModal({ open, detail, activeLanguages, onClos
       region: detail?.region ?? 'asia-pacific',
       email: detail?.email ?? '',
       website: detail?.website ?? '',
-      coverImage: detail?.coverImage ?? '',
+      cover: {
+        mode: detail?.coverMode ?? '',
+        value: detail?.coverValue ?? '',
+        previewUrl: detail?.coverPreviewUrl ?? '',
+      },
       gallery: detail?.gallery ?? [],
       videoUrl: detail?.videoUrl ?? '',
       logo: detail?.logo ?? '',
@@ -355,7 +363,8 @@ export function PartnerCenterEditorModal({ open, detail, activeLanguages, onClos
           region: shared.region,
           email: shared.email?.trim() ?? '',
           website: shared.website?.trim() ?? '',
-          coverImage: shared.coverImage?.trim() ?? '',
+          coverMode: shared.cover?.mode ?? '',
+          coverValue: shared.cover?.value?.trim() ?? '',
           gallery: (shared.gallery ?? []).filter((item) => item.url?.trim()),
           videoUrl: shared.videoUrl?.trim() ?? '',
           logo: shared.logo?.trim() ?? '',
@@ -458,8 +467,12 @@ export function PartnerCenterEditorModal({ open, detail, activeLanguages, onClos
             <Form.Item name="logo" label="Logo（各语言共用）" getValueFromEvent={(v: string | null) => v ?? ''}>
               <CoverImageField folder="partner-centers/logos" />
             </Form.Item>
-            <Form.Item name="coverImage" label="封面图（各语言共用）" getValueFromEvent={(v: string | null) => v ?? ''}>
-              <CoverImageField folder="partner-centers/covers" />
+            <Form.Item
+              name="cover"
+              label="封面图（各语言共用）"
+              getValueFromEvent={(v: CoverOptionValue | null) => v ?? { mode: '', value: '', previewUrl: '' }}
+            >
+              <CoverOptionField />
             </Form.Item>
             <Form.Item
               name="gallery"

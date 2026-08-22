@@ -7,11 +7,14 @@ import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 
 import { ContentTranslateButton } from '@/components/admin/content-translate-button';
 import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
-import { CoverImageField } from '@/components/editorial/cover-image-field';
 import {
   PartnerCenterBackgroundField,
   type PartnerCenterBackgroundValue,
 } from '@/components/partner-centers/partner-center-background-field';
+import {
+  CoverOptionField,
+  type CoverOptionValue,
+} from '@/components/shared/cover-option-field';
 import { ProductGalleryField } from '@/components/products/product-gallery-field';
 import { ProductVideoField } from '@/components/products/product-video-field';
 import { BrandNarrativeBlockEditorModal, type BrandNarrativeBlockEditorHandle } from '@/components/brand-narratives/brand-narrative-block-editor-modal';
@@ -86,7 +89,7 @@ type LocaleDraft = Omit<LocaleFormValues, 'slug'>;
 
 /** 封面图和 slug 是主表字段，不随语言变化，单独管理 */
 type SharedFormValues = {
-  coverImage: string;
+  cover: CoverOptionValue;
   gallery: ProductGalleryImage[];
   videoUrl: string;
   slug: string;
@@ -333,7 +336,11 @@ export function BrandNarrativeEditorModal({
     blocksRef.current = detail?.blocks ?? [];
     form.setFieldsValue(nextDrafts[firstLocale] ?? emptyDraft());
     sharedForm.setFieldsValue({
-      coverImage: detail?.coverImage ?? '',
+      cover: {
+        mode: detail?.coverMode ?? '',
+        value: detail?.coverValue ?? '',
+        previewUrl: detail?.coverPreviewUrl ?? '',
+      },
       gallery: detail?.gallery ?? [],
       videoUrl: detail?.videoUrl ?? '',
       slug: detail?.slug ?? '',
@@ -427,13 +434,22 @@ export function BrandNarrativeEditorModal({
           return next;
         })();
 
-        const coverImage = sharedValues.coverImage?.trim() ?? '';
+        const coverMode = sharedValues.cover?.mode ?? '';
+        const coverValue = sharedValues.cover?.value?.trim() ?? '';
         const gallery = (sharedValues.gallery ?? []).filter((item) => item.url?.trim());
         const videoUrl = sharedValues.videoUrl?.trim() ?? '';
         const showCoverOnBackground = Boolean(sharedValues.showCoverOnBackground);
         const backgroundMode = sharedValues.background?.mode ?? '';
         const backgroundValue = sharedValues.background?.value?.trim() ?? '';
-        const sharedBgPayload = { showCoverOnBackground, backgroundMode, backgroundValue, gallery, videoUrl };
+        const sharedBgPayload = {
+          coverMode,
+          coverValue,
+          showCoverOnBackground,
+          backgroundMode,
+          backgroundValue,
+          gallery,
+          videoUrl,
+        };
 
         async function upsertTranslation(narrativeId: string, locale: string, draft: LocaleDraft) {
           const saveDraft = draft.heroTitle.trim()
@@ -460,7 +476,6 @@ export function BrandNarrativeEditorModal({
               slug: resolvedSlug,
 
               status,
-              coverImage,
               ...sharedBgPayload,
               blocks: blocksToSave,
               translation: buildTranslationBody(defaultDraft, defaultLocale),
@@ -488,7 +503,6 @@ export function BrandNarrativeEditorModal({
             status,
             blocks: blocksToSave,
             slug: resolvedSlug,
-            coverImage,
             ...sharedBgPayload,
           }),
         });
@@ -599,11 +613,13 @@ export function BrandNarrativeEditorModal({
                 />
               </Form.Item>
               <Form.Item
-                name="coverImage"
+                name="cover"
                 label="封面图（各语言共用）"
-                getValueFromEvent={(value: string | null) => value ?? ''}
+                getValueFromEvent={(value: CoverOptionValue | null) =>
+                  value ?? { mode: '', value: '', previewUrl: '' }
+                }
               >
-                <CoverImageField folder="brand-narratives/covers" />
+                <CoverOptionField />
               </Form.Item>
               <Form.Item
                 name="gallery"

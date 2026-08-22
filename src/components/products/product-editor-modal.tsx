@@ -15,6 +15,7 @@ import { hasMeaningfulHtmlBody } from '@/lib/editorial-html';
 import { ProductAttachmentsField } from '@/components/products/product-attachments-field';
 import { ProductGeneralConfigPanel } from '@/components/products/product-general-config-panel';
 import type { PartnerCenterBackgroundValue } from '@/components/partner-centers/partner-center-background-field';
+import type { CoverOptionValue } from '@/components/shared/cover-option-field';
 import type { ProductBoardOption } from '@/components/products/product-board-multi-select';
 import { productLifecycleOptions } from '@/lib/admin-display';
 import { confirmProductListingChange } from '@/lib/confirm-product-listing';
@@ -324,6 +325,7 @@ export function ProductEditorModal({
   const [boardKeys, setBoardKeys] = useState<string[]>([]);
   const [boardOptions, setBoardOptions] = useState<ProductBoardOption[]>([]);
   const [sharedMedia, setSharedMedia] = useState<SharedMediaState>(emptySharedMedia);
+  const [cover, setCover] = useState<CoverOptionValue>({ mode: '', value: '', previewUrl: '' });
   const [background, setBackground] = useState<PartnerCenterBackgroundValue>(EMPTY_BACKGROUND);
   const [showCoverOnBackground, setShowCoverOnBackground] = useState(true);
   const [activeLocale, setActiveLocale] = useState('');
@@ -412,6 +414,7 @@ export function ProductEditorModal({
       setStatus('active');
       setBoardKeys([]);
       setSharedMedia(emptySharedMedia());
+      setCover({ mode: '', value: '', previewUrl: '' });
       setBackground(EMPTY_BACKGROUND);
       setShowCoverOnBackground(true);
       const emptyDrafts = Object.fromEntries(
@@ -457,6 +460,11 @@ export function ProductEditorModal({
       value: editingEntry.backgroundValue ?? '',
       previewUrl: editingEntry.backgroundPreviewUrl ?? '',
     });
+    setCover({
+      mode: editingEntry.coverMode ?? '',
+      value: editingEntry.coverValue ?? '',
+      previewUrl: editingEntry.coverPreviewUrl ?? '',
+    });
     setShowCoverOnBackground(editingEntry.showCoverOnBackground ?? true);
     setLoadingGroup(true);
 
@@ -487,6 +495,11 @@ export function ProductEditorModal({
           mode: payload.item.backgroundMode ?? '',
           value: payload.item.backgroundValue ?? '',
           previewUrl: payload.item.backgroundPreviewUrl ?? '',
+        });
+        setCover({
+          mode: payload.item.coverMode ?? '',
+          value: payload.item.coverValue ?? '',
+          previewUrl: payload.item.coverPreviewUrl ?? '',
         });
         setShowCoverOnBackground(payload.item.showCoverOnBackground ?? true);
 
@@ -771,6 +784,8 @@ export function ProductEditorModal({
         boardKeys,
         backgroundMode: background.mode ?? '',
         backgroundValue: background.value ?? '',
+        coverMode: cover.mode ?? '',
+        coverValue: cover.value ?? '',
         showCoverOnBackground,
       };
 
@@ -854,8 +869,8 @@ export function ProductEditorModal({
         if (nextStatus === status) return;
         confirmProductListingChange(nextStatus, () => setStatus(nextStatus));
       }}
-      coverUrl={sharedMedia.coverUrl}
-      onCoverUrlChange={(value) => setSharedMedia((prev) => ({ ...prev, coverUrl: value }))}
+      cover={cover}
+      onCoverChange={setCover}
       gallery={sharedMedia.gallery}
       onGalleryChange={(value) => setSharedMedia((prev) => ({ ...prev, gallery: value }))}
       videoUrl={sharedMedia.videoUrl}
