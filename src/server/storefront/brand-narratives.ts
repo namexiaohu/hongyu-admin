@@ -11,6 +11,7 @@ import { resolveStorefrontCoverUrl } from '@/lib/cover-presets';
 import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import { getAdminMediaAssetStorageKeys } from '@/server/admin/media-assets';
+import { collectCoverUploadIds, collectCoverUploadIdsFromBlocks } from '@/server/admin/cover-images';
 import { db } from '@/server/db';
 import { brandNarrativeContents, brandNarrativeTranslations, brandNarratives } from '@/server/db/schema';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
@@ -47,15 +48,19 @@ function text(value: string | undefined, fallback = '') {
   return value?.trim() || fallback;
 }
 
-function resolveBlockItemCover(item: {
-  coverMode?: string;
-  coverValue?: string;
-  coverImage?: string;
-}) {
+function resolveBlockItemCover(
+  item: {
+    coverMode?: string;
+    coverValue?: string;
+    coverImage?: string;
+  },
+  uploadKeyById?: Map<string, string>,
+) {
   return resolveStorefrontCoverUrl({
     mode: item.coverMode,
     value: item.coverValue,
     legacyCoverImageKey: item.coverImage,
+    uploadKeyById,
     toPublicUrl: resolveOssAssetUrl,
   });
 }
@@ -93,7 +98,7 @@ function mapSplitSection(
   };
 }
 
-function mapSummarySection(block: BrandNarrativeBlockDraft, locale: string) {
+function mapSummarySection(block: BrandNarrativeBlockDraft, locale: string, uploadKeyById?: Map<string, string>) {
   const copy = pickLocaleCopy(block.locales, locale);
   const eyebrow = text(copy.smallTitle);
   const title = text(copy.largeTitle, eyebrow);
@@ -154,7 +159,7 @@ function mapSummarySection(block: BrandNarrativeBlockDraft, locale: string) {
           year: text(itemCopy.smallTitle),
           title: text(itemCopy.largeTitle, text(itemCopy.smallTitle)),
           body: text(itemCopy.description),
-          image: resolveBlockItemCover(item),
+          image: resolveBlockItemCover(item, uploadKeyById),
           imageAlt: text(itemCopy.largeTitle),
           icon: isSummaryIcon(item.icon) ? item.icon : null,
         };
@@ -205,7 +210,7 @@ function mapSummarySection(block: BrandNarrativeBlockDraft, locale: string) {
   };
 }
 
-function mapTimelineSection(block: BrandNarrativeBlockDraft, locale: string) {
+function mapTimelineSection(block: BrandNarrativeBlockDraft, locale: string, uploadKeyById?: Map<string, string>) {
   const copy = pickLocaleCopy(block.locales, locale);
   const eyebrow = text(copy.smallTitle);
   const title = text(copy.largeTitle, eyebrow);
@@ -223,7 +228,7 @@ function mapTimelineSection(block: BrandNarrativeBlockDraft, locale: string) {
         year: text(itemCopy.smallTitle, ' '),
         title: text(itemCopy.largeTitle, text(itemCopy.smallTitle, ' ')),
         body: text(itemCopy.description, ' '),
-        image: resolveBlockItemCover(item) || undefined,
+        image: resolveBlockItemCover(item, uploadKeyById) || undefined,
         imageAlt: text(itemCopy.largeTitle) || undefined,
         tags: [] as string[],
       };
@@ -231,7 +236,7 @@ function mapTimelineSection(block: BrandNarrativeBlockDraft, locale: string) {
   };
 }
 
-function mapCourseSection(block: BrandNarrativeBlockDraft, locale: string) {
+function mapCourseSection(block: BrandNarrativeBlockDraft, locale: string, uploadKeyById?: Map<string, string>) {
   const copy = pickLocaleCopy(block.locales, locale);
   const eyebrow = text(copy.smallTitle);
   const title = text(copy.largeTitle, eyebrow);
@@ -252,14 +257,19 @@ function mapCourseSection(block: BrandNarrativeBlockDraft, locale: string) {
         kicker: kicker && kicker !== courseTitle ? kicker : '',
         title: courseTitle || ' ',
         description: text(itemCopy.description),
-        image: resolveBlockItemCover(item),
+        image: resolveBlockItemCover(item, uploadKeyById),
         meta: [text(itemCopy.totalHours), text(itemCopy.teachingFormat), text(itemCopy.trainingCycle)].filter(Boolean),
       };
     }),
   };
 }
 
-function mapBlocksToSections(blocks: BrandNarrativeBlockDraft[], locale: string, slug = '') {
+function mapBlocksToSections(
+  blocks: BrandNarrativeBlockDraft[],
+  locale: string,
+  slug = '',
+  uploadKeyById?: Map<string, string>,
+) {
   const sections: Array<Record<string, unknown>> = [];
 
   for (const block of blocks) {
@@ -289,18 +299,18 @@ function mapBlocksToSections(blocks: BrandNarrativeBlockDraft[], locale: string,
           }),
         });
       } else {
-        sections.push(mapSummarySection(block, locale));
+        sections.push(mapSummarySection(block, locale, uploadKeyById));
       }
       continue;
     }
 
     if (block.type === 'timeline') {
-      sections.push(mapTimelineSection(block, locale));
+      sections.push(mapTimelineSection(block, locale, uploadKeyById));
       continue;
     }
 
     if (block.type === 'course') {
-      sections.push(mapCourseSection(block, locale));
+      sections.push(mapCourseSection(block, locale, uploadKeyById));
       continue;
     }
 
@@ -329,6 +339,7 @@ function mapPageData(
   blocks: BrandNarrativeBlockDraft[],
   requestedLocale: string,
   bg: { imageUrl: string; solidCss: string },
+  uploadKeyById?: Map<string, string>,
 ): BrandNarrativePageData {
   const pageTitle = text(translation.title);
   const headline = text(translation.largeTitle, pageTitle);
@@ -351,6 +362,7 @@ function mapPageData(
         mode: row.coverMode,
         value: row.coverValue,
         legacyCoverImageKey: row.coverImage,
+        uploadKeyById,
         toPublicUrl: resolveOssAssetUrl,
       }),
       imageAlt: headline,
@@ -366,7 +378,7 @@ function mapPageData(
         .filter((item) => item.url),
     },
     stats: stats.length ? stats.map((item) => ({ label: item.label, value: item.value })) : null,
-    sections: mapBlocksToSections(blocks, sectionLocale, row.slug),
+    sections: mapBlocksToSections(blocks, sectionLocale, row.slug, uploadKeyById),
   };
 }
 
@@ -418,23 +430,28 @@ export async function getStorefrontBrandNarrativeBySlug(
 
   const blocks = ((contentRow[0]?.blocks ?? []) as BrandNarrativeBlockDraft[]);
   const bg = await resolveNarrativeBackground(row);
+  const coverUploadIds = [
+    ...collectCoverUploadIds([row]),
+    ...collectCoverUploadIdsFromBlocks(blocks),
+  ];
+  const uploadKeyById = await getAdminMediaAssetStorageKeys(coverUploadIds);
 
   const normalized = requestedLocale.trim().toLowerCase();
   const exact = translations.find((item) => item.locale.toLowerCase() === normalized);
-  if (exact) return mapPageData(row, exact, blocks, requestedLocale, bg);
+  if (exact) return mapPageData(row, exact, blocks, requestedLocale, bg, uploadKeyById);
 
   const prefix = normalized.split('-')[0];
   const prefixMatch = translations.find((item) => {
     const locale = item.locale.toLowerCase();
     return locale === prefix || locale.startsWith(`${prefix}-`);
   });
-  if (prefixMatch) return mapPageData(row, prefixMatch, blocks, requestedLocale, bg);
+  if (prefixMatch) return mapPageData(row, prefixMatch, blocks, requestedLocale, bg, uploadKeyById);
 
   const defaultLocale = await getDefaultSiteLanguageCode();
   const fallback = pickTranslationForDisplay(translations, defaultLocale);
   if (!fallback) return null;
 
-  return mapPageData(row, fallback, blocks, requestedLocale, bg);
+  return mapPageData(row, fallback, blocks, requestedLocale, bg, uploadKeyById);
 }
 
 export async function listPublishedBrandNarrativeSlugs() {

@@ -6,6 +6,8 @@ import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
 import { resolveStorefrontCoverUrl } from '@/lib/cover-presets';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import { localizeAgendaGroups, type AgendaGroup, type SpeakerItem, type SummitStatus } from '@/lib/summit-content';
+import { getAdminMediaAssetStorageKeys } from '@/server/admin/media-assets';
+import { collectCoverUploadIds } from '@/server/admin/cover-images';
 import { db } from '@/server/db';
 import { summits, summitTranslations } from '@/server/db/schema';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
@@ -61,6 +63,7 @@ function resolveTranslation(
 function mapToItem(
   row: typeof summits.$inferSelect,
   t: typeof summitTranslations.$inferSelect | null | undefined,
+  uploadKeyById?: Map<string, string>,
 ): StorefrontSummitItem {
   return {
     slug: row.slug,
@@ -71,6 +74,7 @@ function mapToItem(
       mode: row.coverMode,
       value: row.coverValue,
       legacyCoverImageKey: row.coverImage,
+      uploadKeyById,
       toPublicUrl: resolveOssAssetUrl,
     }),
     title: t?.title ?? row.slug,
@@ -84,6 +88,7 @@ function mapToItem(
 export async function getStorefrontSummitsList(input: { locale: string }): Promise<StorefrontSummitsResponse> {
   const defaultLocale = await getDefaultSiteLanguageCode();
   const rows = await db.select().from(summits).orderBy(asc(summits.sortOrder));
+  const uploadKeyById = await getAdminMediaAssetStorageKeys(collectCoverUploadIds(rows));
 
   const ids = rows.map((r) => r.id);
   const translations = ids.length
@@ -103,7 +108,7 @@ export async function getStorefrontSummitsList(input: { locale: string }): Promi
   for (const row of rows) {
     const rowT = byId.get(row.id) ?? [];
     const display = resolveTranslation(rowT, input.locale, defaultLocale);
-    const item = mapToItem(row, display);
+    const item = mapToItem(row, display, uploadKeyById);
 
     if (row.status === 'completed') {
       completed.push(item);
@@ -144,6 +149,7 @@ export async function getStorefrontSummitDetail(input: { slug: string; locale: s
     .orderBy(asc(summitTranslations.locale));
 
   const display = resolveTranslation(translations, input.locale, defaultLocale);
+  const uploadKeyById = await getAdminMediaAssetStorageKeys(collectCoverUploadIds([row]));
 
   const speakers = ((display?.speakers ?? []) as SpeakerItem[]).map((s) => ({
     id: s.id,
@@ -154,7 +160,7 @@ export async function getStorefrontSummitDetail(input: { slug: string; locale: s
   }));
 
   return {
-    ...mapToItem(row, display),
+    ...mapToItem(row, display, uploadKeyById),
     venueImage: resolveOssAssetUrl(row.venueImage),
     address: display?.address ?? '',
     transportation: display?.transportation ?? '',

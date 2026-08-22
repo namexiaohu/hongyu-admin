@@ -23,6 +23,7 @@ import {
 } from '@/server/db/schema';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
 import { getAdminMediaAssetStorageKeys } from '@/server/admin/media-assets';
+import { collectCoverUploadIds, collectCoverUploadIdsFromBlocks } from '@/server/admin/cover-images';
 import {
   coverImageFromProductFields,
   loadProductTranslationsByProductIds,
@@ -165,7 +166,11 @@ function mapSplitSection(block: SolutionBlockDraft, copy: SolutionBlockLocaleCop
   };
 }
 
-function mapSummarySection(block: SolutionBlockDraft, locale: string) {
+function mapSummarySection(
+  block: SolutionBlockDraft,
+  locale: string,
+  uploadKeyById?: Map<string, string>,
+) {
   const copy = pickLocaleCopy(block.locales, locale);
   const eyebrow = text(copy.smallTitle);
   const title = text(copy.largeTitle, eyebrow);
@@ -179,6 +184,7 @@ function mapSummarySection(block: SolutionBlockDraft, locale: string) {
         mode: item.coverMode,
         value: item.coverValue,
         legacyCoverImageKey: item.coverImage,
+        uploadKeyById,
         toPublicUrl: resolveOssAssetUrl,
       }),
       imageAlt: text(itemCopy.largeTitle, itemCopy.smallTitle),
@@ -276,6 +282,7 @@ async function mapBlocksToSections(
   blocks: SolutionBlockDraft[],
   locale: string,
   productParams: SolutionProductParam[],
+  uploadKeyById?: Map<string, string>,
 ) {
   const sections: StorefrontSolutionSection[] = [];
 
@@ -287,7 +294,7 @@ async function mapBlocksToSections(
       continue;
     }
     if (block.type === 'summary') {
-      sections.push(mapSummarySection(block, locale));
+      sections.push(mapSummarySection(block, locale, uploadKeyById));
       continue;
     }
     if (block.type === 'specifications') {
@@ -300,7 +307,7 @@ async function mapBlocksToSections(
       continue;
     }
     if (block.type === 'timeline' || block.type === 'course') {
-      sections.push(mapSummarySection({ ...block, type: 'summary', layout: 'multi-3' }, locale));
+      sections.push(mapSummarySection({ ...block, type: 'summary', layout: 'multi-3' }, locale, uploadKeyById));
     }
   }
 
@@ -338,6 +345,7 @@ function mapListItem(
   cover: { coverMode?: string | null; coverValue?: string | null; coverImage?: string | null },
   translation: typeof solutionTranslations.$inferSelect,
   board: { name: string; slug: string },
+  uploadKeyById?: Map<string, string>,
 ): StorefrontSolutionListItem {
   const title = text(translation.title, slug);
   return {
@@ -347,6 +355,7 @@ function mapListItem(
       mode: cover.coverMode,
       value: cover.coverValue,
       legacyCoverImageKey: cover.coverImage,
+      uploadKeyById,
       toPublicUrl: resolveOssAssetUrl,
     }),
     badgeText: text(translation.badgeText),
@@ -391,9 +400,16 @@ export async function getStorefrontSolutionBySlug(
   });
 
   let uploadUrl = '';
+  const mediaIds: string[] = [
+    ...collectCoverUploadIds([row]),
+    ...collectCoverUploadIdsFromBlocks(blocks),
+  ];
   if (row.backgroundMode === 'upload' && row.backgroundValue) {
-    const keys = await getAdminMediaAssetStorageKeys([row.backgroundValue]);
-    const key = keys.get(row.backgroundValue);
+    mediaIds.push(row.backgroundValue);
+  }
+  const uploadKeyById = await getAdminMediaAssetStorageKeys(mediaIds);
+  if (row.backgroundMode === 'upload' && row.backgroundValue) {
+    const key = uploadKeyById.get(row.backgroundValue);
     uploadUrl = key ? resolveOssAssetUrl(key) : '';
   }
   const bg = resolvePartnerCenterBackgroundDisplay({
@@ -424,6 +440,7 @@ export async function getStorefrontSolutionBySlug(
         mode: row.coverMode,
         value: row.coverValue,
         legacyCoverImageKey: row.coverImage,
+        uploadKeyById,
         toPublicUrl: resolveOssAssetUrl,
       }),
       imageAlt: headline,
@@ -441,7 +458,7 @@ export async function getStorefrontSolutionBySlug(
     stats: mapStats(translation.stats),
     materials: mapMaterials(row.materials as SolutionMaterial[]),
     productParams,
-    sections: await mapBlocksToSections(blocks, requestedLocale, productParams),
+    sections: await mapBlocksToSections(blocks, requestedLocale, productParams, uploadKeyById),
     related,
   };
 }
@@ -512,6 +529,9 @@ export async function getStorefrontSolutionsList(input: {
     grouped.set(row.solution.id, bucket);
   }
 
+  const solutionRows = [...grouped.values()].map((entry) => entry.solution);
+  const listCoverKeys = await getAdminMediaAssetStorageKeys(collectCoverUploadIds(solutionRows));
+
   let items = [...grouped.values()].flatMap((entry) => {
     const translation = pickLocaleRow(entry.translations, locale);
     if (!translation) return [];
@@ -520,7 +540,7 @@ export async function getStorefrontSolutionsList(input: {
     if (!boardEntries.length) {
       // Solution not linked to any board — include in "all" only
       return [{
-        item: mapListItem(entry.solution.slug, entry.solution, translation, { name: '', slug: '' }),
+        item: mapListItem(entry.solution.slug, entry.solution, translation, { name: '', slug: '' }, listCoverKeys),
         boardKeys: [] as string[],
       }];
     }
@@ -534,7 +554,7 @@ export async function getStorefrontSolutionsList(input: {
     };
 
     return [{
-      item: mapListItem(entry.solution.slug, entry.solution, translation, board),
+      item: mapListItem(entry.solution.slug, entry.solution, translation, board, listCoverKeys),
       boardKeys: boardEntries.map((b) => b.key),
     }];
   });
@@ -670,6 +690,8 @@ export async function getStorefrontRandomSolutions(input: {
     .orderBy(sql`random()`)
     .limit(limit);
 
+  const uploadKeyById = await getAdminMediaAssetStorageKeys(collectCoverUploadIds(rows));
+
   const items: StorefrontSolutionListItem[] = [];
   for (const row of rows) {
     const translations = await db
@@ -679,7 +701,7 @@ export async function getStorefrontRandomSolutions(input: {
     const translation = pickLocaleRow(translations, locale);
     if (!translation) continue;
     const board = await loadFirstBoardLabel(row.id, locale);
-    items.push(mapListItem(row.slug, row, translation, board));
+    items.push(mapListItem(row.slug, row, translation, board, uploadKeyById));
   }
   return items;
 }

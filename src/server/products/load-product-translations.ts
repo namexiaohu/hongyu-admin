@@ -157,8 +157,15 @@ export function resolveProductCoverImage(
     coverImage?: string | null;
   } | null,
 ): StorefrontImage | null {
+  const mode = productCover?.coverMode ?? '';
+  if ((mode === 'preset' || mode === 'upload') && productCover) {
+    const fromFields = coverImageFromProductFields(productId, productName, productCover, payload);
+    if (fromFields?.url?.trim()) return fromFields;
+  }
+
   const normalizedTableImage = tableImage?.url?.trim() ? tableImage : null;
   if (normalizedTableImage) return normalizedTableImage;
+
   if (productCover) {
     return coverImageFromProductFields(productId, productName, productCover, payload);
   }
