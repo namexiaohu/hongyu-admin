@@ -55,6 +55,7 @@ function toListItem(d: AdminPartnerCenterDetail): AdminPartnerCenterListItem {
     backgroundValue: d.backgroundValue,
     backgroundPreviewUrl: d.backgroundPreviewUrl,
     showCoverOnBackground: d.showCoverOnBackground,
+    heroCopyStyle: d.heroCopyStyle,
     sortOrder: d.sortOrder,
     name: d.name,
     localeCount: d.translations.length,

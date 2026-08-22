@@ -15,6 +15,8 @@ import {
   CoverOptionField,
   type CoverOptionValue,
 } from '@/components/shared/cover-option-field';
+import { HeroCopyStyleField } from '@/components/shared/hero-copy-style-field';
+import { defaultAdminHeroCopyStyle, type HeroCopyStyle } from '@/lib/hero-copy-style';
 import { ProductGalleryField } from '@/components/products/product-gallery-field';
 import { ProductVideoField } from '@/components/products/product-video-field';
 import { BrandNarrativeBlockEditorModal, type BrandNarrativeBlockEditorHandle } from '@/components/brand-narratives/brand-narrative-block-editor-modal';
@@ -94,6 +96,7 @@ type SharedFormValues = {
   videoUrl: string;
   slug: string;
   showCoverOnBackground: boolean;
+  heroCopyStyle: HeroCopyStyle;
   background: PartnerCenterBackgroundValue;
 };
 
@@ -345,6 +348,7 @@ export function BrandNarrativeEditorModal({
       videoUrl: detail?.videoUrl ?? '',
       slug: detail?.slug ?? '',
       showCoverOnBackground: detail?.showCoverOnBackground ?? true,
+      heroCopyStyle: detail?.heroCopyStyle ?? defaultAdminHeroCopyStyle(),
       background: {
         mode: detail?.backgroundMode ?? '',
         value: detail?.backgroundValue ?? '',
@@ -439,12 +443,14 @@ export function BrandNarrativeEditorModal({
         const gallery = (sharedValues.gallery ?? []).filter((item) => item.url?.trim());
         const videoUrl = sharedValues.videoUrl?.trim() ?? '';
         const showCoverOnBackground = Boolean(sharedValues.showCoverOnBackground);
+        const heroCopyStyle = sharedValues.heroCopyStyle ?? defaultAdminHeroCopyStyle();
         const backgroundMode = sharedValues.background?.mode ?? '';
         const backgroundValue = sharedValues.background?.value?.trim() ?? '';
         const sharedBgPayload = {
           coverMode,
           coverValue,
           showCoverOnBackground,
+          heroCopyStyle,
           backgroundMode,
           backgroundValue,
           gallery,
@@ -642,6 +648,9 @@ export function BrandNarrativeEditorModal({
                 extra="开启后，详情页看板在大背景图右侧同时展示封面图"
               >
                 <Switch checkedChildren="开" unCheckedChildren="关" />
+              </Form.Item>
+              <Form.Item name="heroCopyStyle" label="看板文案风格" initialValue="dark">
+                <HeroCopyStyleField />
               </Form.Item>
               <Form.Item
                 name="background"

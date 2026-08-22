@@ -21,6 +21,7 @@ import {
   resolveAdminBackgroundPreview,
 } from '@/lib/partner-center-background-presets';
 import { resolveAdminCoverPreview } from '@/lib/cover-presets';
+import { normalizeHeroCopyStyleForWrite } from '@/lib/hero-copy-style';
 import { resolveOssAssetUrl, toOssStorageKey } from '@/lib/oss-asset-url';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import { normalizeSlug } from '@/lib/slug';
@@ -108,6 +109,7 @@ function mapListItem(
     backgroundImage: row.backgroundImage ?? '',
     backgroundPreviewUrl: bg.previewUrl,
     showCoverOnBackground: Boolean(row.showCoverOnBackground),
+    heroCopyStyle: (row.heroCopyStyle as import('@/lib/hero-copy-style').HeroCopyStyle | null) ?? null,
     title,
     localeCount,
     publishedAt: row.publishedAt ? toIso(row.publishedAt) : null,
@@ -365,6 +367,9 @@ export async function updateAdminSolution(id: string, input: unknown) {
       ...(parsed.showCoverOnBackground !== undefined
         ? { showCoverOnBackground: parsed.showCoverOnBackground }
         : {}),
+      ...(parsed.heroCopyStyle !== undefined
+        ? { heroCopyStyle: normalizeHeroCopyStyleForWrite(parsed.heroCopyStyle) }
+        : {}),
       ...(parsed.materials !== undefined ? { materials: normalizeMaterials(parsed.materials) } : {}),
       ...(parsed.status !== undefined || parsed.publishedAt !== undefined ? { publishedAt: nextPublishedAt } : {}),
       updatedAt: new Date(),
@@ -513,6 +518,7 @@ export async function createAdminSolution(input: unknown) {
       backgroundValue: bg.backgroundValue,
       backgroundImage: bg.backgroundImage,
       showCoverOnBackground: parsed.showCoverOnBackground ?? true,
+      heroCopyStyle: normalizeHeroCopyStyleForWrite(parsed.heroCopyStyle) ?? 'dark',
       materials: normalizeMaterials(parsed.materials),
       publishedAt: (parsed.status ?? 'draft') === 'published' ? new Date() : null,
     })

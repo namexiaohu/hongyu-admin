@@ -315,12 +315,13 @@ export const CONTENT_TRANSLATE_PROFILES: Record<ContentTranslateType, ContentTra
       'detailDescription is HTML rich text — preserve structure. statsText and cooperationInfoText have one row per line as LABEL|||VALUE. Translate LABEL only. Keep VALUE exactly. tagsText has one tag per line. Keep the same line count.',
   },
   summit: {
-    sourceFields: ['title', 'description', 'scale', 'duration', 'location', 'address', 'transportation', 'statsText', 'speakersText', 'sponsorsText'],
+    sourceFields: ['title', 'description', 'detailDescription', 'scale', 'duration', 'location', 'address', 'transportation', 'statsText', 'speakersText', 'sponsorsText'],
     plainTextFields: ['title', 'description', 'scale', 'duration', 'location', 'address', 'transportation', 'statsText', 'speakersText', 'sponsorsText'],
+    htmlField: 'detailDescription',
     serverLabel: 'industry summit page',
     tooltip: '将默认语言已保存的峰会资料与嘉宾信息翻译到当前语言；封面与嘉宾头像直接沿用默认语言',
     translateNotes:
-      'statsText has one row per line as LABEL|||VALUE. Translate LABEL only. Keep VALUE exactly. speakersText has one speaker per line as NAME|||REGION|||BIO|||BADGE|||EXPERTISE. Translate those text fields only; keep the same line count and ||| separator; avatar and description HTML follow the default locale. sponsorsText has one sponsor per line as NAME|||BADGE|||INTRO. Translate those text fields only; tier and logo follow the default locale.',
+      'detailDescription is HTML rich text — preserve structure. statsText has one row per line as LABEL|||VALUE. Translate LABEL only. Keep VALUE exactly. speakersText has one speaker per line as NAME|||REGION|||BIO|||BADGE|||EXPERTISE. Translate those text fields only; keep the same line count and ||| separator; avatar and description HTML follow the default locale. sponsorsText has one sponsor per line as NAME|||BADGE|||INTRO. Translate those text fields only; tier and logo follow the default locale.',
   },
   summitAgendaGroup: {
     sourceFields: ['dayLabel', 'groupTitle'],

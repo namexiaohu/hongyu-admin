@@ -7,6 +7,7 @@ import { rewriteHtmlOssAssets, resolveOssAssetUrl } from '@/lib/oss-asset-url';
 import { resolveStorefrontCoverUrl } from '@/lib/cover-presets';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import { resolveUploadStorageKey } from '@/lib/upload-storage-key';
+import { resolveStorefrontHeroCopyStyle, type HeroCopyStyle } from '@/lib/hero-copy-style';
 import {
   localizeAgendaGroups,
   normalizeSpeakerItems,
@@ -60,6 +61,8 @@ export type StorefrontSummitDetail = StorefrontSummitItem & {
   backgroundImage: string;
   backgroundSolidCss: string;
   showCoverOnBackground: boolean;
+  heroCopyStyle: HeroCopyStyle;
+  detailDescription: string;
   stats: SummitStat[];
   venueImage: string;
   address: string;
@@ -215,6 +218,8 @@ export async function getStorefrontSummitDetail(input: { slug: string; locale: s
     backgroundImage: useDefaultSolidHero ? '' : bg.imageUrl,
     backgroundSolidCss: '',
     showCoverOnBackground: Boolean(row.showCoverOnBackground),
+    heroCopyStyle: resolveStorefrontHeroCopyStyle(row.heroCopyStyle),
+    detailDescription: rewriteHtmlOssAssets(display?.detailDescription ?? '', 'toPublicUrl'),
     stats: normalizeSummitStats(display?.stats as Array<{ label?: string; value?: string }>),
     venueImage: resolveOssAssetUrl(row.venueImage),
     address: display?.address ?? '',

@@ -15,6 +15,7 @@ import { hasMeaningfulHtmlBody } from '@/lib/editorial-html';
 import { ProductAttachmentsField } from '@/components/products/product-attachments-field';
 import { ProductGeneralConfigPanel } from '@/components/products/product-general-config-panel';
 import type { PartnerCenterBackgroundValue } from '@/components/partner-centers/partner-center-background-field';
+import { defaultAdminHeroCopyStyle, type HeroCopyStyle } from '@/lib/hero-copy-style';
 import type { CoverOptionValue } from '@/components/shared/cover-option-field';
 import type { ProductBoardOption } from '@/components/products/product-board-multi-select';
 import { productLifecycleOptions } from '@/lib/admin-display';
@@ -328,6 +329,7 @@ export function ProductEditorModal({
   const [cover, setCover] = useState<CoverOptionValue>({ mode: '', value: '', previewUrl: '' });
   const [background, setBackground] = useState<PartnerCenterBackgroundValue>(EMPTY_BACKGROUND);
   const [showCoverOnBackground, setShowCoverOnBackground] = useState(true);
+  const [heroCopyStyle, setHeroCopyStyle] = useState<HeroCopyStyle>(defaultAdminHeroCopyStyle());
   const [activeLocale, setActiveLocale] = useState('');
   const [sectionTab, setSectionTab] = useState<SectionTabKey>('content');
   const [drafts, setDrafts] = useState<Record<string, LocaleDraft>>({});
@@ -466,6 +468,7 @@ export function ProductEditorModal({
       previewUrl: editingEntry.coverPreviewUrl ?? '',
     });
     setShowCoverOnBackground(editingEntry.showCoverOnBackground ?? true);
+    setHeroCopyStyle(editingEntry.heroCopyStyle ?? defaultAdminHeroCopyStyle());
     setLoadingGroup(true);
 
     void (async () => {
@@ -502,6 +505,7 @@ export function ProductEditorModal({
           previewUrl: payload.item.coverPreviewUrl ?? '',
         });
         setShowCoverOnBackground(payload.item.showCoverOnBackground ?? true);
+        setHeroCopyStyle(payload.item.heroCopyStyle ?? defaultAdminHeroCopyStyle());
 
         const nextDrafts = Object.fromEntries(
           activeLanguages.map((language) => {
@@ -787,6 +791,7 @@ export function ProductEditorModal({
         coverMode: cover.mode ?? '',
         coverValue: cover.value ?? '',
         showCoverOnBackground,
+        heroCopyStyle,
       };
 
       if (nextProductId) {
@@ -879,6 +884,8 @@ export function ProductEditorModal({
       onBackgroundChange={setBackground}
       showCoverOnBackground={showCoverOnBackground}
       onShowCoverOnBackgroundChange={setShowCoverOnBackground}
+      heroCopyStyle={heroCopyStyle}
+      onHeroCopyStyleChange={setHeroCopyStyle}
     />
   );
 

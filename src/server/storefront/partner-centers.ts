@@ -11,6 +11,7 @@ import {
   resolvePartnerCenterBackgroundDisplay,
 } from '@/lib/partner-center-background-presets';
 import { resolveStorefrontCoverUrl } from '@/lib/cover-presets';
+import { resolveStorefrontHeroCopyStyle } from '@/lib/hero-copy-style';
 import { resolveUploadStorageKey } from '@/lib/upload-storage-key';
 import type { SurgeonGradeKey } from '@/lib/surgeon-content';
 import { db } from '@/server/db';
@@ -33,6 +34,7 @@ export type StorefrontCenterItem = {
   backgroundImage: string;
   backgroundSolidCss: string;
   showCoverOnBackground: boolean;
+  heroCopyStyle: import('@/lib/hero-copy-style').HeroCopyStyle;
   region: CenterRegion;
   email: string;
   website: string;
@@ -157,6 +159,7 @@ function mapCenterItem(
     backgroundImage: bg.imageUrl,
     backgroundSolidCss: bg.solidCss,
     showCoverOnBackground: Boolean(row.showCoverOnBackground),
+    heroCopyStyle: resolveStorefrontHeroCopyStyle(row.heroCopyStyle),
     region: row.region as CenterRegion,
     email: row.email ?? '',
     website: (row.website || display?.website || '').trim(),

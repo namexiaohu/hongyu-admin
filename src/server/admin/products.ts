@@ -40,6 +40,7 @@ import {
   resolveAdminBackgroundPreview,
 } from '@/lib/partner-center-background-presets';
 import { resolveAdminCoverPreview } from '@/lib/cover-presets';
+import { normalizeHeroCopyStyleForWrite } from '@/lib/hero-copy-style';
 import { getAdminBrandOptions } from '@/server/admin/brands';
 import { getAdminCategoryOptions } from '@/server/admin/categories';
 import { countProductFeatureAssignmentsByProductIds } from '@/server/admin/product-features';
@@ -131,6 +132,7 @@ export const adminProductPatchSchema = z.object({
   backgroundMode: z.enum(['', 'solid', 'preset', 'upload']).optional(),
   backgroundValue: z.string().trim().optional(),
   showCoverOnBackground: z.boolean().optional(),
+  heroCopyStyle: z.enum(['light', 'dark']).nullable().optional(),
   coverMode: z.enum(['', 'preset', 'upload']).optional(),
   coverValue: z.string().trim().optional(),
 });
@@ -459,6 +461,7 @@ function toListItem(
     backgroundImage: product.backgroundImage ?? '',
     backgroundPreviewUrl: bg.previewUrl,
     showCoverOnBackground: Boolean(product.showCoverOnBackground),
+    heroCopyStyle: (product.heroCopyStyle as import('@/lib/hero-copy-style').HeroCopyStyle | null) ?? null,
     createdAt: product.createdAt.toISOString(),
     updatedAt: product.updatedAt.toISOString(),
   };
@@ -1028,6 +1031,7 @@ export async function updateAdminProductShared(productId: string, input: Product
     backgroundMode,
     backgroundValue,
     showCoverOnBackground,
+    heroCopyStyle,
     coverMode,
     coverValue,
     ...productFields
@@ -1066,6 +1070,9 @@ export async function updateAdminProductShared(productId: string, input: Product
           }
         : {}),
       ...(showCoverOnBackground !== undefined ? { showCoverOnBackground } : {}),
+      ...(heroCopyStyle !== undefined
+        ? { heroCopyStyle: normalizeHeroCopyStyleForWrite(heroCopyStyle) }
+        : {}),
       updatedAt: new Date(),
     })
     .where(eq(products.id, productId))

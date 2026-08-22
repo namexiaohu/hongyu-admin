@@ -101,6 +101,7 @@ export type StorefrontProductDetail = StorefrontProductCard & {
   backgroundImage?: string;
   backgroundSolidCss?: string;
   showCoverOnBackground?: boolean;
+  heroCopyStyle?: import('@/lib/hero-copy-style').HeroCopyStyle;
   categories: StorefrontCategory[];
   attributes: Array<{ group: string; value: string }>;
   attachments: StorefrontAttachment[];

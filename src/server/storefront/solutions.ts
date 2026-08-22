@@ -6,6 +6,7 @@ import type { SolutionBlockDraft, SolutionBlockLocaleCopy } from '@/lib/solution
 import { isSummaryIcon, pickBlockLocaleCopy, summaryItemUsesCoverImage } from '@/lib/solution-blocks';
 import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
 import { resolveStorefrontCoverUrl } from '@/lib/cover-presets';
+import { resolveStorefrontHeroCopyStyle } from '@/lib/hero-copy-style';
 import { resolveUploadStorageKey } from '@/lib/upload-storage-key';
 import {
   resolvePartnerCenterBackgroundDisplay,
@@ -64,6 +65,7 @@ export type StorefrontSolutionDetail = {
     backgroundImage: string;
     backgroundSolidCss: string;
     showCoverOnBackground: boolean;
+    heroCopyStyle: import('@/lib/hero-copy-style').HeroCopyStyle;
     videoUrl: string;
     gallery: Array<{ url: string; alt: string }>;
   };
@@ -432,6 +434,7 @@ export async function getStorefrontSolutionBySlug(
       backgroundImage: bg.imageUrl,
       backgroundSolidCss: bg.solidCss,
       showCoverOnBackground: Boolean(row.showCoverOnBackground),
+      heroCopyStyle: resolveStorefrontHeroCopyStyle(row.heroCopyStyle),
       videoUrl: row.videoUrl?.trim() ? resolveOssAssetUrl(row.videoUrl) : '',
       gallery: ((row.gallery ?? []) as Array<{ url?: string; alt?: string }>)
         .map((item) => ({

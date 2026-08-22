@@ -19,7 +19,10 @@ import {
   CoverOptionField,
   type CoverOptionValue,
 } from '@/components/shared/cover-option-field';
+import { HeroCopyStyleField } from '@/components/shared/hero-copy-style-field';
+import { defaultAdminHeroCopyStyle, type HeroCopyStyle } from '@/lib/hero-copy-style';
 import { applyNonemptyTranslatedFields } from '@/lib/content-translate-config';
+import { hasMeaningfulHtmlBody } from '@/lib/editorial-html';
 import { deserializeSpeakers, deserializeSponsors, serializeSpeakers, serializeSponsors } from '@/lib/content-translate-serialize';
 import { AgendaGroupDrawer } from '@/components/summits/agenda-group-drawer';
 import {
@@ -46,6 +49,7 @@ type SectionTabKey = 'content' | 'stats' | 'speakers' | 'sponsors' | 'venue';
 type LocaleDraft = {
   title: string;
   description: string;
+  detailDescription: string;
   scale: string;
   duration: string;
   location: string;
@@ -64,6 +68,7 @@ type SharedFormValues = {
   cover: CoverOptionValue;
   videoUrl: string;
   showCoverOnBackground: boolean;
+  heroCopyStyle: HeroCopyStyle;
   background: PartnerCenterBackgroundValue;
   venueImage: string;
 };
@@ -82,6 +87,7 @@ function emptyDraft(): LocaleDraft {
   return {
     title: '',
     description: '',
+    detailDescription: '',
     scale: '',
     duration: '',
     location: '',
@@ -112,6 +118,7 @@ function translationToDraft(t: AdminSummitTranslation): LocaleDraft {
   return {
     title: t.title,
     description: t.description,
+    detailDescription: t.detailDescription ?? '',
     scale: t.scale,
     duration: t.duration,
     location: t.location,
@@ -136,6 +143,7 @@ function hasDraftContent(d: LocaleDraft): boolean {
   return Boolean(
     d.title.trim()
     || d.description.trim()
+    || hasMeaningfulHtmlBody(d.detailDescription)
     || d.location.trim()
     || d.stats.some((row) => row.label?.trim() || row.value?.trim())
     || d.speakers.some((speaker) => speaker.name?.trim() || speaker.bio?.trim())
@@ -148,6 +156,7 @@ function buildTranslationBody(d: LocaleDraft, locale: string) {
     locale,
     title: d.title.trim(),
     description: d.description.trim(),
+    detailDescription: d.detailDescription.trim(),
     scale: d.scale.trim(),
     duration: d.duration.trim(),
     location: d.location.trim(),
@@ -209,6 +218,7 @@ export function SummitEditorModal({ open, detail, activeLanguages, onClose, onSa
     return {
       title: draft.title,
       description: draft.description,
+      detailDescription: draft.detailDescription,
       scale: draft.scale,
       duration: draft.duration,
       location: draft.location,
@@ -266,6 +276,7 @@ export function SummitEditorModal({ open, detail, activeLanguages, onClose, onSa
       },
       videoUrl: detail?.videoUrl ?? '',
       showCoverOnBackground: detail?.showCoverOnBackground ?? true,
+      heroCopyStyle: detail?.heroCopyStyle ?? defaultAdminHeroCopyStyle(),
       background: {
         mode: detail?.backgroundMode ?? '',
         value: detail?.backgroundMode === 'solid'
@@ -339,6 +350,7 @@ export function SummitEditorModal({ open, detail, activeLanguages, onClose, onSa
           backgroundMode: shared.background?.mode ?? '',
           backgroundValue: shared.background?.value?.trim() ?? '',
           showCoverOnBackground: Boolean(shared.showCoverOnBackground),
+          heroCopyStyle: shared.heroCopyStyle ?? defaultAdminHeroCopyStyle(),
           venueImage: shared.venueImage?.trim() ?? '',
           agenda,
         };
@@ -469,6 +481,13 @@ export function SummitEditorModal({ open, detail, activeLanguages, onClose, onSa
                 <Switch checkedChildren="开" unCheckedChildren="关" />
               </Form.Item>
               <Form.Item
+                name="heroCopyStyle"
+                label="看板文案风格"
+                initialValue="dark"
+              >
+                <HeroCopyStyleField />
+              </Form.Item>
+              <Form.Item
                 name="background"
                 label="大背景图（各语言共用）"
                 getValueFromEvent={(v: PartnerCenterBackgroundValue | null) => v ?? { mode: '', value: '', previewUrl: '' }}
@@ -549,8 +568,11 @@ export function SummitEditorModal({ open, detail, activeLanguages, onClose, onSa
                       if (!slug?.trim() && title?.trim()) sharedForm.setFieldValue('slug', textToSlug(title));
                     }} />
                   </Form.Item>
-                  <Form.Item name="description" label="描述">
+                  <Form.Item name="description" label="简介">
                     <Input.TextArea rows={4} />
+                  </Form.Item>
+                  <Form.Item name="detailDescription" label="描述">
+                    <RichTextEditor key={`${activeLocale}-detail-${editorRevision}`} />
                   </Form.Item>
                 </div>
 

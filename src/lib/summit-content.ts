@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { AgendaGroup, SpeakerItem, SponsorItem, SummitStat } from '@/server/db/schema';
+import { heroCopyStyleOptionalSchema, heroCopyStyleSchema, type HeroCopyStyle } from '@/lib/hero-copy-style';
 
 export { type AgendaGroup, type SpeakerItem, type SponsorItem, type SummitStat };
 export type { AgendaItem } from '@/server/db/schema';
@@ -82,6 +83,7 @@ export const adminSummitTranslationSchema = z.object({
   locale: z.string().trim().min(2),
   title: z.string().trim().min(1),
   description: z.string().optional().default(''),
+  detailDescription: z.string().optional().default(''),
   scale: z.string().optional().default(''),
   duration: z.string().optional().default(''),
   location: z.string().optional().default(''),
@@ -104,6 +106,7 @@ export const adminSummitPatchSchema = z.object({
   backgroundMode: z.enum(['', 'solid', 'preset', 'upload']).optional(),
   backgroundValue: z.string().optional(),
   showCoverOnBackground: z.boolean().optional(),
+  heroCopyStyle: heroCopyStyleOptionalSchema,
   venueImage: z.string().optional(),
   agenda: z.array(agendaGroupSchema).optional(),
   sortOrder: z.number().int().optional(),
@@ -121,6 +124,7 @@ export const adminSummitCreateSchema = z.object({
   backgroundMode: z.enum(['', 'solid', 'preset', 'upload']).optional().default(''),
   backgroundValue: z.string().optional().default(''),
   showCoverOnBackground: z.boolean().optional().default(true),
+  heroCopyStyle: heroCopyStyleSchema.optional().default('dark'),
   venueImage: z.string().optional().default(''),
   agenda: z.array(agendaGroupSchema).optional().default([]),
   sortOrder: z.number().int().optional(),
@@ -135,6 +139,7 @@ export type AdminSummitTranslation = {
   locale: string;
   title: string;
   description: string;
+  detailDescription: string;
   scale: string;
   duration: string;
   location: string;
@@ -163,6 +168,7 @@ export type AdminSummitListItem = {
   backgroundImage: string;
   backgroundPreviewUrl: string;
   showCoverOnBackground: boolean;
+  heroCopyStyle: HeroCopyStyle | null;
   venueImage: string;
   sortOrder: number;
   title: string;

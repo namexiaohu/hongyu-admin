@@ -1,3 +1,5 @@
+import type { HeroCopyStyle } from '@/lib/hero-copy-style';
+
 export type FaqItem = {
   question: string;
   answer: string;
@@ -78,6 +80,7 @@ export type AdminProductListItem = {
   backgroundImage: string;
   backgroundPreviewUrl: string;
   showCoverOnBackground: boolean;
+  heroCopyStyle: HeroCopyStyle | null;
   createdAt: string;
   updatedAt: string;
 };

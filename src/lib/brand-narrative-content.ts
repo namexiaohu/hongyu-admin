@@ -7,6 +7,7 @@ import {
   brandNarrativeSummaryLayouts,
   type BrandNarrativeBlockDraft,
 } from '@/lib/brand-narrative-blocks';
+import { heroCopyStyleOptionalSchema, heroCopyStyleSchema, type HeroCopyStyle } from '@/lib/hero-copy-style';
 import type { ProductGalleryImage } from '@/lib/product-content';
 
 export const brandNarrativeSlugs = ['about', 'patents', 'history', 'training'] as const;
@@ -58,6 +59,7 @@ export type AdminBrandNarrativeListItem = {
   backgroundImage: string;
   backgroundPreviewUrl: string;
   showCoverOnBackground: boolean;
+  heroCopyStyle: HeroCopyStyle | null;
   title: string;
   localeCount: number;
   publishedAt: string | null;
@@ -159,6 +161,7 @@ export const adminBrandNarrativePatchSchema = z.object({
   backgroundMode: backgroundModeSchema.optional(),
   backgroundValue: z.string().optional(),
   showCoverOnBackground: z.boolean().optional(),
+  heroCopyStyle: heroCopyStyleOptionalSchema,
   blocks: brandNarrativeBlocksSchema.optional(),
   publishedAt: z.coerce.date().nullable().optional(),
 });
@@ -174,6 +177,7 @@ export const adminBrandNarrativeCreateSchema = z.object({
   backgroundMode: backgroundModeSchema.optional().default(''),
   backgroundValue: z.string().optional().default(''),
   showCoverOnBackground: z.boolean().optional().default(true),
+  heroCopyStyle: heroCopyStyleSchema.optional().default('dark'),
   blocks: brandNarrativeBlocksSchema.optional(),
   translation: adminBrandNarrativeTranslationSchema,
 });

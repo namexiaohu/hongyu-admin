@@ -429,6 +429,8 @@ export const products = pgTable(
     /** solid token | preset id | R2 storage key when mode=upload */
     backgroundValue: text('background_value').notNull().default(''),
     showCoverOnBackground: boolean('show_cover_on_background').notNull().default(true),
+    /** light | dark — billboard left copy style; null = legacy light on storefront */
+    heroCopyStyle: text('hero_copy_style'),
     coverImage: text('cover_image').notNull().default(''),
     /** preset | upload | '' */
     coverMode: text('cover_mode').notNull().default(''),
@@ -1415,6 +1417,7 @@ export const brandNarratives = pgTable(
     /** solid token | preset id | R2 storage key when mode=upload */
     backgroundValue: text('background_value').notNull().default(''),
     showCoverOnBackground: boolean('show_cover_on_background').notNull().default(true),
+    heroCopyStyle: text('hero_copy_style'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -1484,6 +1487,7 @@ export const solutions = pgTable(
     /** solid token | preset id | R2 storage key when mode=upload */
     backgroundValue: text('background_value').notNull().default(''),
     showCoverOnBackground: boolean('show_cover_on_background').notNull().default(true),
+    heroCopyStyle: text('hero_copy_style'),
     materials: jsonb('materials').$type<SolutionMaterial[]>().notNull().default([]),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -1623,6 +1627,7 @@ export const summits = pgTable(
     /** solid token | preset id | R2 storage key when mode=upload */
     backgroundValue: text('background_value').notNull().default(''),
     showCoverOnBackground: boolean('show_cover_on_background').notNull().default(true),
+    heroCopyStyle: text('hero_copy_style'),
     venueImage: text('venue_image').notNull().default(''),
     agenda: jsonb('agenda').$type<AgendaGroup[]>().notNull().default([]),
     sortOrder: integer('sort_order').notNull().default(0),
@@ -1644,6 +1649,7 @@ export const summitTranslations = pgTable(
     locale: varchar('locale', { length: 16 }).notNull(),
     title: varchar('title', { length: 300 }).notNull().default(''),
     description: text('description').notNull().default(''),
+    detailDescription: text('detail_description').notNull().default(''),
     scale: varchar('scale', { length: 200 }).notNull().default(''),
     duration: varchar('duration', { length: 100 }).notNull().default(''),
     location: varchar('location', { length: 300 }).notNull().default(''),
@@ -1714,6 +1720,7 @@ export const partnerCenters = pgTable(
     backgroundValue: text('background_value').notNull().default(''),
     /** When true, detail hero shows cover image on the right over the background */
     showCoverOnBackground: boolean('show_cover_on_background').notNull().default(true),
+    heroCopyStyle: text('hero_copy_style'),
     sortOrder: integer('sort_order').notNull().default(0),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

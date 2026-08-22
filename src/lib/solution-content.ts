@@ -7,6 +7,7 @@ import {
   solutionSummaryLayouts,
   type SolutionBlockDraft,
 } from '@/lib/solution-blocks';
+import { heroCopyStyleOptionalSchema, heroCopyStyleSchema, type HeroCopyStyle } from '@/lib/hero-copy-style';
 import type { ProductGalleryImage } from '@/lib/product-content';
 
 export type SolutionSlug = string;
@@ -56,6 +57,7 @@ export type AdminSolutionListItem = {
   backgroundImage: string;
   backgroundPreviewUrl: string;
   showCoverOnBackground: boolean;
+  heroCopyStyle: HeroCopyStyle | null;
   title: string;
   localeCount: number;
   publishedAt: string | null;
@@ -177,6 +179,7 @@ export const adminSolutionPatchSchema = z.object({
   backgroundMode: backgroundModeSchema.optional(),
   backgroundValue: z.string().optional(),
   showCoverOnBackground: z.boolean().optional(),
+  heroCopyStyle: heroCopyStyleOptionalSchema,
   materials: z.array(materialSchema).optional(),
   blocks: solutionBlocksSchema.optional(),
   publishedAt: z.coerce.date().nullable().optional(),
@@ -194,6 +197,7 @@ export const adminSolutionCreateSchema = z.object({
   backgroundMode: backgroundModeSchema.optional().default(''),
   backgroundValue: z.string().optional().default(''),
   showCoverOnBackground: z.boolean().optional().default(true),
+  heroCopyStyle: heroCopyStyleSchema.optional().default('dark'),
   materials: z.array(materialSchema).optional().default([]),
   blocks: solutionBlocksSchema.optional(),
   translation: adminSolutionTranslationSchema,

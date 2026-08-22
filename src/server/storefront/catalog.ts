@@ -3,6 +3,7 @@ import { and, asc, count, desc, eq, exists, ilike, inArray, or, sql as drizzleSq
 import type { SolutionBlockDraft } from '@/lib/solution-blocks';
 import { resolveOssAssetUrl, rewriteHtmlOssAssets } from '@/lib/oss-asset-url';
 import { resolvePartnerCenterBackgroundDisplay } from '@/lib/partner-center-background-presets';
+import { resolveStorefrontHeroCopyStyle } from '@/lib/hero-copy-style';
 import { resolveUploadStorageKey } from '@/lib/upload-storage-key';
 import { db } from '@/server/db';
 import {
@@ -944,6 +945,7 @@ export async function getProductBySlug(slug: string, localeInput?: string | null
         backgroundValue: products.backgroundValue,
         backgroundImage: products.backgroundImage,
         showCoverOnBackground: products.showCoverOnBackground,
+        heroCopyStyle: products.heroCopyStyle,
         coverMode: products.coverMode,
         coverValue: products.coverValue,
         coverImageKey: products.coverImage,
@@ -1055,6 +1057,7 @@ export async function getProductBySlug(slug: string, localeInput?: string | null
       backgroundImage: bg.imageUrl,
       backgroundSolidCss: bg.solidCss,
       showCoverOnBackground: Boolean(product.showCoverOnBackground),
+      heroCopyStyle: resolveStorefrontHeroCopyStyle(product.heroCopyStyle),
       price: asMoney(product.price, product.currencyCode),
       compareAtPrice: product.compareAtPrice ? asMoney(product.compareAtPrice, product.currencyCode) : null,
       purchaseMode: product.purchaseMode,
