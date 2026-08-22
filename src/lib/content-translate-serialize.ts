@@ -132,12 +132,21 @@ export type SpeakerTranslateSource = {
   avatar: string;
   bio: string;
   expertise: string;
+  region?: string;
+  badgeText?: string;
+  description?: string;
 };
 
 export function serializeSpeakers(speakers: SpeakerTranslateSource[]): string {
   return speakers
-    .filter((speaker) => speaker.name?.trim() || speaker.bio?.trim() || speaker.expertise?.trim())
-    .map((speaker) => `${speaker.name ?? ''}${PAIR_SEP}${speaker.bio ?? ''}${PAIR_SEP}${speaker.expertise ?? ''}`)
+    .filter((speaker) => speaker.name?.trim() || speaker.bio?.trim() || speaker.expertise?.trim() || speaker.region?.trim())
+    .map((speaker) => [
+      speaker.name ?? '',
+      speaker.region ?? '',
+      speaker.bio ?? '',
+      speaker.badgeText ?? '',
+      speaker.expertise ?? '',
+    ].join(PAIR_SEP))
     .join('\n');
 }
 
@@ -149,17 +158,64 @@ export function deserializeSpeakers(text: string, sourceSpeakers: SpeakerTransla
       name: speaker.name ?? '',
       bio: speaker.bio ?? '',
       expertise: speaker.expertise ?? '',
+      region: speaker.region ?? '',
+      badgeText: speaker.badgeText ?? '',
+      description: speaker.description ?? '',
     }));
   }
   return text.split('\n').map((line, index) => {
-    const [name = '', bio = '', expertise = ''] = line.split(PAIR_SEP);
+    const [name = '', region = '', bio = '', badgeText = '', expertise = ''] = line.split(PAIR_SEP);
     const source = sourceSpeakers[index];
     return {
       id: source?.id ?? crypto.randomUUID(),
       avatar: source?.avatar ?? '',
       name: name.trim(),
+      region: region.trim(),
       bio: bio.trim(),
+      badgeText: badgeText.trim(),
       expertise: expertise.trim(),
+      description: source?.description ?? '',
     };
-  }).filter((speaker) => speaker.name || speaker.bio || speaker.expertise || speaker.avatar);
+  }).filter((speaker) => speaker.name || speaker.bio || speaker.expertise || speaker.region || speaker.avatar);
+}
+
+export type SponsorTranslateSource = {
+  id: string;
+  tier: 'diamond' | 'gold' | 'silver';
+  name: string;
+  logo: string;
+  badgeText: string;
+  intro: string;
+};
+
+export function serializeSponsors(sponsors: SponsorTranslateSource[]): string {
+  return sponsors
+    .filter((sponsor) => sponsor.name?.trim() || sponsor.intro?.trim() || sponsor.badgeText?.trim())
+    .map((sponsor) => `${sponsor.name ?? ''}${PAIR_SEP}${sponsor.badgeText ?? ''}${PAIR_SEP}${sponsor.intro ?? ''}`)
+    .join('\n');
+}
+
+export function deserializeSponsors(text: string, sourceSponsors: SponsorTranslateSource[]): SponsorTranslateSource[] {
+  if (!text.trim()) {
+    return sourceSponsors.map((sponsor) => ({
+      id: sponsor.id,
+      tier: sponsor.tier ?? 'gold',
+      logo: sponsor.logo ?? '',
+      name: sponsor.name ?? '',
+      badgeText: sponsor.badgeText ?? '',
+      intro: sponsor.intro ?? '',
+    }));
+  }
+  return text.split('\n').map((line, index) => {
+    const [name = '', badgeText = '', intro = ''] = line.split(PAIR_SEP);
+    const source = sourceSponsors[index];
+    return {
+      id: source?.id ?? crypto.randomUUID(),
+      tier: source?.tier ?? 'gold',
+      logo: source?.logo ?? '',
+      name: name.trim(),
+      badgeText: badgeText.trim(),
+      intro: intro.trim(),
+    };
+  }).filter((sponsor) => sponsor.name || sponsor.intro || sponsor.badgeText || sponsor.logo);
 }

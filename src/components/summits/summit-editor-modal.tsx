@@ -1,25 +1,39 @@
 'use client';
 
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, DatePicker, Form, Input, Modal, Popconfirm, Select, Space, Table, Tabs, Typography, message } from 'antd';
+import { Button, DatePicker, Form, Input, Modal, Popconfirm, Select, Space, Switch, Table, Tabs, Typography, message } from 'antd';
 import dayjs from 'dayjs';
 import { useEffect, useState, useTransition } from 'react';
 
 import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
 import { ContentTranslateButton } from '@/components/admin/content-translate-button';
 import { CoverImageField } from '@/components/editorial/cover-image-field';
+import { RichTextEditor } from '@/components/editorial/rich-text-editor';
+import {
+  PartnerCenterBackgroundField,
+  type PartnerCenterBackgroundValue,
+} from '@/components/partner-centers/partner-center-background-field';
+import { SOLID_BACKGROUND_DEFAULT } from '@/lib/partner-center-background-presets';
+import { ProductVideoField } from '@/components/products/product-video-field';
 import {
   CoverOptionField,
   type CoverOptionValue,
 } from '@/components/shared/cover-option-field';
 import { applyNonemptyTranslatedFields } from '@/lib/content-translate-config';
-import { deserializeSpeakers, serializeSpeakers } from '@/lib/content-translate-serialize';
+import { deserializeSpeakers, deserializeSponsors, serializeSpeakers, serializeSponsors } from '@/lib/content-translate-serialize';
 import { AgendaGroupDrawer } from '@/components/summits/agenda-group-drawer';
 import {
   type AdminSummitDetail,
   type AdminSummitTranslation,
   type AgendaGroup,
   type SpeakerItem,
+  type SponsorItem,
+  type SummitStat,
+  normalizeSpeakerItems,
+  normalizeSponsorItems,
+  normalizeSummitStats,
+  sponsorTierLabels,
+  sponsorTiers,
   summitStatuses,
   summitStatusLabels,
 } from '@/lib/summit-content';
@@ -27,7 +41,7 @@ import { shouldPersistLocaleDraft } from '@/lib/locale-draft-persistence';
 import { resolveSlugForSave, textToSlug, validateSourceThenAutoSlug } from '@/lib/slug';
 import type { AdminSiteLanguageRow } from '@/server/admin/languages';
 
-type SectionTabKey = 'content' | 'speakers' | 'venue';
+type SectionTabKey = 'content' | 'stats' | 'speakers' | 'sponsors' | 'venue';
 
 type LocaleDraft = {
   title: string;
@@ -37,7 +51,9 @@ type LocaleDraft = {
   location: string;
   address: string;
   transportation: string;
+  stats: SummitStat[];
   speakers: SpeakerItem[];
+  sponsors: SponsorItem[];
 };
 
 type SharedFormValues = {
@@ -46,6 +62,9 @@ type SharedFormValues = {
   startDate: dayjs.Dayjs | null;
   endDate: dayjs.Dayjs | null;
   cover: CoverOptionValue;
+  videoUrl: string;
+  showCoverOnBackground: boolean;
+  background: PartnerCenterBackgroundValue;
   venueImage: string;
 };
 
@@ -57,12 +76,51 @@ type Props = {
   onSaved: (detail: AdminSummitDetail) => void;
 };
 
+const PAIR_SEP = '|||';
+
 function emptyDraft(): LocaleDraft {
-  return { title: '', description: '', scale: '', duration: '', location: '', address: '', transportation: '', speakers: [] };
+  return {
+    title: '',
+    description: '',
+    scale: '',
+    duration: '',
+    location: '',
+    address: '',
+    transportation: '',
+    stats: [],
+    speakers: [],
+    sponsors: [],
+  };
+}
+
+function serializePairText(rows: SummitStat[]): string {
+  return rows
+    .filter((row) => row.label?.trim() || row.value?.trim())
+    .map((row) => `${row.label ?? ''}${PAIR_SEP}${row.value ?? ''}`)
+    .join('\n');
+}
+
+function deserializePairText(value: string): SummitStat[] {
+  if (!value.trim()) return [];
+  return value.split('\n').map((line) => {
+    const [label = '', statValue = ''] = line.split(PAIR_SEP);
+    return { label: label.trim(), value: statValue.trim() };
+  }).filter((row) => row.label || row.value);
 }
 
 function translationToDraft(t: AdminSummitTranslation): LocaleDraft {
-  return { title: t.title, description: t.description, scale: t.scale, duration: t.duration, location: t.location, address: t.address, transportation: t.transportation, speakers: (t.speakers ?? []) as SpeakerItem[] };
+  return {
+    title: t.title,
+    description: t.description,
+    scale: t.scale,
+    duration: t.duration,
+    location: t.location,
+    address: t.address,
+    transportation: t.transportation,
+    stats: normalizeSummitStats(t.stats),
+    speakers: normalizeSpeakerItems(t.speakers),
+    sponsors: normalizeSponsorItems(t.sponsors),
+  };
 }
 
 function buildDrafts(detail: AdminSummitDetail | null, languages: AdminSiteLanguageRow[]): Record<string, LocaleDraft> {
@@ -75,7 +133,14 @@ function buildDrafts(detail: AdminSummitDetail | null, languages: AdminSiteLangu
 }
 
 function hasDraftContent(d: LocaleDraft): boolean {
-  return Boolean(d.title.trim() || d.description.trim() || d.location.trim());
+  return Boolean(
+    d.title.trim()
+    || d.description.trim()
+    || d.location.trim()
+    || d.stats.some((row) => row.label?.trim() || row.value?.trim())
+    || d.speakers.some((speaker) => speaker.name?.trim() || speaker.bio?.trim())
+    || d.sponsors.some((sponsor) => sponsor.name?.trim() || sponsor.intro?.trim()),
+  );
 }
 
 function buildTranslationBody(d: LocaleDraft, locale: string) {
@@ -88,11 +153,38 @@ function buildTranslationBody(d: LocaleDraft, locale: string) {
     location: d.location.trim(),
     address: d.address.trim(),
     transportation: d.transportation.trim(),
-    speakers: d.speakers.map((s) => ({ ...s, name: s.name.trim(), bio: s.bio.trim(), expertise: s.expertise.trim() })),
+    stats: normalizeSummitStats(d.stats),
+    speakers: normalizeSpeakerItems(d.speakers),
+    sponsors: normalizeSponsorItems(d.sponsors),
+  };
+}
+
+function emptySpeaker(): SpeakerItem {
+  return {
+    id: crypto.randomUUID(),
+    name: '',
+    avatar: '',
+    bio: '',
+    expertise: '',
+    region: '',
+    badgeText: '',
+    description: '',
+  };
+}
+
+function emptySponsor(): SponsorItem {
+  return {
+    id: crypto.randomUUID(),
+    tier: 'gold',
+    name: '',
+    logo: '',
+    badgeText: '',
+    intro: '',
   };
 }
 
 const statusOptions = summitStatuses.map((v) => ({ value: v, label: summitStatusLabels[v] }));
+const sponsorTierOptions = sponsorTiers.map((tier) => ({ value: tier, label: sponsorTierLabels[tier] }));
 
 export function SummitEditorModal({ open, detail, activeLanguages, onClose, onSaved }: Props) {
   const [sharedForm] = Form.useForm<SharedFormValues>();
@@ -101,6 +193,7 @@ export function SummitEditorModal({ open, detail, activeLanguages, onClose, onSa
   const [sectionTab, setSectionTab] = useState<SectionTabKey>('content');
   const [drafts, setDrafts] = useState<Record<string, LocaleDraft>>({});
   const [agenda, setAgenda] = useState<AgendaGroup[]>([]);
+  const [editorRevision, setEditorRevision] = useState(0);
   const [groupDrawerOpen, setGroupDrawerOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<AgendaGroup | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -121,25 +214,34 @@ export function SummitEditorModal({ open, detail, activeLanguages, onClose, onSa
       location: draft.location,
       address: draft.address,
       transportation: draft.transportation,
+      statsText: serializePairText(draft.stats),
       speakersText: serializeSpeakers(draft.speakers),
+      sponsorsText: serializeSponsors(draft.sponsors),
     };
   }
 
   function hasTargetLocaleContent() {
     const draft = getMergedDrafts()[activeLocale] ?? emptyDraft();
-    return hasDraftContent(draft) || draft.speakers.some((speaker) => speaker.name?.trim() || speaker.bio?.trim() || speaker.expertise?.trim());
+    return hasDraftContent(draft);
   }
 
   function handleTranslated(fields: Record<string, string>) {
     const merged = getMergedDrafts();
     const current = merged[activeLocale] ?? emptyDraft();
     const source = merged[defaultLocale] ?? emptyDraft();
-    const { speakersText, ...plainFields } = fields;
+    const { speakersText, sponsorsText, statsText, stats: statsField, ...plainFields } = fields;
     const nextDraft = applyNonemptyTranslatedFields(current, plainFields);
+    const translatedStats = deserializePairText(statsText || statsField || '');
+    nextDraft.stats = (translatedStats.length ? translatedStats : source.stats).map((row) => ({
+      label: row.label,
+      value: row.value,
+    }));
     nextDraft.speakers = deserializeSpeakers(speakersText ?? '', source.speakers);
+    nextDraft.sponsors = deserializeSponsors(sponsorsText ?? '', source.sponsors);
     const nextDrafts = { ...merged, [activeLocale]: nextDraft };
     setDrafts(nextDrafts);
     localeForm.setFieldsValue(nextDraft);
+    setEditorRevision((v) => v + 1);
   }
 
   useEffect(() => {
@@ -150,6 +252,7 @@ export function SummitEditorModal({ open, detail, activeLanguages, onClose, onSa
     setSectionTab('content');
     setDrafts(next);
     setAgenda(detail?.agenda ?? []);
+    setEditorRevision((v) => v + 1);
     localeForm.setFieldsValue(next[first] ?? emptyDraft());
     sharedForm.setFieldsValue({
       slug: detail?.slug ?? '',
@@ -161,6 +264,15 @@ export function SummitEditorModal({ open, detail, activeLanguages, onClose, onSa
         value: detail?.coverValue ?? '',
         previewUrl: detail?.coverPreviewUrl ?? '',
       },
+      videoUrl: detail?.videoUrl ?? '',
+      showCoverOnBackground: detail?.showCoverOnBackground ?? true,
+      background: {
+        mode: detail?.backgroundMode ?? '',
+        value: detail?.backgroundMode === 'solid'
+          ? SOLID_BACKGROUND_DEFAULT
+          : (detail?.backgroundValue ?? ''),
+        previewUrl: detail?.backgroundPreviewUrl ?? '',
+      },
       venueImage: detail?.venueImage ?? '',
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -170,6 +282,7 @@ export function SummitEditorModal({ open, detail, activeLanguages, onClose, onSa
     const next = { ...drafts, [activeLocale]: localeForm.getFieldsValue(true) as LocaleDraft };
     setDrafts(next);
     setActiveLocale(locale);
+    setEditorRevision((v) => v + 1);
     localeForm.setFieldsValue(next[locale] ?? emptyDraft());
   }
 
@@ -222,6 +335,10 @@ export function SummitEditorModal({ open, detail, activeLanguages, onClose, onSa
           endDate: shared.endDate ? (shared.endDate as dayjs.Dayjs).toISOString() : null,
           coverMode: shared.cover?.mode ?? '',
           coverValue: shared.cover?.value?.trim() ?? '',
+          videoUrl: shared.videoUrl?.trim() ?? '',
+          backgroundMode: shared.background?.mode ?? '',
+          backgroundValue: shared.background?.value?.trim() ?? '',
+          showCoverOnBackground: Boolean(shared.showCoverOnBackground),
           venueImage: shared.venueImage?.trim() ?? '',
           agenda,
         };
@@ -312,7 +429,6 @@ export function SummitEditorModal({ open, detail, activeLanguages, onClose, onSa
             <Button type="primary" loading={isPending} onClick={save}>保存</Button>
           </div>
 
-          {/* 通用区 */}
           <div className="content-editor-shared-section">
             <Form form={sharedForm} layout="vertical">
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
@@ -341,11 +457,28 @@ export function SummitEditorModal({ open, detail, activeLanguages, onClose, onSa
               >
                 <CoverOptionField />
               </Form.Item>
+              <Form.Item name="videoUrl" label="视频" getValueFromEvent={(v: string | null) => v ?? ''}>
+                <ProductVideoField folder="summits/videos" />
+              </Form.Item>
+              <Form.Item
+                name="showCoverOnBackground"
+                label="大背景图同时显示封面"
+                valuePropName="checked"
+                extra="开启后，详情页看板在大背景图右侧同时展示封面图"
+              >
+                <Switch checkedChildren="开" unCheckedChildren="关" />
+              </Form.Item>
+              <Form.Item
+                name="background"
+                label="大背景图（各语言共用）"
+                getValueFromEvent={(v: PartnerCenterBackgroundValue | null) => v ?? { mode: '', value: '', previewUrl: '' }}
+              >
+                <PartnerCenterBackgroundField solidImmediate />
+              </Form.Item>
               <Form.Item name="venueImage" label="地点图（各语言共用）" getValueFromEvent={(v: string | null) => v ?? ''}>
                 <CoverImageField folder="summits/venues" />
               </Form.Item>
 
-              {/* 会议议程 */}
               <Form.Item label="会议议程">
                 <Space direction="vertical" style={{ width: '100%' }}>
                   <Table
@@ -364,7 +497,6 @@ export function SummitEditorModal({ open, detail, activeLanguages, onClose, onSa
             </Form>
           </div>
 
-          {/* 多语言区 */}
           <Form form={localeForm} layout="vertical" preserve>
             <div className="content-editor-layout">
               <div className="content-editor-locale-nav">
@@ -386,7 +518,9 @@ export function SummitEditorModal({ open, detail, activeLanguages, onClose, onSa
                     className="content-editor-section-tabs"
                     items={[
                       { key: 'content', label: '内容' },
+                      { key: 'stats', label: '数据指标' },
                       { key: 'speakers', label: '嘉宾' },
+                      { key: 'sponsors', label: '赞助商' },
                       { key: 'venue', label: '会议配置' },
                     ]}
                   />
@@ -402,7 +536,6 @@ export function SummitEditorModal({ open, detail, activeLanguages, onClose, onSa
                   />
                 </div>
 
-                {/* 内容 Tab */}
                 <div style={{ display: sectionTab === 'content' ? 'block' : 'none' }}>
                   <Form.Item
                     name="title"
@@ -421,7 +554,29 @@ export function SummitEditorModal({ open, detail, activeLanguages, onClose, onSa
                   </Form.Item>
                 </div>
 
-                {/* 嘉宾 Tab */}
+                <div style={{ display: sectionTab === 'stats' ? 'block' : 'none' }}>
+                  <Form.List name="stats">
+                    {(fields, { add, remove }) => (
+                      <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                        {fields.map((field) => (
+                          <div key={field.key} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                            <Form.Item name={[field.name, 'label']} style={{ flex: 1, marginBottom: 0 }}>
+                              <Input placeholder="指标名" />
+                            </Form.Item>
+                            <Form.Item name={[field.name, 'value']} style={{ flex: 1, marginBottom: 0 }}>
+                              <Input placeholder="指标值，如 50+" />
+                            </Form.Item>
+                            <Button type="text" danger icon={<DeleteOutlined />} onClick={() => remove(field.name)} />
+                          </div>
+                        ))}
+                        <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />}>
+                          添加指标
+                        </Button>
+                      </Space>
+                    )}
+                  </Form.List>
+                </div>
+
                 <div style={{ display: sectionTab === 'speakers' ? 'block' : 'none' }}>
                   <Form.List name="speakers">
                     {(fields, { add, remove }) => (
@@ -437,24 +592,31 @@ export function SummitEditorModal({ open, detail, activeLanguages, onClose, onSa
                               <Form.Item name={[field.name, 'name']} label="姓名" style={{ marginBottom: 8 }}>
                                 <Input />
                               </Form.Item>
-                              <Form.Item name={[field.name, 'expertise']} label="擅长领域" style={{ marginBottom: 8 }}>
-                                <Input placeholder="如：V-CLAMP 临床" />
+                              <Form.Item name={[field.name, 'region']} label="所在地区" style={{ marginBottom: 8 }}>
+                                <Input placeholder="如：中国 · 北京" />
                               </Form.Item>
                             </div>
                             <Form.Item name={[field.name, 'avatar']} label="头像" style={{ marginBottom: 8 }} getValueFromEvent={(v: string | null) => v ?? ''}>
                               <CoverImageField folder="summits/speakers" />
                             </Form.Item>
-                            <Form.Item name={[field.name, 'bio']} label="简介" style={{ marginBottom: 0 }}>
+                            <Form.Item name={[field.name, 'bio']} label="简介" style={{ marginBottom: 8 }}>
                               <Input.TextArea rows={2} placeholder="如：主任医师 · 北京伴侣动物中心医院" />
                             </Form.Item>
+                            <Form.Item name={[field.name, 'description']} label="描述" style={{ marginBottom: 8 }}>
+                              <RichTextEditor key={`${activeLocale}-${field.name}-${editorRevision}`} />
+                            </Form.Item>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
+                              <Form.Item name={[field.name, 'expertise']} label="擅长领域" style={{ marginBottom: 0 }}>
+                                <Input placeholder="如：V-CLAMP 临床" />
+                              </Form.Item>
+                              <Form.Item name={[field.name, 'badgeText']} label="角标文案" style={{ marginBottom: 0 }}>
+                                <Input placeholder="如：特邀专家" />
+                              </Form.Item>
+                            </div>
                             <Form.Item name={[field.name, 'id']} hidden><Input /></Form.Item>
                           </div>
                         ))}
-                        <Button
-                          type="dashed"
-                          icon={<PlusOutlined />}
-                          onClick={() => add({ id: crypto.randomUUID(), name: '', avatar: '', bio: '', expertise: '' })}
-                        >
+                        <Button type="dashed" icon={<PlusOutlined />} onClick={() => add(emptySpeaker())}>
                           添加嘉宾
                         </Button>
                       </Space>
@@ -462,7 +624,45 @@ export function SummitEditorModal({ open, detail, activeLanguages, onClose, onSa
                   </Form.List>
                 </div>
 
-                {/* 会议配置 Tab */}
+                <div style={{ display: sectionTab === 'sponsors' ? 'block' : 'none' }}>
+                  <Form.List name="sponsors">
+                    {(fields, { add, remove }) => (
+                      <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                        {fields.map((field) => (
+                          <div key={field.key} style={{ border: '1px solid #f0f0f0', borderRadius: 8, padding: 12 }}>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+                              <Popconfirm title="确定删除此赞助商？" onConfirm={() => remove(field.name)}>
+                                <Button type="text" danger icon={<DeleteOutlined />} size="small">删除</Button>
+                              </Popconfirm>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
+                              <Form.Item name={[field.name, 'tier']} label="赞助商级别" style={{ marginBottom: 8 }}>
+                                <Select options={sponsorTierOptions} />
+                              </Form.Item>
+                              <Form.Item name={[field.name, 'name']} label="名称" style={{ marginBottom: 8 }}>
+                                <Input />
+                              </Form.Item>
+                            </div>
+                            <Form.Item name={[field.name, 'logo']} label="头像/Logo" style={{ marginBottom: 8 }} getValueFromEvent={(v: string | null) => v ?? ''}>
+                              <CoverImageField folder="summits/sponsors" />
+                            </Form.Item>
+                            <Form.Item name={[field.name, 'badgeText']} label="角标文案" style={{ marginBottom: 8 }}>
+                              <Input placeholder="如：Diamond Sponsor" />
+                            </Form.Item>
+                            <Form.Item name={[field.name, 'intro']} label="简介" style={{ marginBottom: 0 }}>
+                              <Input.TextArea rows={2} />
+                            </Form.Item>
+                            <Form.Item name={[field.name, 'id']} hidden><Input /></Form.Item>
+                          </div>
+                        ))}
+                        <Button type="dashed" icon={<PlusOutlined />} onClick={() => add(emptySponsor())}>
+                          添加赞助商
+                        </Button>
+                      </Space>
+                    )}
+                  </Form.List>
+                </div>
+
                 <div style={{ display: sectionTab === 'venue' ? 'block' : 'none' }}>
                   <Form.Item name="scale" label="会议规模"><Input placeholder="如：主会场 500 座 + 4 个分会场" /></Form.Item>
                   <Form.Item name="duration" label="会议周期"><Input placeholder="如：5 天" /></Form.Item>

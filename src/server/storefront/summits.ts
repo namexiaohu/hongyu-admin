@@ -1,13 +1,23 @@
 import 'server-only';
 
-import { asc, desc, eq, inArray } from 'drizzle-orm';
+import { asc, eq, inArray } from 'drizzle-orm';
 
-import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
+import { resolvePartnerCenterBackgroundDisplay } from '@/lib/partner-center-background-presets';
+import { rewriteHtmlOssAssets, resolveOssAssetUrl } from '@/lib/oss-asset-url';
 import { resolveStorefrontCoverUrl } from '@/lib/cover-presets';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
-import { localizeAgendaGroups, type AgendaGroup, type SpeakerItem, type SummitStatus } from '@/lib/summit-content';
+import {
+  localizeAgendaGroups,
+  normalizeSpeakerItems,
+  normalizeSponsorItems,
+  normalizeSummitStats,
+  type AgendaGroup,
+  type SpeakerItem,
+  type SponsorItem,
+  type SummitStat,
+  type SummitStatus,
+} from '@/lib/summit-content';
 import { getAdminMediaAssetStorageKeys } from '@/server/admin/media-assets';
-import { collectCoverUploadIds } from '@/server/admin/cover-images';
 import { db } from '@/server/db';
 import { summits, summitTranslations } from '@/server/db/schema';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
@@ -18,6 +28,18 @@ export type StorefrontSpeakerItem = {
   avatar: string;
   bio: string;
   expertise: string;
+  region: string;
+  badgeText: string;
+  description: string;
+};
+
+export type StorefrontSponsorItem = {
+  id: string;
+  tier: 'diamond' | 'gold' | 'silver';
+  name: string;
+  logo: string;
+  badgeText: string;
+  intro: string;
 };
 
 export type StorefrontSummitItem = {
@@ -34,10 +56,16 @@ export type StorefrontSummitItem = {
 };
 
 export type StorefrontSummitDetail = StorefrontSummitItem & {
+  videoUrl: string;
+  backgroundImage: string;
+  backgroundSolidCss: string;
+  showCoverOnBackground: boolean;
+  stats: SummitStat[];
   venueImage: string;
   address: string;
   transportation: string;
   speakers: StorefrontSpeakerItem[];
+  sponsors: StorefrontSponsorItem[];
   agenda: AgendaGroup[];
 };
 
@@ -58,6 +86,39 @@ function resolveTranslation(
 ) {
   return rows.find((t) => t.locale.toLowerCase() === locale.toLowerCase())
     ?? pickTranslationForDisplay(rows, defaultLocale);
+}
+
+function collectSummitUploadIds(rows: Array<typeof summits.$inferSelect>): string[] {
+  const ids: string[] = [];
+  for (const row of rows) {
+    if (row.coverMode === 'upload' && row.coverValue) ids.push(row.coverValue);
+    if (row.backgroundMode === 'upload' && row.backgroundValue) ids.push(row.backgroundValue);
+  }
+  return ids;
+}
+
+function mapSpeakers(speakers: SpeakerItem[]): StorefrontSpeakerItem[] {
+  return normalizeSpeakerItems(speakers).map((speaker) => ({
+    id: speaker.id,
+    name: speaker.name,
+    avatar: resolveOssAssetUrl(speaker.avatar),
+    bio: speaker.bio,
+    expertise: speaker.expertise,
+    region: speaker.region ?? '',
+    badgeText: speaker.badgeText ?? '',
+    description: rewriteHtmlOssAssets(speaker.description ?? '', 'toPublicUrl'),
+  }));
+}
+
+function mapSponsors(sponsors: SponsorItem[]): StorefrontSponsorItem[] {
+  return normalizeSponsorItems(sponsors).map((sponsor) => ({
+    id: sponsor.id,
+    tier: sponsor.tier,
+    name: sponsor.name,
+    logo: resolveOssAssetUrl(sponsor.logo),
+    badgeText: sponsor.badgeText,
+    intro: sponsor.intro,
+  }));
 }
 
 function mapToItem(
@@ -88,7 +149,7 @@ function mapToItem(
 export async function getStorefrontSummitsList(input: { locale: string }): Promise<StorefrontSummitsResponse> {
   const defaultLocale = await getDefaultSiteLanguageCode();
   const rows = await db.select().from(summits).orderBy(asc(summits.sortOrder));
-  const uploadKeyById = await getAdminMediaAssetStorageKeys(collectCoverUploadIds(rows));
+  const uploadKeyById = await getAdminMediaAssetStorageKeys(collectSummitUploadIds(rows));
 
   const ids = rows.map((r) => r.id);
   const translations = ids.length
@@ -117,7 +178,6 @@ export async function getStorefrontSummitsList(input: { locale: string }): Promi
     }
   }
 
-  // Sort upcoming: registering first, then upcoming; within each group by startDate asc
   upcoming.sort((a, b) => {
     const statusOrder: Record<string, number> = { registering: 0, upcoming: 1 };
     const so = (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9);
@@ -128,7 +188,6 @@ export async function getStorefrontSummitsList(input: { locale: string }): Promi
     return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
   });
 
-  // Sort completed: startDate desc
   completed.sort((a, b) => {
     if (!a.startDate && !b.startDate) return 0;
     if (!a.startDate) return 1;
@@ -149,22 +208,35 @@ export async function getStorefrontSummitDetail(input: { slug: string; locale: s
     .orderBy(asc(summitTranslations.locale));
 
   const display = resolveTranslation(translations, input.locale, defaultLocale);
-  const uploadKeyById = await getAdminMediaAssetStorageKeys(collectCoverUploadIds([row]));
+  const uploadKeyById = await getAdminMediaAssetStorageKeys(collectSummitUploadIds([row]));
 
-  const speakers = ((display?.speakers ?? []) as SpeakerItem[]).map((s) => ({
-    id: s.id,
-    name: s.name,
-    avatar: resolveOssAssetUrl(s.avatar),
-    bio: s.bio,
-    expertise: s.expertise,
-  }));
+  let uploadUrl = '';
+  if (row.backgroundMode === 'upload' && row.backgroundValue) {
+    const key = uploadKeyById.get(row.backgroundValue);
+    uploadUrl = key ? resolveOssAssetUrl(key) : '';
+  }
+
+  const bg = resolvePartnerCenterBackgroundDisplay({
+    mode: row.backgroundMode ?? '',
+    value: row.backgroundValue ?? '',
+    uploadUrl,
+    legacyBackgroundImage: row.backgroundImage ? resolveOssAssetUrl(row.backgroundImage) : '',
+    fallbackSolidWhenEmpty: false,
+  });
+  const useDefaultSolidHero = row.backgroundMode === 'solid';
 
   return {
     ...mapToItem(row, display, uploadKeyById),
+    videoUrl: row.videoUrl?.trim() ? resolveOssAssetUrl(row.videoUrl) : '',
+    backgroundImage: useDefaultSolidHero ? '' : bg.imageUrl,
+    backgroundSolidCss: '',
+    showCoverOnBackground: Boolean(row.showCoverOnBackground),
+    stats: normalizeSummitStats(display?.stats as Array<{ label?: string; value?: string }>),
     venueImage: resolveOssAssetUrl(row.venueImage),
     address: display?.address ?? '',
     transportation: display?.transportation ?? '',
-    speakers,
+    speakers: mapSpeakers((display?.speakers ?? []) as SpeakerItem[]),
+    sponsors: mapSponsors((display?.sponsors ?? []) as SponsorItem[]),
     agenda: localizeAgendaGroups((row.agenda ?? []) as AgendaGroup[], input.locale),
   };
 }

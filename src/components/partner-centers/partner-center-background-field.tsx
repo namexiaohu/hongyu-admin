@@ -17,6 +17,8 @@ import {
   MEDIA_ASSET_TYPE_BACKGROUND,
   PARTNER_CENTER_IMAGE_PRESETS,
   PARTNER_CENTER_SOLID_PRESETS,
+  SOLID_BACKGROUND_DEFAULT,
+  SUMMIT_DEFAULT_SOLID_PREVIEW_CSS,
   type PartnerCenterBackgroundMode,
   getPartnerCenterImagePreset,
   getPartnerCenterSolidPreset,
@@ -32,6 +34,8 @@ type Props = {
   value?: PartnerCenterBackgroundValue | null;
   onChange?: (value: PartnerCenterBackgroundValue) => void;
   disabled?: boolean;
+  /** When true, "solid" applies the default page hero background without a color picker */
+  solidImmediate?: boolean;
   /** @deprecated ignored — all modules share the background library */
   assetType?: MediaAssetType;
 };
@@ -42,6 +46,7 @@ export function PartnerCenterBackgroundField({
   value,
   onChange,
   disabled = false,
+  solidImmediate = false,
   assetType: _assetType = MEDIA_ASSET_TYPE_BACKGROUND,
 }: Props) {
   const assetType = MEDIA_ASSET_TYPE_BACKGROUND;
@@ -56,7 +61,8 @@ export function PartnerCenterBackgroundField({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [modeCache, setModeCache] = useState<Partial<Record<PartnerCenterBackgroundMode, { value: string; previewUrl: string }>>>({});
 
-  const solid = mode === 'solid' ? getPartnerCenterSolidPreset(selectedValue) : null;
+  const solid = mode === 'solid' && !solidImmediate ? getPartnerCenterSolidPreset(selectedValue) : null;
+  const isSolidDefault = solidImmediate && mode === 'solid';
   const preset = mode === 'preset' ? getPartnerCenterImagePreset(selectedValue) : null;
   const previewUrl = mode === 'upload'
     ? (value?.previewUrl || uploadItems.find((item) => item.id === selectedValue)?.url || '')
@@ -110,6 +116,13 @@ export function PartnerCenterBackgroundField({
     if (disabled) return;
     if (next === mode) return;
 
+    if (solidImmediate && next === 'solid') {
+      const nextValue = { mode: 'solid' as const, value: SOLID_BACKGROUND_DEFAULT, previewUrl: '' };
+      setModeCache((prev) => ({ ...prev, solid: { value: SOLID_BACKGROUND_DEFAULT, previewUrl: '' } }));
+      onChange?.(nextValue);
+      return;
+    }
+
     const mergedCache = {
       ...modeCache,
       ...(mode
@@ -127,6 +140,7 @@ export function PartnerCenterBackgroundField({
 
   function openPicker() {
     if (disabled) return;
+    if (solidImmediate && mode === 'solid') return;
     if (!mode) {
       message.warning('请先选择大背景图类型');
       return;
@@ -252,13 +266,17 @@ export function PartnerCenterBackgroundField({
           borderRadius: 10,
           border: '1px solid #e2e8f0',
           overflow: 'hidden',
-          background: solid?.css || '#f1f5f9',
+          background: isSolidDefault
+            ? SUMMIT_DEFAULT_SOLID_PREVIEW_CSS
+            : (solid?.css || '#f1f5f9'),
           position: 'relative',
         }}
       >
         {previewUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={previewUrl} alt="大背景图预览" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ) : isSolidDefault ? (
+          <div style={{ position: 'absolute', inset: 0, background: SUMMIT_DEFAULT_SOLID_PREVIEW_CSS }} />
         ) : solid ? (
           <div style={{ position: 'absolute', inset: 0, background: solid.css }} />
         ) : (
@@ -269,9 +287,11 @@ export function PartnerCenterBackgroundField({
       </div>
 
       <Space wrap>
-        <Button type="default" disabled={disabled || !mode} onClick={openPicker}>
-          选择大背景图…
-        </Button>
+        {!(solidImmediate && mode === 'solid') ? (
+          <Button type="default" disabled={disabled || !mode} onClick={openPicker}>
+            选择大背景图…
+          </Button>
+        ) : null}
         {(mode || selectedValue) ? (
           <Button danger type="text" disabled={disabled} onClick={clear}>
             清除
@@ -279,6 +299,7 @@ export function PartnerCenterBackgroundField({
         ) : null}
       </Space>
 
+      {isSolidDefault ? <Typography.Text type="secondary">已选纯色：默认深色背景</Typography.Text> : null}
       {solid ? <Typography.Text type="secondary">已选纯色：{solid.label}</Typography.Text> : null}
       {preset ? <Typography.Text type="secondary">已选预置：{preset.label}</Typography.Text> : null}
       {mode === 'upload' && selectedValue ? (

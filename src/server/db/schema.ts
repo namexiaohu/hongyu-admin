@@ -34,6 +34,23 @@ export type SpeakerItem = {
   avatar: string;
   bio: string;
   expertise: string;
+  region?: string;
+  badgeText?: string;
+  description?: string;
+};
+
+export type SponsorItem = {
+  id: string;
+  tier: 'diamond' | 'gold' | 'silver';
+  name: string;
+  logo: string;
+  badgeText: string;
+  intro: string;
+};
+
+export type SummitStat = {
+  label: string;
+  value: string;
 };
 
 import {
@@ -1598,6 +1615,14 @@ export const summits = pgTable(
     coverMode: text('cover_mode').notNull().default(''),
     /** preset id | media_assets.id */
     coverValue: text('cover_value').notNull().default(''),
+    videoUrl: text('video_url').notNull().default(''),
+    /** @deprecated use backgroundMode + backgroundValue */
+    backgroundImage: text('background_image').notNull().default(''),
+    /** solid | preset | upload | '' */
+    backgroundMode: text('background_mode').notNull().default(''),
+    /** solid token | preset id | media_assets.id */
+    backgroundValue: text('background_value').notNull().default(''),
+    showCoverOnBackground: boolean('show_cover_on_background').notNull().default(true),
     venueImage: text('venue_image').notNull().default(''),
     agenda: jsonb('agenda').$type<AgendaGroup[]>().notNull().default([]),
     sortOrder: integer('sort_order').notNull().default(0),
@@ -1624,7 +1649,9 @@ export const summitTranslations = pgTable(
     location: varchar('location', { length: 300 }).notNull().default(''),
     address: varchar('address', { length: 400 }).notNull().default(''),
     transportation: text('transportation').notNull().default(''),
+    stats: jsonb('stats').$type<SummitStat[]>().notNull().default([]),
     speakers: jsonb('speakers').$type<SpeakerItem[]>().notNull().default([]),
+    sponsors: jsonb('sponsors').$type<SponsorItem[]>().notNull().default([]),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

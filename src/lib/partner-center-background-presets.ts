@@ -81,10 +81,21 @@ export const MEDIA_ASSET_TYPE_SOLUTION_BACKGROUND = MEDIA_ASSET_TYPE_BACKGROUND;
 /** @deprecated alias — all modules share MEDIA_ASSET_TYPE_BACKGROUND */
 export const MEDIA_ASSET_TYPE_PRODUCT_BACKGROUND = MEDIA_ASSET_TYPE_BACKGROUND;
 
+/** Summit / module default: page-native dark hero, no preset gradient picker */
+export const SOLID_BACKGROUND_DEFAULT = 'default';
+
+export const SUMMIT_DEFAULT_SOLID_PREVIEW_CSS = '#0f172a';
+
 export function normalizeBackgroundWrite(mode: string | undefined, value: string | undefined) {
   const nextMode = (mode ?? '') as PartnerCenterBackgroundMode;
   const nextValue = (value ?? '').trim();
-  if (!nextMode || !nextValue) {
+  if (!nextMode) {
+    return { backgroundMode: '', backgroundValue: '', backgroundImage: '' };
+  }
+  if (nextMode === 'solid' && nextValue === SOLID_BACKGROUND_DEFAULT) {
+    return { backgroundMode: 'solid', backgroundValue: SOLID_BACKGROUND_DEFAULT, backgroundImage: '' };
+  }
+  if (!nextValue) {
     return { backgroundMode: '', backgroundValue: '', backgroundImage: '' };
   }
   return {
@@ -115,6 +126,9 @@ export function resolvePartnerCenterBackgroundDisplay(input: {
   const mode = (input.mode || '') as PartnerCenterBackgroundMode;
   const value = input.value?.trim() ?? '';
 
+  if (mode === 'solid' && value === SOLID_BACKGROUND_DEFAULT) {
+    return { mode: 'solid', imageUrl: '', solidCss: '' };
+  }
   if (mode === 'solid' && value) {
     const preset = getPartnerCenterSolidPreset(value);
     return { mode: 'solid', imageUrl: '', solidCss: preset?.css ?? PARTNER_CENTER_SOLID_PRESETS[0]?.css ?? '' };

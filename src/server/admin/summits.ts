@@ -3,6 +3,10 @@ import 'server-only';
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 
 import {
+  normalizeBackgroundWrite,
+  resolveAdminBackgroundPreview,
+} from '@/lib/partner-center-background-presets';
+import {
   type AdminSummitDetail,
   type AdminSummitListItem,
   type AdminSummitTranslation,
@@ -10,11 +14,14 @@ import {
   adminSummitCreateSchema,
   adminSummitPatchSchema,
   adminSummitTranslationSchema,
+  normalizeSpeakerItems,
+  normalizeSponsorItems,
+  normalizeSummitStats,
   resolveSummitDisplayTitle,
 } from '@/lib/summit-content';
-import type { AgendaGroup, SpeakerItem } from '@/server/db/schema';
+import type { AgendaGroup } from '@/server/db/schema';
 import { resolveAdminCoverPreview } from '@/lib/cover-presets';
-import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
+import { resolveOssAssetUrl, toOssStorageKey } from '@/lib/oss-asset-url';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import { normalizeSlug } from '@/lib/slug';
 import { db } from '@/server/db';
@@ -25,6 +32,20 @@ import { resolveCoverFieldsForWrite } from '@/server/admin/cover-images';
 
 function toIso(value: Date | null | undefined): string | null {
   return value ? value.toISOString() : null;
+}
+
+function normalizeVideoUrl(value: string | undefined): string {
+  const trimmed = value?.trim() ?? '';
+  return trimmed ? toOssStorageKey(trimmed) : '';
+}
+
+function collectSummitUploadIds(rows: Array<typeof summits.$inferSelect>): string[] {
+  const ids: string[] = [];
+  for (const row of rows) {
+    if (row.coverMode === 'upload' && row.coverValue) ids.push(row.coverValue);
+    if (row.backgroundMode === 'upload' && row.backgroundValue) ids.push(row.backgroundValue);
+  }
+  return ids;
 }
 
 function mapListItem(
@@ -40,6 +61,13 @@ function mapListItem(
     uploadKeyById,
     toPublicUrl: resolveOssAssetUrl,
   });
+  const bg = resolveAdminBackgroundPreview({
+    mode: row.backgroundMode ?? '',
+    value: row.backgroundValue ?? '',
+    legacyBackgroundImageKey: row.backgroundImage ?? '',
+    uploadKeyById,
+    toPublicUrl: resolveOssAssetUrl,
+  });
   return {
     id: row.id,
     slug: row.slug,
@@ -50,6 +78,12 @@ function mapListItem(
     coverMode: cover.mode,
     coverValue: cover.value,
     coverPreviewUrl: cover.previewUrl,
+    videoUrl: row.videoUrl ?? '',
+    backgroundImage: row.backgroundImage ?? '',
+    backgroundMode: bg.mode,
+    backgroundValue: bg.value,
+    backgroundPreviewUrl: bg.previewUrl,
+    showCoverOnBackground: Boolean(row.showCoverOnBackground),
     venueImage: row.venueImage,
     sortOrder: row.sortOrder,
     title,
@@ -70,7 +104,9 @@ function mapTranslation(row: typeof summitTranslations.$inferSelect): AdminSummi
     location: row.location,
     address: row.address,
     transportation: row.transportation,
-    speakers: (row.speakers ?? []) as SpeakerItem[],
+    stats: normalizeSummitStats(row.stats as Array<{ label?: string; value?: string }>),
+    speakers: normalizeSpeakerItems(row.speakers ?? []),
+    sponsors: normalizeSponsorItems(row.sponsors ?? []),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -93,9 +129,7 @@ function mapDetail(
 export async function getAdminSummitList() {
   const defaultLocale = await getDefaultSiteLanguageCode();
   const rows = await db.select().from(summits).orderBy(asc(summits.sortOrder), asc(summits.slug));
-  const uploadKeyById = await getAdminMediaAssetStorageKeys(
-    rows.filter((row) => row.coverMode === 'upload' && row.coverValue).map((row) => row.coverValue),
-  );
+  const uploadKeyById = await getAdminMediaAssetStorageKeys(collectSummitUploadIds(rows));
 
   const ids = rows.map((r) => r.id);
   const translations = ids.length
@@ -126,9 +160,7 @@ export async function getAdminSummitDetail(id: string): Promise<AdminSummitDetai
     .where(eq(summitTranslations.summitId, id))
     .orderBy(asc(summitTranslations.locale));
   const defaultLocale = await getDefaultSiteLanguageCode();
-  const uploadKeyById = await getAdminMediaAssetStorageKeys(
-    row.coverMode === 'upload' && row.coverValue ? [row.coverValue] : [],
-  );
+  const uploadKeyById = await getAdminMediaAssetStorageKeys(collectSummitUploadIds([row]));
   return mapDetail(row, translations, defaultLocale, uploadKeyById);
 }
 
@@ -146,6 +178,13 @@ export async function createAdminSummit(input: unknown) {
     coverMode: parsed.coverMode,
     coverValue: parsed.coverValue,
   });
+  const bg = normalizeBackgroundWrite(parsed.backgroundMode, parsed.backgroundValue);
+
+  let backgroundImage = bg.backgroundImage;
+  if (bg.backgroundMode === 'upload' && bg.backgroundValue) {
+    const keys = await getAdminMediaAssetStorageKeys([bg.backgroundValue]);
+    backgroundImage = keys.get(bg.backgroundValue) ?? '';
+  }
 
   const [inserted] = await db.insert(summits).values({
     slug,
@@ -155,6 +194,11 @@ export async function createAdminSummit(input: unknown) {
     coverImage: cover.coverImage,
     coverMode: cover.coverMode,
     coverValue: cover.coverValue,
+    videoUrl: normalizeVideoUrl(parsed.videoUrl),
+    backgroundMode: bg.backgroundMode,
+    backgroundValue: bg.backgroundValue,
+    backgroundImage,
+    showCoverOnBackground: parsed.showCoverOnBackground ?? true,
     venueImage: parsed.venueImage ?? '',
     agenda: (parsed.agenda ?? []) as AgendaGroup[],
     sortOrder: parsed.sortOrder ?? (maxSort?.sortOrder ?? 0) + 10,
@@ -191,12 +235,35 @@ export async function updateAdminSummit(id: string, input: unknown) {
     coverPatch.coverImage = cover.coverImage;
   }
 
+  const bgPatch: Partial<{
+    backgroundMode: string;
+    backgroundValue: string;
+    backgroundImage: string;
+  }> = {};
+  if (parsed.backgroundMode !== undefined || parsed.backgroundValue !== undefined) {
+    const bg = normalizeBackgroundWrite(
+      parsed.backgroundMode ?? current.backgroundMode,
+      parsed.backgroundValue ?? current.backgroundValue,
+    );
+    bgPatch.backgroundMode = bg.backgroundMode;
+    bgPatch.backgroundValue = bg.backgroundValue;
+    if (bg.backgroundMode === 'upload' && bg.backgroundValue) {
+      const keys = await getAdminMediaAssetStorageKeys([bg.backgroundValue]);
+      bgPatch.backgroundImage = keys.get(bg.backgroundValue) ?? '';
+    } else {
+      bgPatch.backgroundImage = '';
+    }
+  }
+
   await db.update(summits).set({
     ...(parsed.slug !== undefined ? { slug: nextSlug } : {}),
     ...(parsed.status !== undefined ? { status: parsed.status } : {}),
     ...(parsed.startDate !== undefined ? { startDate: parsed.startDate ? new Date(parsed.startDate) : null } : {}),
     ...(parsed.endDate !== undefined ? { endDate: parsed.endDate ? new Date(parsed.endDate) : null } : {}),
     ...coverPatch,
+    ...(parsed.videoUrl !== undefined ? { videoUrl: normalizeVideoUrl(parsed.videoUrl) } : {}),
+    ...bgPatch,
+    ...(parsed.showCoverOnBackground !== undefined ? { showCoverOnBackground: parsed.showCoverOnBackground } : {}),
     ...(parsed.venueImage !== undefined ? { venueImage: parsed.venueImage } : {}),
     ...(parsed.agenda !== undefined ? { agenda: parsed.agenda as AgendaGroup[] } : {}),
     ...(parsed.sortOrder !== undefined ? { sortOrder: parsed.sortOrder } : {}),
@@ -223,7 +290,9 @@ export async function upsertAdminSummitTranslation(summitId: string, input: unkn
     location: parsed.location ?? '',
     address: parsed.address ?? '',
     transportation: parsed.transportation ?? '',
-    speakers: (parsed.speakers ?? []) as SpeakerItem[],
+    stats: normalizeSummitStats(parsed.stats),
+    speakers: normalizeSpeakerItems(parsed.speakers),
+    sponsors: normalizeSponsorItems(parsed.sponsors),
     updatedAt: new Date(),
   };
 
