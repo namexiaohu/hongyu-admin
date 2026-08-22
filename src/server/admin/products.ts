@@ -180,6 +180,8 @@ function withProductCoverUrl(payload: AdminProductPayload, product: ProductRow):
     coverUrl: product.coverImage || null,
   };
 }
+
+function normalizePayload(payload: AdminProductPayload | undefined): AdminProductPayload {
   const base = payload ?? defaultProductPayload();
   return {
     coverUrl: normalizeText(base.coverUrl) ? toOssStorageKey(base.coverUrl!) : null,

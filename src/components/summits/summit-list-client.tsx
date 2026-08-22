@@ -37,7 +37,11 @@ function toListItem(d: AdminSummitDetail): AdminSummitListItem {
   return {
     id: d.id, slug: d.slug, status: d.status,
     startDate: d.startDate, endDate: d.endDate,
-    coverImage: d.coverImage, venueImage: d.venueImage,
+    coverImage: d.coverImage,
+    coverMode: d.coverMode,
+    coverValue: d.coverValue,
+    coverPreviewUrl: d.coverPreviewUrl,
+    venueImage: d.venueImage,
     sortOrder: d.sortOrder, title: d.title,
     localeCount: d.translations.length, updatedAt: d.updatedAt,
   };
