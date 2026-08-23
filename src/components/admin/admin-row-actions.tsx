@@ -99,6 +99,8 @@ function ConfirmActionIconButton({
   );
 }
 
+export { ConfirmActionIconButton as AdminConfirmActionIconButton };
+
 export type AdminEntityRowActionsProps = {
   loading?: boolean;
   isActive: boolean;

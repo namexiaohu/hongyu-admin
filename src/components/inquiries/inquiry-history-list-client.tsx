@@ -1,13 +1,16 @@
 'use client';
 
-import { EyeOutlined } from '@ant-design/icons';
-import { Card, Input, Select, Space, Table, Tag, Typography } from 'antd';
+import { DeleteOutlined, EyeOutlined } from '@ant-design/icons';
+import { Card, Input, message, Select, Space, Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 
 import { AdminListPagination } from '@/components/admin/admin-list-pagination';
-import { AdminActionIconButton } from '@/components/admin/admin-row-actions';
+import {
+  AdminActionIconButton,
+  AdminConfirmActionIconButton,
+} from '@/components/admin/admin-row-actions';
 import { adminTableFixedActionsColumn, adminTableNowrapHeader, adminTableScroll } from '@/components/admin/admin-table';
 import { InquiryViewSwitch } from '@/components/inquiries/inquiry-view-switch';
 import {
@@ -84,6 +87,7 @@ export function InquiryHistoryListClient({ initialList, initialQuery }: InquiryH
   const [listState, setListState] = useState(initialList);
   const [query, setQuery] = useState(initialQuery);
   const [searchInput, setSearchInput] = useState(initialQuery.keyword);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isListLoading, startListTransition] = useTransition();
 
   const replaceUrl = useCallback((nextQuery: InquiryHistoryListQuery) => {
@@ -134,6 +138,21 @@ export function InquiryHistoryListClient({ initialList, initialQuery }: InquiryH
     if (patch.pageSize) writeStoredPageSize(patch.pageSize);
     setSearchInput(nextQuery.keyword);
     replaceUrl(nextQuery);
+  }
+
+  async function deleteInquiry(id: string) {
+    setDeletingId(id);
+    try {
+      const response = await fetch(`/api/admin/inquiries/${id}`, { method: 'DELETE' });
+      if (!response.ok) {
+        void message.error('删除询盘失败');
+        return;
+      }
+      void message.success('询盘已删除');
+      reloadList(query);
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   const columns: ColumnsType<AdminInquiryListItem> = [
@@ -201,13 +220,28 @@ export function InquiryHistoryListClient({ initialList, initialQuery }: InquiryH
     adminTableFixedActionsColumn<AdminInquiryListItem>({
       title: '操作',
       key: 'actions',
-      width: 72,
+      width: 96,
       render: (_: unknown, row: AdminInquiryListItem) => (
-        <AdminActionIconButton
-          title="查看详情"
-          icon={<EyeOutlined />}
-          onClick={() => router.push(buildInquiryDetailUrl(row.id, 'history', query))}
-        />
+        <Space size={0} className="admin-row-actions">
+          <AdminActionIconButton
+            title="查看详情"
+            icon={<EyeOutlined />}
+            onClick={() => router.push(buildInquiryDetailUrl(row.id, 'history', query))}
+          />
+          <AdminConfirmActionIconButton
+            title="删除"
+            icon={<DeleteOutlined />}
+            danger
+            loading={deletingId === row.id}
+            confirmTitle="确定删除该询盘吗？"
+            confirmDescription="删除后不可恢复，相关消息与资料将一并清除。"
+            okText="删除"
+            okButtonProps={{ danger: true }}
+            onConfirm={() => {
+              void deleteInquiry(row.id);
+            }}
+          />
+        </Space>
       ),
     }),
   ];

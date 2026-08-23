@@ -1,6 +1,6 @@
 'use client';
 
-import { Input, Select, Space, Typography } from 'antd';
+import { Input, message, Select, Space, Typography } from 'antd';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 
@@ -39,6 +39,7 @@ export function InquiryActiveListClient({ initialItems, initialQuery }: InquiryA
   const [items, setItems] = useState(initialItems);
   const [query, setQuery] = useState(initialQuery);
   const [searchInput, setSearchInput] = useState(initialQuery.keyword);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const replaceUrl = useCallback((nextQuery: InquiryActiveListQuery) => {
@@ -71,6 +72,21 @@ export function InquiryActiveListClient({ initialItems, initialQuery }: InquiryA
     };
     setSearchInput(nextQuery.keyword);
     replaceUrl(nextQuery);
+  }
+
+  async function deleteInquiry(id: string) {
+    setDeletingId(id);
+    try {
+      const response = await fetch(`/api/admin/inquiries/${id}`, { method: 'DELETE' });
+      if (!response.ok) {
+        void message.error('删除询盘失败');
+        return;
+      }
+      void message.success('询盘已删除');
+      setItems((current) => current.filter((item) => item.id !== id));
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   return (
@@ -119,7 +135,15 @@ export function InquiryActiveListClient({ initialItems, initialQuery }: InquiryA
       ) : (
         <div className="info-grid" style={{ opacity: isPending ? 0.7 : 1 }}>
           {items.map((inquiry) => (
-            <InquiryActiveCard key={inquiry.id} inquiry={inquiry} listQuery={query} />
+            <InquiryActiveCard
+              key={inquiry.id}
+              inquiry={inquiry}
+              listQuery={query}
+              deleting={deletingId === inquiry.id}
+              onDelete={(id) => {
+                void deleteInquiry(id);
+              }}
+            />
           ))}
         </div>
       )}

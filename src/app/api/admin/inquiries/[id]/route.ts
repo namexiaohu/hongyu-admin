@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { getAdminInquiryDetail, updateAdminInquiry } from '@/server/admin/inquiries';
+import { deleteAdminInquiry, getAdminInquiryDetail, updateAdminInquiry } from '@/server/admin/inquiries';
 
 const quotedLineSchema = z.object({
   productId: z.string().uuid(),
@@ -62,4 +62,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
 
   return NextResponse.json(updated);
+}
+
+export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const deleted = await deleteAdminInquiry(id);
+  if (!deleted) {
+    return NextResponse.json({ code: 'NOT_FOUND', message: 'Inquiry not found' }, { status: 404 });
+  }
+
+  return NextResponse.json({ ok: true });
 }

@@ -1327,6 +1327,24 @@ main {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.inquiry-active-card-wrap {
+  position: relative;
+}
+
+.inquiry-active-card__delete {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 2px 8px rgba(17, 38, 59, 0.08);
+}
+
+.inquiry-active-card-wrap .inquiry-active-card__header {
+  padding-right: 36px;
+}
+
 .inquiry-active-card-link {
   display: block;
   color: inherit;

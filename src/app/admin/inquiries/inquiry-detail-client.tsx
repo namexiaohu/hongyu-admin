@@ -1,6 +1,6 @@
 'use client';
 
-import { Image, message } from 'antd';
+import { Image, Modal, message } from 'antd';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition } from 'react';
@@ -203,6 +203,35 @@ export function InquiryDetailClient({
     });
   }
 
+  function deleteInquiry() {
+    Modal.confirm({
+      title: '确定删除该询盘吗？',
+      content: '删除后不可恢复，相关消息与资料将一并清除。',
+      okText: '删除',
+      okType: 'danger',
+      cancelText: '取消',
+      onOk: () =>
+        new Promise<void>((resolve, reject) => {
+          startTransition(async () => {
+            try {
+              const response = await fetch(`/api/admin/inquiries/${inquiry.id}`, { method: 'DELETE' });
+              if (!response.ok) {
+                void message.error('删除询盘失败');
+                reject(new Error('delete failed'));
+                return;
+              }
+              void message.success('询盘已删除');
+              router.push(backTarget.href);
+              router.refresh();
+              resolve();
+            } catch (error) {
+              reject(error);
+            }
+          });
+        }),
+    });
+  }
+
   return (
     <main style={{ display: 'grid', gap: 20 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
@@ -210,16 +239,26 @@ export function InquiryDetailClient({
           <InquiryDetailBack href={backTarget.href} label={backTarget.label} />
           <h1 style={{ margin: 0 }}>询盘详情{inquiry.quoteNumber ? ` · ${inquiry.quoteNumber}` : ''}</h1>
         </div>
-        {!inquiry.terminatedAt ? (
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          {!inquiry.terminatedAt ? (
+            <button
+              type="button"
+              className="button-outline-danger"
+              disabled={isPending}
+              onClick={terminateInquiry}
+            >
+              标记已终止
+            </button>
+          ) : null}
           <button
             type="button"
             className="button-outline-danger"
             disabled={isPending}
-            onClick={terminateInquiry}
+            onClick={deleteInquiry}
           >
-            标记已终止
+            删除询盘
           </button>
-        ) : null}
+        </div>
       </div>
 
       <article className="info-card inquiry-status-card">

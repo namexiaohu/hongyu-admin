@@ -584,6 +584,15 @@ export async function terminateAdminInquiry(id: string, adminId: string) {
   return getAdminInquiryDetail(id);
 }
 
+export async function deleteAdminInquiry(id: string) {
+  const [deleted] = await db
+    .delete(inquiries)
+    .where(eq(inquiries.id, id))
+    .returning({ id: inquiries.id });
+
+  return Boolean(deleted);
+}
+
 export async function updateAdminInquiry(input: {
   id: string;
   status?: InquiryStatus;
