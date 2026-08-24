@@ -1,0 +1,607 @@
+translate-content-from-en 开始 2026-08-23T09:32:14.419Z dryRun=true targets=zh-CN,es
+
+=== 产品 products ===
+[product] HY-SM-300 → dry-translate_zh
+[product] HY-SM-300 → dry-translate_es
+[product] HY-PM-100 → dry-translate_zh
+[product] HY-PM-100 → dry-translate_es
+[product] HY-PM-200 → dry-translate_zh
+[product] HY-PM-200 → dry-translate_es
+[product] HY-PM-300 → dry-translate_zh
+[product] HY-PM-300 → dry-translate_es
+[product] HY-RD-100 → dry-translate_zh
+[product] HY-RD-100 → dry-translate_es
+[product] HY-RD-200 → dry-translate_zh
+[product] HY-RD-200 → dry-translate_es
+[product] HY-RD-300 → dry-translate_zh
+[product] HY-RD-300 → dry-translate_es
+[product] HY-VC-100 → dry-translate_zh
+[product] HY-VC-100 → dry-translate_es
+[product] HY-VC-200 → dry-translate_zh
+[product] HY-VC-200 → dry-translate_es
+[product] HY-VC-300 → dry-translate_zh
+[product] HY-VC-300 → dry-translate_es
+[product] HY-SM-100 → dry-translate_zh
+[product] HY-SM-100 → dry-translate_es
+[product] HY-SM-200 → dry-translate_zh
+[product] HY-SM-200 → dry-translate_es
+
+=== 企业叙事 brand narratives ===
+[brandNarrative] training → skip_zh
+[brandNarrative] training → dry-translate_es
+[brandNarrative] training#block0 → skip_zh-locales
+[brandNarrative] training#block0 → dry-translate_es-locales
+[brandNarrative] training#block0.item0 → skip_zh-locales
+[brandNarrative] training#block0.item0 → dry-translate_es-locales
+[brandNarrative] training#block0.item1 → skip_zh-locales
+[brandNarrative] training#block0.item1 → dry-translate_es-locales
+[brandNarrative] training#block0.item2 → skip_zh-locales
+[brandNarrative] training#block0.item2 → dry-translate_es-locales
+[brandNarrative] training#block0.item3 → skip_zh-locales
+[brandNarrative] training#block0.item3 → dry-translate_es-locales
+[brandNarrative] training#block1 → skip_zh-locales
+[brandNarrative] training#block1 → dry-translate_es-locales
+[brandNarrative] training#block1.item0 → skip_zh-locales
+[brandNarrative] training#block1.item0 → dry-translate_es-locales
+[brandNarrative] training#block1.item1 → skip_zh-locales
+[brandNarrative] training#block1.item1 → dry-translate_es-locales
+[brandNarrative] training#block1.item2 → skip_zh-locales
+[brandNarrative] training#block1.item2 → dry-translate_es-locales
+[brandNarrative] training#block1.item3 → skip_zh-locales
+[brandNarrative] training#block1.item3 → dry-translate_es-locales
+[brandNarrative] training#block2 → skip_zh-locales
+[brandNarrative] training#block2 → dry-translate_es-locales
+[brandNarrative] about → skip_zh
+[brandNarrative] about → dry-translate_es
+[brandNarrative] about#block0 → skip_zh-locales
+[brandNarrative] about#block0 → dry-translate_es-locales
+[brandNarrative] about#block1 → skip_zh-locales
+[brandNarrative] about#block1 → dry-translate_es-locales
+[brandNarrative] about#block1.item0 → skip_zh-locales
+[brandNarrative] about#block1.item0 → dry-translate_es-locales
+[brandNarrative] about#block1.item1 → skip_zh-locales
+[brandNarrative] about#block1.item1 → dry-translate_es-locales
+[brandNarrative] about#block1.item2 → skip_zh-locales
+[brandNarrative] about#block1.item2 → dry-translate_es-locales
+[brandNarrative] about#block2 → skip_zh-locales
+[brandNarrative] about#block2 → dry-translate_es-locales
+[brandNarrative] about#block3 → skip_zh-locales
+[brandNarrative] about#block3 → dry-translate_es-locales
+[brandNarrative] about#block3.item0 → skip_zh-locales
+[brandNarrative] about#block3.item0 → dry-translate_es-locales
+[brandNarrative] about#block3.item1 → skip_zh-locales
+[brandNarrative] about#block3.item1 → dry-translate_es-locales
+[brandNarrative] about#block3.item2 → skip_zh-locales
+[brandNarrative] about#block3.item2 → dry-translate_es-locales
+[brandNarrative] about#block3.item3 → skip_zh-locales
+[brandNarrative] about#block3.item3 → dry-translate_es-locales
+[brandNarrative] about#block4 → skip_zh-locales
+[brandNarrative] about#block4 → dry-translate_es-locales
+[brandNarrative] history → skip_zh
+[brandNarrative] history → dry-translate_es
+[brandNarrative] history#block0 → skip_zh-locales
+[brandNarrative] history#block0 → dry-translate_es-locales
+[brandNarrative] history#block0.item0 → skip_zh-locales
+[brandNarrative] history#block0.item0 → dry-translate_es-locales
+[brandNarrative] history#block0.item1 → skip_zh-locales
+[brandNarrative] history#block0.item1 → dry-translate_es-locales
+[brandNarrative] history#block0.item2 → skip_zh-locales
+[brandNarrative] history#block0.item2 → dry-translate_es-locales
+[brandNarrative] history#block0.item3 → skip_zh-locales
+[brandNarrative] history#block0.item3 → dry-translate_es-locales
+[brandNarrative] history#block0.item4 → skip_zh-locales
+[brandNarrative] history#block0.item4 → dry-translate_es-locales
+[brandNarrative] history#block0.item5 → skip_zh-locales
+[brandNarrative] history#block0.item5 → dry-translate_es-locales
+[brandNarrative] history#block0.item6 → skip_zh-locales
+[brandNarrative] history#block0.item6 → dry-translate_es-locales
+[brandNarrative] history#block0.item7 → dry-translate_zh-locales
+[brandNarrative] history#block0.item7 → dry-translate_es-locales
+[brandNarrative] history#block1 → skip_zh-locales
+[brandNarrative] history#block1 → dry-translate_es-locales
+[brandNarrative] history#block1.item0 → skip_zh-locales
+[brandNarrative] history#block1.item0 → dry-translate_es-locales
+[brandNarrative] history#block1.item1 → skip_zh-locales
+[brandNarrative] history#block1.item1 → dry-translate_es-locales
+[brandNarrative] history#block1.item2 → skip_zh-locales
+[brandNarrative] history#block1.item2 → dry-translate_es-locales
+[brandNarrative] history#block2 → skip_zh-locales
+[brandNarrative] history#block2 → dry-translate_es-locales
+[brandNarrative] patents → skip_zh
+[brandNarrative] patents → dry-translate_es
+[brandNarrative] patents#block0 → skip_zh-locales
+[brandNarrative] patents#block0 → dry-translate_es-locales
+[brandNarrative] patents#block0.item0 → skip_zh-locales
+[brandNarrative] patents#block0.item0 → dry-translate_es-locales
+[brandNarrative] patents#block0.item1 → skip_zh-locales
+[brandNarrative] patents#block0.item1 → dry-translate_es-locales
+[brandNarrative] patents#block0.item2 → skip_zh-locales
+[brandNarrative] patents#block0.item2 → dry-translate_es-locales
+[brandNarrative] patents#block0.item3 → skip_zh-locales
+[brandNarrative] patents#block0.item3 → dry-translate_es-locales
+[brandNarrative] patents#block0.item4 → skip_zh-locales
+[brandNarrative] patents#block0.item4 → dry-translate_es-locales
+[brandNarrative] patents#block0.item5 → skip_zh-locales
+[brandNarrative] patents#block0.item5 → dry-translate_es-locales
+[brandNarrative] patents#block1 → skip_zh-locales
+[brandNarrative] patents#block1 → dry-translate_es-locales
+[brandNarrative] patents#block2 → skip_zh-locales
+[brandNarrative] patents#block2 → dry-translate_es-locales
+[brandNarrative] patents#block2.item0 → skip_zh-locales
+[brandNarrative] patents#block2.item0 → dry-translate_es-locales
+[brandNarrative] patents#block2.item1 → skip_zh-locales
+[brandNarrative] patents#block2.item1 → dry-translate_es-locales
+[brandNarrative] patents#block2.item2 → skip_zh-locales
+[brandNarrative] patents#block2.item2 → dry-translate_es-locales
+[brandNarrative] patents#block3 → skip_zh-locales
+[brandNarrative] patents#block3 → dry-translate_es-locales
+
+=== 解决方案 solutions ===
+[solution] pacemaker → dry-translate_zh
+[solution] pacemaker → dry-translate_es
+[solution] pacemaker#block0 → dry-translate_zh-locales
+[solution] pacemaker#block0 → dry-translate_es-locales
+[solution] pacemaker#block1 → dry-translate_zh-locales
+[solution] pacemaker#block1 → dry-translate_es-locales
+[solution] pacemaker#block1.item0 → dry-translate_zh-locales
+[solution] pacemaker#block1.item0 → dry-translate_es-locales
+[solution] pacemaker#block1.item1 → dry-translate_zh-locales
+[solution] pacemaker#block1.item1 → dry-translate_es-locales
+[solution] pacemaker#block1.item2 → dry-translate_zh-locales
+[solution] pacemaker#block1.item2 → dry-translate_es-locales
+[solution] pacemaker#block2 → dry-translate_zh-locales
+[solution] pacemaker#block2 → dry-translate_es-locales
+[solution] pacemaker#block2.item0 → dry-translate_zh-locales
+[solution] pacemaker#block2.item0 → dry-translate_es-locales
+[solution] pacemaker#block2.item1 → dry-translate_zh-locales
+[solution] pacemaker#block2.item1 → dry-translate_es-locales
+[solution] pacemaker#block2.item2 → dry-translate_zh-locales
+[solution] pacemaker#block2.item2 → dry-translate_es-locales
+[solution] pacemaker#block2.item3 → dry-translate_zh-locales
+[solution] pacemaker#block2.item3 → dry-translate_es-locales
+[solution] pacemaker#block3 → dry-translate_zh-locales
+[solution] pacemaker#block3 → dry-translate_es-locales
+[solution] pacemaker#block4 → dry-translate_zh-locales
+[solution] pacemaker#block4 → dry-translate_es-locales
+[solution] in-research → dry-translate_zh
+[solution] in-research → dry-translate_es
+[solution] in-research#block0 → dry-translate_zh-locales
+[solution] in-research#block0 → dry-translate_es-locales
+[solution] in-research#block1 → dry-translate_zh-locales
+[solution] in-research#block1 → dry-translate_es-locales
+[solution] in-research#block1.item0 → dry-translate_zh-locales
+[solution] in-research#block1.item0 → dry-translate_es-locales
+[solution] in-research#block1.item1 → dry-translate_zh-locales
+[solution] in-research#block1.item1 → dry-translate_es-locales
+[solution] in-research#block1.item2 → dry-translate_zh-locales
+[solution] in-research#block1.item2 → dry-translate_es-locales
+[solution] in-research#block2 → dry-translate_zh-locales
+[solution] in-research#block2 → dry-translate_es-locales
+[solution] in-research#block2.item0 → dry-translate_zh-locales
+[solution] in-research#block2.item0 → dry-translate_es-locales
+[solution] in-research#block2.item1 → dry-translate_zh-locales
+[solution] in-research#block2.item1 → dry-translate_es-locales
+[solution] in-research#block2.item2 → dry-translate_zh-locales
+[solution] in-research#block2.item2 → dry-translate_es-locales
+[solution] in-research#block2.item3 → dry-translate_zh-locales
+[solution] in-research#block2.item3 → dry-translate_es-locales
+[solution] in-research#block3 → dry-translate_zh-locales
+[solution] in-research#block3 → dry-translate_es-locales
+[solution] in-research#block4 → dry-translate_zh-locales
+[solution] in-research#block4 → dry-translate_es-locales
+[solution] sports-medicine → dry-translate_zh
+[solution] sports-medicine → dry-translate_es
+[solution] sports-medicine#block0 → dry-translate_zh-locales
+[solution] sports-medicine#block0 → dry-translate_es-locales
+[solution] sports-medicine#block1 → dry-translate_zh-locales
+[solution] sports-medicine#block1 → dry-translate_es-locales
+[solution] sports-medicine#block1.item0 → dry-translate_zh-locales
+[solution] sports-medicine#block1.item0 → dry-translate_es-locales
+[solution] sports-medicine#block1.item1 → dry-translate_zh-locales
+[solution] sports-medicine#block1.item1 → dry-translate_es-locales
+[solution] sports-medicine#block1.item2 → dry-translate_zh-locales
+[solution] sports-medicine#block1.item2 → dry-translate_es-locales
+[solution] sports-medicine#block2 → dry-translate_zh-locales
+[solution] sports-medicine#block2 → dry-translate_es-locales
+[solution] sports-medicine#block2.item0 → dry-translate_zh-locales
+[solution] sports-medicine#block2.item0 → dry-translate_es-locales
+[solution] sports-medicine#block2.item1 → dry-translate_zh-locales
+[solution] sports-medicine#block2.item1 → dry-translate_es-locales
+[solution] sports-medicine#block2.item2 → dry-translate_zh-locales
+[solution] sports-medicine#block2.item2 → dry-translate_es-locales
+[solution] sports-medicine#block2.item3 → dry-translate_zh-locales
+[solution] sports-medicine#block2.item3 → dry-translate_es-locales
+[solution] sports-medicine#block3 → dry-translate_zh-locales
+[solution] sports-medicine#block3 → dry-translate_es-locales
+[solution] sports-medicine#block4 → dry-translate_zh-locales
+[solution] sports-medicine#block4 → dry-translate_es-locales
+[solution] v-clamp → dry-translate_zh
+[solution] v-clamp → dry-translate_es
+[solution] v-clamp#block0 → dry-translate_zh-locales
+[solution] v-clamp#block0 → dry-translate_es-locales
+[solution] v-clamp#block1 → dry-translate_zh-locales
+[solution] v-clamp#block1 → dry-translate_es-locales
+[solution] v-clamp#block1.item0 → dry-translate_zh-locales
+[solution] v-clamp#block1.item0 → dry-translate_es-locales
+[solution] v-clamp#block1.item1 → dry-translate_zh-locales
+[solution] v-clamp#block1.item1 → dry-translate_es-locales
+[solution] v-clamp#block1.item2 → dry-translate_zh-locales
+[solution] v-clamp#block1.item2 → dry-translate_es-locales
+[solution] v-clamp#block1.item3 → dry-translate_zh-locales
+[solution] v-clamp#block1.item3 → dry-translate_es-locales
+[solution] v-clamp#block1.item4 → dry-translate_zh-locales
+[solution] v-clamp#block1.item4 → dry-translate_es-locales
+[solution] v-clamp#block2 → dry-translate_zh-locales
+[solution] v-clamp#block2 → dry-translate_es-locales
+[solution] v-clamp#block2.item0 → dry-translate_zh-locales
+[solution] v-clamp#block2.item0 → dry-translate_es-locales
+[solution] v-clamp#block2.item1 → dry-translate_zh-locales
+[solution] v-clamp#block2.item1 → dry-translate_es-locales
+[solution] v-clamp#block2.item2 → dry-translate_zh-locales
+[solution] v-clamp#block2.item2 → dry-translate_es-locales
+[solution] v-clamp#block2.item3 → dry-translate_zh-locales
+[solution] v-clamp#block2.item3 → dry-translate_es-locales
+[solution] v-clamp#block3 → dry-translate_zh-locales
+[solution] v-clamp#block3 → dry-translate_es-locales
+[solution] v-clamp#block4 → dry-translate_zh-locales
+[solution] v-clamp#block4 → dry-translate_es-locales
+
+=== 认证术者 surgeons ===
+[surgeon] zhang-mingyuan → skip_zh
+[surgeon] zhang-mingyuan → dry-translate_es
+[surgeon] sarah-mitchell → skip_zh
+[surgeon] sarah-mitchell → dry-translate_es
+[surgeon] tanaka-kenta → skip_zh
+[surgeon] tanaka-kenta → dry-translate_es
+[surgeon] li-minghua → skip_zh
+[surgeon] li-minghua → dry-translate_es
+[surgeon] klaus-weber → skip_zh
+[surgeon] klaus-weber → dry-translate_es
+[surgeon] wang-xuefeng → skip_zh
+[surgeon] wang-xuefeng → dry-translate_es
+[surgeon] emma-rodriguez → skip_zh
+[surgeon] emma-rodriguez → dry-translate_es
+[surgeon] chen-weijun → skip_zh
+[surgeon] chen-weijun → dry-translate_es
+
+=== 合作中心 partner centers ===
+[partnerCenter] veterinary-specialists-of-sydney → skip_zh
+[partnerCenter] veterinary-specialists-of-sydney → dry-translate_es
+[partnerCenter] veterinary-cardiologists-australia → skip_zh
+[partnerCenter] veterinary-cardiologists-australia → dry-translate_es
+[partnerCenter] azabu-university-veterinary-teaching-hospital → skip_zh
+[partnerCenter] azabu-university-veterinary-teaching-hospital → dry-translate_es
+[partnerCenter] atlas-veterinary-clinic-and-surgery → skip_zh
+[partnerCenter] atlas-veterinary-clinic-and-surgery → dry-translate_es
+[partnerCenter] advanced-vetcare → skip_zh
+[partnerCenter] advanced-vetcare → dry-translate_es
+[partnerCenter] anicura-atlantico-hospital-veterinario → skip_zh
+[partnerCenter] anicura-atlantico-hospital-veterinario → dry-translate_es
+[partnerCenter] cardiologia-veterinaria-mexico → skip_zh
+[partnerCenter] cardiologia-veterinaria-mexico → dry-translate_es
+[partnerCenter] veterinary-hospital-fregis → skip_zh
+[partnerCenter] veterinary-hospital-fregis → dry-translate_es
+[partnerCenter] texas-a-and-m-university-veterinary-small-animal-hospital → skip_zh
+[partnerCenter] texas-a-and-m-university-veterinary-small-animal-hospital → dry-translate_es
+[partnerCenter] anicura-albea-hospital-veterinario → skip_zh
+[partnerCenter] anicura-albea-hospital-veterinario → dry-translate_es
+[partnerCenter] leong-vetcardio-services → skip_zh
+[partnerCenter] leong-vetcardio-services → dry-translate_es
+[partnerCenter] maxpetz → skip_zh
+[partnerCenter] maxpetz → dry-translate_es
+[partnerCenter] modern-vet → skip_zh
+[partnerCenter] modern-vet → dry-translate_es
+[partnerCenter] tierklinik-mittelland → skip_zh
+[partnerCenter] tierklinik-mittelland → dry-translate_es
+[partnerCenter] advanced-vetcare-kensington → skip_zh
+[partnerCenter] advanced-vetcare-kensington → dry-translate_es
+[partnerCenter] lmu-munich-medical-small-animal-clinic → skip_zh
+[partnerCenter] lmu-munich-medical-small-animal-clinic → dry-translate_es
+[partnerCenter] heartiest-veterinary-medical-centre → skip_zh
+[partnerCenter] heartiest-veterinary-medical-centre → dry-translate_es
+[partnerCenter] chulalongkorn-university → skip_zh
+[partnerCenter] chulalongkorn-university → dry-translate_es
+[partnerCenter] kasetsart-university → skip_zh
+[partnerCenter] kasetsart-university → dry-translate_es
+[partnerCenter] university-of-illinois-veterinary-teaching-hospital → skip_zh
+[partnerCenter] university-of-illinois-veterinary-teaching-hospital → dry-translate_es
+[partnerCenter] colorado-state-university-veterinary-teaching-hospital → skip_zh
+[partnerCenter] colorado-state-university-veterinary-teaching-hospital → dry-translate_es
+[partnerCenter] tufts-university-foster-hospital-for-small-animals → skip_zh
+[partnerCenter] tufts-university-foster-hospital-for-small-animals → dry-translate_es
+[partnerCenter] atlantic-coast-new-york-veterinary-specialists → skip_zh
+[partnerCenter] atlantic-coast-new-york-veterinary-specialists → dry-translate_es
+[partnerCenter] university-of-minnesota-veterinary-medical-center → skip_zh
+[partnerCenter] university-of-minnesota-veterinary-medical-center → dry-translate_es
+[partnerCenter] sawgrass-veterinary-cardiology-at-access → skip_zh
+[partnerCenter] sawgrass-veterinary-cardiology-at-access → dry-translate_es
+[partnerCenter] vca-west-los-angeles-animal-hospital → skip_zh
+[partnerCenter] vca-west-los-angeles-animal-hospital → dry-translate_es
+[partnerCenter] olympic-veterinary-cardiology → skip_zh
+[partnerCenter] olympic-veterinary-cardiology → dry-translate_es
+[partnerCenter] central-florida-veterinary-cardiology → skip_zh
+[partnerCenter] central-florida-veterinary-cardiology → dry-translate_es
+[partnerCenter] bluepearl-pet-hospital-tampa-fl → skip_zh
+[partnerCenter] bluepearl-pet-hospital-tampa-fl → dry-translate_es
+[partnerCenter] haemaru-referral-animal-hospital → skip_zh
+[partnerCenter] haemaru-referral-animal-hospital → dry-translate_es
+[partnerCenter] korea-animal-medical-center → skip_zh
+[partnerCenter] korea-animal-medical-center → dry-translate_es
+[partnerCenter] reborn-animal-medical-center → skip_zh
+[partnerCenter] reborn-animal-medical-center → dry-translate_es
+[partnerCenter] ilsan-animal-medical-center → skip_zh
+[partnerCenter] ilsan-animal-medical-center → dry-translate_es
+[partnerCenter] bon-animal-medical-center → skip_zh
+[partnerCenter] bon-animal-medical-center → dry-translate_es
+[partnerCenter] clinica-veterinaria-gran-sasso → skip_zh
+[partnerCenter] clinica-veterinaria-gran-sasso → dry-translate_es
+[partnerCenter] willows-veterinary-centre-and-referral-service → skip_zh
+[partnerCenter] willows-veterinary-centre-and-referral-service → dry-translate_es
+[partnerCenter] gobo-animal-medical-center → skip_zh
+[partnerCenter] gobo-animal-medical-center → dry-translate_es
+[partnerCenter] shenpu-pet-hospital → skip_zh
+[partnerCenter] shenpu-pet-hospital → dry-translate_es
+[partnerCenter] james-and-herriot-animal-hospital → skip_zh
+[partnerCenter] james-and-herriot-animal-hospital → dry-translate_es
+[partnerCenter] chuan-animal-hospital → skip_zh
+[partnerCenter] chuan-animal-hospital → dry-translate_es
+[partnerCenter] hopia-clinique-veterinaire-bozon → skip_zh
+[partnerCenter] hopia-clinique-veterinaire-bozon → dry-translate_es
+[partnerCenter] imm-recherche → skip_zh
+[partnerCenter] imm-recherche → dry-translate_es
+
+=== 行业峰会 summits ===
+[summit] cfvc-2025 → dry-translate_zh
+[summit] cfvc-2025 → dry-translate_es
+[summit] cfvc-2021 → dry-translate_zh
+[summit] cfvc-2021 → dry-translate_es
+[summit] cfvc-2024 → dry-translate_zh
+[summit] cfvc-2024 → dry-translate_es
+
+=== 企业信息 company profile ===
+[companyProfile] bc3bf29a → skip_zh
+[companyProfile] bc3bf29a → dry-translate_es
+
+=== 社交媒体 social media ===
+[socialMedia] b320fd12 → dry-translate_zh
+[socialMedia] b320fd12 → dry-translate_es
+
+=== 首页配置 homepage ===
+[homepageConfig] 3875d859 → skip_zh
+[homepageConfig] 3875d859 → dry-translate_es
+
+=== 网站配置 website nav ===
+[websiteConfig] col:nav-hongyu → skip_zh-nav
+[websiteConfig] col:nav-hongyu → dry-translate_es-nav
+[websiteConfig] col:nav-hongyu.item:nav-hongyu-about → skip_zh-nav
+[websiteConfig] col:nav-hongyu.item:nav-hongyu-about → dry-translate_es-nav
+[websiteConfig] col:nav-hongyu.item:nav-hongyu-patents → skip_zh-nav
+[websiteConfig] col:nav-hongyu.item:nav-hongyu-patents → dry-translate_es-nav
+[websiteConfig] col:nav-hongyu.item:nav-hongyu-history → skip_zh-nav
+[websiteConfig] col:nav-hongyu.item:nav-hongyu-history → dry-translate_es-nav
+[websiteConfig] col:nav-solutions → skip_zh-nav
+[websiteConfig] col:nav-solutions → dry-translate_es-nav
+[websiteConfig] col:nav-solutions.item:nav-solutions-vclamp → dry-translate_zh-nav
+[websiteConfig] col:nav-solutions.item:nav-solutions-vclamp → dry-translate_es-nav
+[websiteConfig] col:nav-solutions.item:nav-solutions-sports → skip_zh-nav
+[websiteConfig] col:nav-solutions.item:nav-solutions-sports → dry-translate_es-nav
+[websiteConfig] col:nav-solutions.item:nav-solutions-cardio → skip_zh-nav
+[websiteConfig] col:nav-solutions.item:nav-solutions-cardio → dry-translate_es-nav
+[websiteConfig] col:nav-solutions.item:nav-solutions-pipeline → skip_zh-nav
+[websiteConfig] col:nav-solutions.item:nav-solutions-pipeline → dry-translate_es-nav
+[websiteConfig] col:nav-global → skip_zh-nav
+[websiteConfig] col:nav-global → dry-translate_es-nav
+[websiteConfig] col:nav-global.item:nav-global-surgeons → skip_zh-nav
+[websiteConfig] col:nav-global.item:nav-global-surgeons → dry-translate_es-nav
+[websiteConfig] col:nav-global.item:nav-global-centers → skip_zh-nav
+[websiteConfig] col:nav-global.item:nav-global-centers → dry-translate_es-nav
+[websiteConfig] col:nav-insights → skip_zh-nav
+[websiteConfig] col:nav-insights → dry-translate_es-nav
+[websiteConfig] col:nav-insights.item:nav-insights-case → skip_zh-nav
+[websiteConfig] col:nav-insights.item:nav-insights-case → dry-translate_es-nav
+[websiteConfig] col:nav-insights.item:nav-insights-paper → skip_zh-nav
+[websiteConfig] col:nav-insights.item:nav-insights-paper → dry-translate_es-nav
+[websiteConfig] col:nav-insights.item:nav-insights-experience → skip_zh-nav
+[websiteConfig] col:nav-insights.item:nav-insights-experience → dry-translate_es-nav
+[websiteConfig] col:nav-education → skip_zh-nav
+[websiteConfig] col:nav-education → dry-translate_es-nav
+[websiteConfig] col:nav-education.item:nav-education-course → skip_zh-nav
+[websiteConfig] col:nav-education.item:nav-education-course → dry-translate_es-nav
+[websiteConfig] col:nav-education.item:nav-education-training → skip_zh-nav
+[websiteConfig] col:nav-education.item:nav-education-training → dry-translate_es-nav
+[websiteConfig] col:nav-education.item:nav-education-summit → skip_zh-nav
+[websiteConfig] col:nav-education.item:nav-education-summit → dry-translate_es-nav
+[websiteConfig] col:nav-contact → skip_zh-nav
+[websiteConfig] col:nav-contact → dry-translate_es-nav
+[websiteConfig] col:nav-contact.item:nav-contact-company → skip_zh-nav
+[websiteConfig] col:nav-contact.item:nav-contact-company → dry-translate_es-nav
+[websiteConfig] col:nav-contact.item:nav-contact-contact → skip_zh-nav
+[websiteConfig] col:nav-contact.item:nav-contact-contact → dry-translate_es-nav
+[websiteConfig] col:nav-contact.item:nav-contact-partnership → skip_zh-nav
+[websiteConfig] col:nav-contact.item:nav-contact-partnership → dry-translate_es-nav
+[websiteConfig] col:nav-contact.item:nav-contact-media → skip_zh-nav
+[websiteConfig] col:nav-contact.item:nav-contact-media → dry-translate_es-nav
+
+=== 博客 editorial ===
+[blog] HongYu V-Clamp Team Challenged a Short Posterior with Relati → dry-translate_zh
+[blog] HongYu V-Clamp Team Challenged a Short Posterior with Relati → dry-translate_es
+[blog] The First V-Clamp Case in Malaysia → dry-translate_zh
+[blog] The First V-Clamp Case in Malaysia → dry-translate_es
+[blog] The First Two V-Clamp Cases in Singapore → dry-translate_zh
+[blog] The First Two V-Clamp Cases in Singapore → dry-translate_es
+[blog] Case Review of Stage C Patient XiaoBei (genetic predispositi → dry-translate_zh
+[blog] Case Review of Stage C Patient XiaoBei (genetic predispositi → dry-translate_es
+[blog] Case Review of MMVD Stage-C Patient QiQi → dry-translate_zh
+[blog] Case Review of MMVD Stage-C Patient QiQi → dry-translate_es
+[blog] Case Review of MMVD Stage-B2 Patient Johnny → dry-translate_zh
+[blog] Case Review of MMVD Stage-B2 Patient Johnny → dry-translate_es
+[blog] Case Review of MR Stage-C Patient Dangdang → dry-translate_zh
+[blog] Case Review of MR Stage-C Patient Dangdang → dry-translate_es
+[blog] A historic moment! Successful completion of the first V-Clam → dry-translate_zh
+[blog] A historic moment! Successful completion of the first V-Clam → dry-translate_es
+[blog] Nanjing Agricultural University successfully completed first → dry-translate_zh
+[blog] Nanjing Agricultural University successfully completed first → dry-translate_es
+[blog] Vets, University of Bristol, UK successfully completed two c → dry-translate_zh
+[blog] Vets, University of Bristol, UK successfully completed two c → dry-translate_es
+[blog] The Italian CVGS team completed the first V-Clamp implantati → dry-translate_zh
+[blog] The Italian CVGS team completed the first V-Clamp implantati → dry-translate_es
+[blog] Lovely | Mina's Postoperative Tracks → dry-translate_zh
+[blog] Lovely | Mina's Postoperative Tracks → dry-translate_es
+[blog] Second praise "Wu Yanzu in the dog" - postoperative tracking → dry-translate_zh
+[blog] Second praise "Wu Yanzu in the dog" - postoperative tracking → dry-translate_es
+[blog] Great!!! When the super technology meets the super equipment → dry-translate_zh
+[blog] Great!!! When the super technology meets the super equipment → dry-translate_es
+[blog] Challenge | The Dog's Story → dry-translate_zh
+[blog] Challenge | The Dog's Story → dry-translate_es
+[blog] Postoperative follow-up ｜ 300 days later, little prince curl → dry-translate_zh
+[blog] Postoperative follow-up ｜ 300 days later, little prince curl → dry-translate_es
+[blog] Case sharing l hey boy → dry-translate_zh
+[blog] Case sharing l hey boy → dry-translate_es
+[blog] Case sharing L: Canadian Cute dogs from afar → dry-translate_zh
+[blog] Case sharing L: Canadian Cute dogs from afar → dry-translate_es
+[blog] Case sharing l Shanghai completed another case of severe mix → dry-translate_zh
+[blog] Case sharing l Shanghai completed another case of severe mix → dry-translate_es
+[blog] Case sharing | fr Nanjing Abel → dry-translate_zh
+[blog] Case sharing | fr Nanjing Abel → dry-translate_es
+[blog] New year's day case sharing | fr Shanghai Xinyu → dry-translate_zh
+[blog] New year's day case sharing | fr Shanghai Xinyu → dry-translate_es
+[blog] Christmas case sharing | fr Shanghai Shenpu → dry-translate_zh
+[blog] Christmas case sharing | fr Shanghai Shenpu → dry-translate_es
+[blog] Case sharing | Juezi! From Suzhou to Shanghai → dry-translate_zh
+[blog] Case sharing | Juezi! From Suzhou to Shanghai → dry-translate_es
+[blog] Case sharing L: Na, a proud little sister in midsummer → dry-translate_zh
+[blog] Case sharing L: Na, a proud little sister in midsummer → dry-translate_es
+[blog] Hey, BOY! | Postoperative follow-up of Fenghua teenager → dry-translate_zh
+[blog] Hey, BOY! | Postoperative follow-up of Fenghua teenager → dry-translate_es
+[blog] WeHug Team from HongKong Completed V-Clamp Training → dry-translate_zh
+[blog] WeHug Team from HongKong Completed V-Clamp Training → dry-translate_es
+[blog] The First V-Clamp Training Team of 2025 → dry-translate_zh
+[blog] The First V-Clamp Training Team of 2025 → dry-translate_es
+[blog] V-Clamp Featured in Frontiers: Safety and Efficacy Gaining G → dry-translate_zh
+[blog] V-Clamp Featured in Frontiers: Safety and Efficacy Gaining G → dry-translate_es
+[blog] 2024 China Forum of Veterinary Cardiology Concludes Successf → dry-translate_zh
+[blog] 2024 China Forum of Veterinary Cardiology Concludes Successf → dry-translate_es
+[blog] First Team from UAE-Modern Vet Dubai's Doctors Completed V-C → dry-translate_zh
+[blog] First Team from UAE-Modern Vet Dubai's Doctors Completed V-C → dry-translate_es
+[blog] The First Mexican Team! CVM Team Completed V-Clamp Surgery T → dry-translate_zh
+[blog] The First Mexican Team! CVM Team Completed V-Clamp Surgery T → dry-translate_es
+[blog] Follow-up of the 1st Double-V-Clamp Patient-Joshua’s Case Re → dry-translate_zh
+[blog] Follow-up of the 1st Double-V-Clamp Patient-Joshua’s Case Re → dry-translate_es
+[blog] V-Clamp is Starting to Make Its Mark in Australia’s Three La → dry-translate_zh
+[blog] V-Clamp is Starting to Make Its Mark in Australia’s Three La → dry-translate_es
+[blog] A New Ray of Hope for MR Patients in India Has Been Introduc → dry-translate_zh
+[blog] A New Ray of Hope for MR Patients in India Has Been Introduc → dry-translate_es
+[blog] Th First Case in Florida: V-Clamp Becomes A Life-Saver for P → dry-translate_zh
+[blog] Th First Case in Florida: V-Clamp Becomes A Life-Saver for P → dry-translate_es
+[blog] V-Clamp Training Review of Malaysian Shinzo Cardiology Team → dry-translate_zh
+[blog] V-Clamp Training Review of Malaysian Shinzo Cardiology Team → dry-translate_es
+[blog] Singapore Advanced VetCare V-Clamp Training Review → dry-translate_zh
+[blog] Singapore Advanced VetCare V-Clamp Training Review → dry-translate_es
+[blog] V-Clamp Training Review-One More Recognition from Spain → dry-translate_zh
+[blog] V-Clamp Training Review-One More Recognition from Spain → dry-translate_es
+[blog] Prof. Wess Gerhard and His Team from LMU Munich Visited Hong → dry-translate_zh
+[blog] Prof. Wess Gerhard and His Team from LMU Munich Visited Hong → dry-translate_es
+[blog] Welcome Tierklinik-Mittelland team from Switzerland's larges → dry-translate_zh
+[blog] Welcome Tierklinik-Mittelland team from Switzerland's larges → dry-translate_es
+[blog] Kangaroo Nation from  Oceania Lands in Shanghai → dry-translate_zh
+[blog] Kangaroo Nation from  Oceania Lands in Shanghai → dry-translate_es
+[blog] The rapid development |V-Camp is deeply involved in the Kore → dry-translate_zh
+[blog] The rapid development |V-Camp is deeply involved in the Kore → dry-translate_es
+[blog] Journey to the East | Indian Team VisitsHongyu for V-Clamp S → dry-translate_zh
+[blog] Journey to the East | Indian Team VisitsHongyu for V-Clamp S → dry-translate_es
+[blog] Crossing Oceans, Focusing on Shanghai | V-Clamp Opens New Ho → dry-translate_zh
+[blog] Crossing Oceans, Focusing on Shanghai | V-Clamp Opens New Ho → dry-translate_es
+[blog] “Chain Reaction”|V-Clamp sparks Korean pet medical scene → dry-translate_zh
+[blog] “Chain Reaction”|V-Clamp sparks Korean pet medical scene → dry-translate_es
+[blog] TRAINING PRO｜UK Team V-Clamp Advanced Training, 48 hours of  → dry-translate_zh
+[blog] TRAINING PRO｜UK Team V-Clamp Advanced Training, 48 hours of  → dry-translate_es
+[blog] Search for excellence | Hongyu attend the ECVIM-CA 2023 → dry-translate_zh
+[blog] Search for excellence | Hongyu attend the ECVIM-CA 2023 → dry-translate_es
+[blog] Case sharing | fr Nanjing Abel Medical Center → dry-translate_zh
+[blog] Case sharing | fr Nanjing Abel Medical Center → dry-translate_es
+[blog] Get in on our own merit，V-Clamp surgery impacts the veterina → dry-translate_zh
+[blog] Get in on our own merit，V-Clamp surgery impacts the veterina → dry-translate_es
+[blog] Hongyu conquers the South East Asian market! V-Clamp trainin → dry-translate_zh
+[blog] Hongyu conquers the South East Asian market! V-Clamp trainin → dry-translate_es
+[blog] First surgery of V-Clamp in UK was a success → dry-translate_zh
+[blog] First surgery of V-Clamp in UK was a success → dry-translate_es
+[blog] Hongyu Tour Around the United States | Let V-Clamp Bloom Eve → dry-translate_zh
+[blog] Hongyu Tour Around the United States | Let V-Clamp Bloom Eve → dry-translate_es
+[blog] At the beginning of 2023, Hongyu Medical team went overseas  → dry-translate_zh
+[blog] At the beginning of 2023, Hongyu Medical team went overseas  → dry-translate_es
+[blog] Good news! Tufts University Becomes the New VC Surgery Cente → dry-translate_zh
+[blog] Good news! Tufts University Becomes the New VC Surgery Cente → dry-translate_es
+[blog] Hongyu Tour Around the United States | Let V-Clamp Bloom Eve → dry-translate_zh
+[blog] Hongyu Tour Around the United States | Let V-Clamp Bloom Eve → dry-translate_es
+[blog] Overseas training program is about to start? you 're right!  → dry-translate_zh
+[blog] Overseas training program is about to start? you 're right!  → dry-translate_es
+[blog] Zhejiang Hongyu medical completed 30 million a rounds of fin → dry-translate_zh
+[blog] Zhejiang Hongyu medical completed 30 million a rounds of fin → dry-translate_es
+[blog] Introduction to Xinyu pet hospital → dry-translate_zh
+[blog] Introduction to Xinyu pet hospital → dry-translate_es
+[blog] Miracle | An "emergency" treatment in a race against time → dry-translate_zh
+[blog] Miracle | An "emergency" treatment in a race against time → dry-translate_es
+[blog] Case sharing | love speechless!! "Love" spanning 1600 kilome → dry-translate_zh
+[blog] Case sharing | love speechless!! "Love" spanning 1600 kilome → dry-translate_es
+[blog] Case sharing - the world's first double clip mitral regurgit → dry-translate_zh
+[blog] Case sharing - the world's first double clip mitral regurgit → dry-translate_es
+[blog] Case sharing l can you play like this on the other side of t → dry-translate_zh
+[blog] Case sharing l can you play like this on the other side of t → dry-translate_es
+[blog] First Team from Belgium - Sanimalia’s Doctors Completed V-Cl → dry-translate_zh
+[blog] First Team from Belgium - Sanimalia’s Doctors Completed V-Cl → dry-translate_es
+[blog] 3rd Taiwanese Team!  Doctors from J&H Completed the V-Clamp  → dry-translate_zh
+[blog] 3rd Taiwanese Team!  Doctors from J&H Completed the V-Clamp  → dry-translate_es
+[blog] Four Challenging Canine Mitral Valve Repair Surgeries Comple → dry-translate_zh
+[blog] Four Challenging Canine Mitral Valve Repair Surgeries Comple → dry-translate_es
+[blog] CASE REPORT | FR CSU → dry-translate_zh
+[blog] CASE REPORT | FR CSU → dry-translate_es
+[blog] 1st in Pacific Northwest-Doctors from Olympic Veterinary Car → dry-translate_zh
+[blog] 1st in Pacific Northwest-Doctors from Olympic Veterinary Car → dry-translate_es
+[blog] Chuan Animal Hospital from Taiwan Completed Their V-Clamp Su → dry-translate_zh
+[blog] Chuan Animal Hospital from Taiwan Completed Their V-Clamp Su → dry-translate_es
+[blog] Follow V-Clamp to Enter Colorado State University → dry-translate_zh
+[blog] Follow V-Clamp to Enter Colorado State University → dry-translate_es
+[blog] V-Clamp sweeping Europe? Spanish power drives a new wave in  → dry-translate_zh
+[blog] V-Clamp sweeping Europe? Spanish power drives a new wave in  → dry-translate_es
+[blog] Korea's First Successful V-Clamp Surgery Brings New Hope to  → dry-translate_zh
+[blog] Korea's First Successful V-Clamp Surgery Brings New Hope to  → dry-translate_es
+[blog] New VC Center in France, success of three cases → dry-translate_zh
+[blog] New VC Center in France, success of three cases → dry-translate_es
+[blog] Latest V-Clamp Cases Review-Spanish Cardiology Professor Com → dry-translate_zh
+[blog] Latest V-Clamp Cases Review-Spanish Cardiology Professor Com → dry-translate_es
+[blog] V-clamp Embark Its Journey to be Involved in the American Na → dry-translate_zh
+[blog] V-clamp Embark Its Journey to be Involved in the American Na → dry-translate_es
+[blog] Japanese pet medical institutions set up a group to visit Ho → dry-translate_zh
+[blog] Japanese pet medical institutions set up a group to visit Ho → dry-translate_es
+[blog] VC Training review | The first Japanese/Hong Kong team to pa → dry-translate_zh
+[blog] VC Training review | The first Japanese/Hong Kong team to pa → dry-translate_es
+[blog] KAMC conducted the first retrospective study evaluating the  → dry-translate_zh
+[blog] KAMC conducted the first retrospective study evaluating the  → dry-translate_es
+[blog] Two More Japanese Pet Hospitals Sent Their Veterinary Expert → dry-translate_zh
+[blog] Two More Japanese Pet Hospitals Sent Their Veterinary Expert → dry-translate_es
+[blog] Good news! Tufts University Becomes the New VC Surgery Cente → dry-translate_zh
+[blog] Good news! Tufts University Becomes the New VC Surgery Cente → dry-translate_es
+[blog] Opening of the new VC surgery centre: HOPia Veterinary Clini → dry-translate_zh
+[blog] Opening of the new VC surgery centre: HOPia Veterinary Clini → dry-translate_es
+
+=== 覆盖率摘要 ===
+  product: entities=12 en=12 zh=0 es=0
+  brandNarrative: entities=4 en=4 zh=4 es=1
+  solution: entities=4 en=4 zh=0 es=0
+  surgeon: entities=8 en=8 zh=8 es=0
+  partnerCenter: entities=42 en=42 zh=42 es=0
+  summit: entities=3 en=3 zh=0 es=0
+  companyProfile: entities=1 en=1 zh=1 es=0
+  homepageConfig: entities=1 en=1 zh=1 es=1
+  socialMedia: entities=1 en=1 zh=0 es=0
+  blog: entities=80 en=80 zh=0 es=0
+
+=== 摘要 ===
+{
+  "skip_zh": 129,
+  "translate_zh": 152,
+  "translate_es": 281,
+  "missing_en": 0,
+  "failed": 0,
+  "ok": 156
+}

@@ -2,16 +2,24 @@
 
 import { DeleteOutlined, DownOutlined, EditOutlined, PlusOutlined, UpOutlined } from '@ant-design/icons';
 import { Button, Popconfirm, Space, Table, Typography, message } from 'antd';
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 
-import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
-import { CommercePageHeader } from '@/components/commerce/commerce-page-header';
 import { NavColumnDrawer } from '@/components/website-config/nav-column-drawer';
+import {
+  ListHeroBoardFields,
+  listHeroBoardFromFormValues,
+} from '@/components/website-config/list-hero-board-fields';
+import { CommercePageHeader } from '@/components/commerce/commerce-page-header';
 import {
   type AdminWebsiteConfig,
   type NavColumn,
   compactNavColumns,
 } from '@/lib/website-config';
+import {
+  listHeroBoardKeys,
+  type AdminListHeroBoardsRecord,
+  type ListHeroBoardKey,
+} from '@/lib/list-hero-board';
 import type { AdminSiteLanguageRow } from '@/server/admin/languages';
 
 type Props = {
@@ -19,17 +27,17 @@ type Props = {
   activeLanguages: AdminSiteLanguageRow[];
 };
 
-export function WebsiteConfigEditor({ initialConfig, activeLanguages }: Props) {
+export function WebsiteConfigEditor({ initialConfig, activeLanguages: _activeLanguages }: Props) {
   const [navColumns, setNavColumns] = useState<NavColumn[]>(() => compactNavColumns(initialConfig.navColumns));
-  const [activeLocale, setActiveLocale] = useState(
-    activeLanguages.find((language) => language.isDefault)?.code ?? activeLanguages[0]?.code ?? 'zh',
-  );
+  const [listHeroBoards, setListHeroBoards] = useState<AdminListHeroBoardsRecord>(initialConfig.listHeroBoards);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingColumn, setEditingColumn] = useState<NavColumn | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const defaultLocale = activeLanguages.find((language) => language.isDefault)?.code ?? activeLanguages[0]?.code ?? '';
+  useEffect(() => {
+    setListHeroBoards(initialConfig.listHeroBoards);
+  }, [initialConfig.listHeroBoards]);
 
   const columns = useMemo(() => [
     {
@@ -106,6 +114,16 @@ export function WebsiteConfigEditor({ initialConfig, activeLanguages }: Props) {
     setEditingColumn(null);
   }
 
+  function updateListHeroBoard(key: ListHeroBoardKey, patch: ReturnType<typeof listHeroBoardFromFormValues>) {
+    setListHeroBoards((prev) => ({
+      ...prev,
+      [key]: {
+        ...prev[key],
+        ...patch,
+      },
+    }));
+  }
+
   function handleSave() {
     startTransition(async () => {
       try {
@@ -113,7 +131,44 @@ export function WebsiteConfigEditor({ initialConfig, activeLanguages }: Props) {
         const response = await fetch('/api/admin/website-config', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ navColumns }),
+          body: JSON.stringify({
+            navColumns,
+            listHeroBoards: {
+              insights: {
+                coverMode: listHeroBoards.insights.coverMode,
+                coverValue: listHeroBoards.insights.coverValue,
+                videoUrl: listHeroBoards.insights.videoUrl,
+                showCoverOnBackground: listHeroBoards.insights.showCoverOnBackground,
+                coverDisplay: listHeroBoards.insights.coverDisplay,
+                heroCopyStyle: listHeroBoards.insights.heroCopyStyle,
+                backgroundFitMode: listHeroBoards.insights.backgroundFitMode,
+                backgroundMode: listHeroBoards.insights.backgroundMode,
+                backgroundValue: listHeroBoards.insights.backgroundValue,
+              },
+              surgeons: {
+                coverMode: listHeroBoards.surgeons.coverMode,
+                coverValue: listHeroBoards.surgeons.coverValue,
+                videoUrl: listHeroBoards.surgeons.videoUrl,
+                showCoverOnBackground: listHeroBoards.surgeons.showCoverOnBackground,
+                coverDisplay: listHeroBoards.surgeons.coverDisplay,
+                heroCopyStyle: listHeroBoards.surgeons.heroCopyStyle,
+                backgroundFitMode: listHeroBoards.surgeons.backgroundFitMode,
+                backgroundMode: listHeroBoards.surgeons.backgroundMode,
+                backgroundValue: listHeroBoards.surgeons.backgroundValue,
+              },
+              centers: {
+                coverMode: listHeroBoards.centers.coverMode,
+                coverValue: listHeroBoards.centers.coverValue,
+                videoUrl: listHeroBoards.centers.videoUrl,
+                showCoverOnBackground: listHeroBoards.centers.showCoverOnBackground,
+                coverDisplay: listHeroBoards.centers.coverDisplay,
+                heroCopyStyle: listHeroBoards.centers.heroCopyStyle,
+                backgroundFitMode: listHeroBoards.centers.backgroundFitMode,
+                backgroundMode: listHeroBoards.centers.backgroundMode,
+                backgroundValue: listHeroBoards.centers.backgroundValue,
+              },
+            },
+          }),
         });
         if (!response.ok) {
           const payload = await response.json().catch(() => null);
@@ -121,6 +176,7 @@ export function WebsiteConfigEditor({ initialConfig, activeLanguages }: Props) {
         }
         const updated = await response.json() as AdminWebsiteConfig;
         setNavColumns(compactNavColumns(updated.navColumns));
+        setListHeroBoards(updated.listHeroBoards);
         setStatusMessage('网站配置已保存');
         message.success('网站配置已保存');
       } catch (error) {
@@ -135,7 +191,7 @@ export function WebsiteConfigEditor({ initialConfig, activeLanguages }: Props) {
     <Space orientation="vertical" size="large" style={{ width: '100%' }}>
       <CommercePageHeader
         title="网站配置"
-        description="维护全站导航栏目与条目，保存后前台头部与底部导航将同步使用。"
+        description="维护全站导航栏目与条目，以及列表页看板媒体配置，保存后前台同步生效。"
         statusMessage={statusMessage}
         isPending={isPending}
         onSave={handleSave}
@@ -156,29 +212,19 @@ export function WebsiteConfigEditor({ initialConfig, activeLanguages }: Props) {
         />
       </div>
 
-      <div className="content-editor-layout">
-        <div className="content-editor-locale-nav">
-          {activeLanguages.map((language) => (
-            <ContentEditorLocaleTab
-              key={language.code}
-              language={language}
-              isActive={language.code === activeLocale}
-              persisted={language.code === defaultLocale}
-              onClick={() => setActiveLocale(language.code)}
-            />
-          ))}
-        </div>
-        <div className="content-editor-main">
-          <Typography.Text type="secondary">
-            暂无多语言字段，后续在此配置站点级多语言内容。导航栏目与条目标题请在对应编辑弹层中维护。
-          </Typography.Text>
-        </div>
-      </div>
+      {listHeroBoardKeys.map((boardKey) => (
+        <ListHeroBoardFields
+          key={boardKey}
+          boardKey={boardKey}
+          value={listHeroBoards[boardKey]}
+          onChange={(next) => updateListHeroBoard(boardKey, next)}
+        />
+      ))}
 
       <NavColumnDrawer
         open={drawerOpen}
         column={editingColumn}
-        activeLanguages={activeLanguages}
+        activeLanguages={_activeLanguages}
         onClose={() => { setDrawerOpen(false); setEditingColumn(null); }}
         onSave={handleColumnSave}
       />

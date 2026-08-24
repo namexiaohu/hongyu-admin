@@ -1,5 +1,27 @@
 import { z } from 'zod';
 
+import {
+  compactListHeroBoards,
+  createEmptyListHeroBoards,
+  listHeroBoardsPutSchema,
+  resolveStorefrontListHeroBoards,
+  type AdminListHeroBoard,
+  type AdminListHeroBoardsRecord,
+  type ListHeroBoardKey,
+  type ListHeroBoardsRecord,
+  type StorefrontListHeroBoard,
+  type StorefrontListHeroBoardsRecord,
+} from '@/lib/list-hero-board';
+
+export type {
+  AdminListHeroBoard,
+  AdminListHeroBoardsRecord,
+  ListHeroBoardKey,
+  ListHeroBoardsRecord,
+  StorefrontListHeroBoard,
+  StorefrontListHeroBoardsRecord,
+};
+
 export type NavItemLocale = { name: string };
 export type NavColumnLocale = { name: string };
 
@@ -20,6 +42,7 @@ export type NavColumn = {
 export type AdminWebsiteConfig = {
   id: string;
   navColumns: NavColumn[];
+  listHeroBoards: AdminListHeroBoardsRecord;
   createdAt: string;
   updatedAt: string;
 };
@@ -39,6 +62,7 @@ export type StorefrontNavColumn = {
 export type StorefrontWebsiteConfig = {
   locale: string;
   navColumns: StorefrontNavColumn[];
+  listHeroBoards: StorefrontListHeroBoardsRecord;
 };
 
 const navItemLocaleSchema = z.object({
@@ -64,7 +88,8 @@ const navColumnSchema = z.object({
 });
 
 export const adminWebsiteConfigPutSchema = z.object({
-  navColumns: z.array(navColumnSchema).optional().default([]),
+  navColumns: z.array(navColumnSchema).optional(),
+  listHeroBoards: listHeroBoardsPutSchema.optional(),
 });
 
 export type AdminWebsiteConfigPutInput = z.infer<typeof adminWebsiteConfigPutSchema>;
@@ -314,4 +339,5 @@ export function getDefaultWebsiteNavColumns(): NavColumn[] {
 export const EMPTY_STOREFRONT_WEBSITE_CONFIG: StorefrontWebsiteConfig = {
   locale: '',
   navColumns: [],
+  listHeroBoards: resolveStorefrontListHeroBoards(createEmptyListHeroBoards()),
 };

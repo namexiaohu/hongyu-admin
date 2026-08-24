@@ -1,0 +1,51 @@
+fix-content-locales 开始 2026-08-23T09:21:40.648Z dryRun=true
+
+=== 产品 products ===
+
+=== 企业叙事 brand narratives ===
+
+=== 解决方案 solutions ===
+
+=== 认证术者 surgeons ===
+
+=== 合作中心 partner centers ===
+
+=== 行业峰会 summits ===
+
+=== 企业信息 company profile ===
+
+=== 社交媒体 social media ===
+
+=== 首页配置 homepage ===
+
+=== 网站配置 website nav ===
+
+=== 博客 editorial ===
+
+=== 复扫校验 ===
+  surgeon: missingEn=0, zhInEn=0
+  partnerCenter: missingEn=0, zhInEn=0
+  summit: missingEn=0, zhInEn=0
+  companyProfile: missingEn=0, zhInEn=0
+  homepageConfig: missingEn=0, zhInEn=0
+  socialMedia: missingEn=0, zhInEn=0
+  brandNarrative: missingEn=0, zhInEn=0
+  solution: missingEn=0, zhInEn=0
+  product: missingEn=0, zhInEn=0
+  blog: missingEn=0, zhInEn=0
+  brandNarrative.blocks: missingEn=0, zhInEn=0
+  solution.blocks: missingEn=0, zhInEn=0
+  summit.agenda: missingEn=0, zhInEn=0
+  websiteConfig.nav: missingEn=0, zhInEn=0
+
+=== 摘要 ===
+{
+  "swapped": 0,
+  "moved": 0,
+  "translated": 0,
+  "retranslated": 0,
+  "skipped": 0,
+  "failed": 0,
+  "ok": 156
+}
+复扫通过：未发现 zh_in_en，有中文的条目均具备有效英文。

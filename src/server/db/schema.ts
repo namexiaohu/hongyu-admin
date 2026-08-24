@@ -87,6 +87,7 @@ import type {
   HomepageStatItem,
 } from '@/lib/homepage-config';
 import type { NavColumn } from '@/lib/website-config';
+import type { ListHeroBoardsRecord } from '@/lib/list-hero-board';
 import type {
   FeaturedPost,
   OverseasContact,
@@ -1823,6 +1824,7 @@ export const homepageConfigTranslations = pgTable(
 export const websiteConfigs = pgTable('website_configs', {
   id: uuid('id').defaultRandom().primaryKey(),
   navColumns: jsonb('nav_columns').$type<NavColumn[]>().notNull().default([]),
+  listHeroBoards: jsonb('list_hero_boards').$type<ListHeroBoardsRecord>().notNull().default({} as ListHeroBoardsRecord),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

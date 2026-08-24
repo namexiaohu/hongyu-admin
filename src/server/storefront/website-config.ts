@@ -6,6 +6,7 @@ import {
   compactNavColumns,
   resolveNavName,
 } from '@/lib/website-config';
+import { compactListHeroBoards, resolveStorefrontListHeroBoards } from '@/lib/list-hero-board';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
 import { db } from '@/server/db';
 import { websiteConfigs } from '@/server/db/schema';
@@ -13,12 +14,18 @@ import { websiteConfigs } from '@/server/db/schema';
 export async function getStorefrontWebsiteConfig(locale: string): Promise<StorefrontWebsiteConfig> {
   const defaultLocale = await getDefaultSiteLanguageCode();
   const [row] = await db.select().from(websiteConfigs).limit(1);
+  const resolvedLocale = locale || defaultLocale;
+  const listHeroBoards = resolveStorefrontListHeroBoards(compactListHeroBoards(row?.listHeroBoards));
+
   if (!row?.navColumns?.length) {
-    return { ...EMPTY_STOREFRONT_WEBSITE_CONFIG, locale: locale || defaultLocale };
+    return {
+      ...EMPTY_STOREFRONT_WEBSITE_CONFIG,
+      locale: resolvedLocale,
+      listHeroBoards,
+    };
   }
 
   const columns = compactNavColumns(row.navColumns);
-  const resolvedLocale = locale || defaultLocale;
 
   return {
     locale: resolvedLocale,
@@ -31,6 +38,7 @@ export async function getStorefrontWebsiteConfig(locale: string): Promise<Storef
         name: resolveNavName(item, resolvedLocale),
       })).filter((item) => item.name && item.href),
     })).filter((column) => column.name && column.items.length),
+    listHeroBoards,
   };
 }
 
