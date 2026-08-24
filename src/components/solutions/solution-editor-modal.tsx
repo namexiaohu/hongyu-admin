@@ -16,7 +16,12 @@ import {
   type CoverOptionValue,
 } from '@/components/shared/cover-option-field';
 import { HeroCopyStyleField } from '@/components/shared/hero-copy-style-field';
+import {
+  HeroCoverDisplayField,
+  HERO_COVER_DISPLAY_FIELD_EXTRA,
+} from '@/components/shared/hero-cover-display-field';
 import { defaultAdminHeroCopyStyle, type HeroCopyStyle } from '@/lib/hero-copy-style';
+import { defaultHeroCoverDisplay, type HeroCoverDisplay } from '@/lib/hero-cover-display';
 import { ProductBoardMultiSelect, type ProductBoardOption } from '@/components/products/product-board-multi-select';
 import { ProductGalleryField } from '@/components/products/product-gallery-field';
 import { ProductVideoField } from '@/components/products/product-video-field';
@@ -113,6 +118,7 @@ type SharedFormValues = {
   boardKeys: string[];
   materials: SolutionMaterial[];
   showCoverOnBackground: boolean;
+  coverDisplay: HeroCoverDisplay;
   heroCopyStyle: HeroCopyStyle;
   background: PartnerCenterBackgroundValue;
 };
@@ -422,6 +428,7 @@ export function SolutionEditorModal({
       boardKeys: detail?.boardKeys ?? [],
       materials: detail?.materials ?? [],
       showCoverOnBackground: detail?.showCoverOnBackground ?? true,
+      coverDisplay: detail?.coverDisplay ?? defaultHeroCoverDisplay(true),
       heroCopyStyle: detail?.heroCopyStyle ?? defaultAdminHeroCopyStyle(),
       background: {
         mode: detail?.backgroundMode ?? '',
@@ -518,6 +525,7 @@ export function SolutionEditorModal({
         const videoUrl = sharedValues.videoUrl?.trim() ?? '';
         const materials = (sharedValues.materials ?? []).filter((item) => item.url?.trim());
         const showCoverOnBackground = Boolean(sharedValues.showCoverOnBackground);
+        const coverDisplay = sharedValues.coverDisplay ?? defaultHeroCoverDisplay(true);
         const heroCopyStyle = sharedValues.heroCopyStyle ?? defaultAdminHeroCopyStyle();
         const backgroundMode = sharedValues.background?.mode ?? '';
         const backgroundValue = sharedValues.background?.value?.trim() ?? '';
@@ -525,6 +533,7 @@ export function SolutionEditorModal({
           coverMode,
           coverValue,
           showCoverOnBackground,
+          coverDisplay,
           heroCopyStyle,
           backgroundMode,
           backgroundValue,
@@ -737,6 +746,14 @@ export function SolutionEditorModal({
                 extra="开启后，详情页看板在大背景图右侧同时展示封面图"
               >
                 <Switch checkedChildren="开" unCheckedChildren="关" />
+              </Form.Item>
+              <Form.Item
+                name="coverDisplay"
+                label="封面显示"
+                extra={HERO_COVER_DISPLAY_FIELD_EXTRA}
+                initialValue={defaultHeroCoverDisplay(true)}
+              >
+                <HeroCoverDisplayField />
               </Form.Item>
               <Form.Item name="heroCopyStyle" label="看板文案风格" initialValue="light">
                 <HeroCopyStyleField />

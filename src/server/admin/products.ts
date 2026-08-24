@@ -18,6 +18,11 @@ import { z } from 'zod';
 
 import { type AdminListPageSize, normalizePageSize } from '@/lib/admin-list-query';
 import {
+  heroCoverDisplaySchema,
+  normalizeHeroCoverDisplay,
+  resolveStorefrontHeroCoverDisplay,
+} from '@/lib/hero-cover-display';
+import {
   type AdminProductListItem,
   type AdminProductPayload,
   type AdminProductTranslation,
@@ -132,6 +137,7 @@ export const adminProductPatchSchema = z.object({
   backgroundMode: z.enum(['', 'solid', 'preset', 'upload']).optional(),
   backgroundValue: z.string().trim().optional(),
   showCoverOnBackground: z.boolean().optional(),
+  coverDisplay: heroCoverDisplaySchema.optional(),
   heroCopyStyle: z.enum(['light', 'dark']).nullable().optional(),
   coverMode: z.enum(['', 'preset', 'upload']).optional(),
   coverValue: z.string().trim().optional(),
@@ -461,6 +467,7 @@ function toListItem(
     backgroundImage: product.backgroundImage ?? '',
     backgroundPreviewUrl: bg.previewUrl,
     showCoverOnBackground: Boolean(product.showCoverOnBackground),
+    coverDisplay: resolveStorefrontHeroCoverDisplay(product.coverDisplay as import('@/lib/hero-cover-display').HeroCoverDisplay | null),
     heroCopyStyle: (product.heroCopyStyle as import('@/lib/hero-copy-style').HeroCopyStyle | null) ?? null,
     createdAt: product.createdAt.toISOString(),
     updatedAt: product.updatedAt.toISOString(),
@@ -850,6 +857,7 @@ export async function createAdminProductTranslation(input: TranslationCreateInpu
         featured: next.featured,
         featuredSortOrder: next.featuredSortOrder,
         status: next.status,
+        heroCopyStyle: 'light',
       })
       .returning({ id: products.id }))[0]?.id;
 
@@ -1031,6 +1039,7 @@ export async function updateAdminProductShared(productId: string, input: Product
     backgroundMode,
     backgroundValue,
     showCoverOnBackground,
+    coverDisplay,
     heroCopyStyle,
     coverMode,
     coverValue,
@@ -1070,6 +1079,9 @@ export async function updateAdminProductShared(productId: string, input: Product
           }
         : {}),
       ...(showCoverOnBackground !== undefined ? { showCoverOnBackground } : {}),
+      ...(coverDisplay !== undefined
+        ? { coverDisplay: normalizeHeroCoverDisplay(coverDisplay, undefined, true) }
+        : {}),
       ...(heroCopyStyle !== undefined
         ? { heroCopyStyle: normalizeHeroCopyStyleForWrite(heroCopyStyle) }
         : {}),

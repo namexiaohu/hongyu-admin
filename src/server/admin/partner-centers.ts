@@ -24,6 +24,10 @@ import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import { normalizeSlug } from '@/lib/slug';
 import { resolveCoverFieldsForWrite } from '@/server/admin/cover-images';
 import { normalizeHeroCopyStyleForWrite } from '@/lib/hero-copy-style';
+import {
+  normalizeHeroCoverDisplay,
+  resolveStorefrontHeroCoverDisplay,
+} from '@/lib/hero-cover-display';
 import { db } from '@/server/db';
 import { partnerCenters, partnerCenterSurgeons, partnerCenterTranslations } from '@/server/db/schema';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
@@ -74,6 +78,7 @@ function mapListItem(
     backgroundValue: bg.value,
     backgroundPreviewUrl: bg.previewUrl,
     showCoverOnBackground: Boolean(row.showCoverOnBackground),
+    coverDisplay: resolveStorefrontHeroCoverDisplay(row.coverDisplay),
     heroCopyStyle: (row.heroCopyStyle as import('@/lib/hero-copy-style').HeroCopyStyle | null) ?? null,
     sortOrder: row.sortOrder,
     name,
@@ -205,7 +210,8 @@ export async function createAdminPartnerCenter(input: unknown) {
     backgroundValue: bg.backgroundValue,
     backgroundImage: bg.backgroundImage,
     showCoverOnBackground: parsed.showCoverOnBackground ?? true,
-    heroCopyStyle: normalizeHeroCopyStyleForWrite(parsed.heroCopyStyle) ?? 'light',
+    coverDisplay: normalizeHeroCoverDisplay(parsed.coverDisplay, undefined, true),
+    heroCopyStyle: normalizeHeroCopyStyleForWrite(parsed.heroCopyStyle),
     sortOrder: parsed.sortOrder ?? (maxSort?.sortOrder ?? 0) + 10,
   }).returning({ id: partnerCenters.id });
 
@@ -272,6 +278,9 @@ export async function updateAdminPartnerCenter(id: string, input: unknown) {
     ...bgPatch,
     ...(parsed.showCoverOnBackground !== undefined
       ? { showCoverOnBackground: parsed.showCoverOnBackground }
+      : {}),
+    ...(parsed.coverDisplay !== undefined
+      ? { coverDisplay: normalizeHeroCoverDisplay(parsed.coverDisplay, undefined, true) }
       : {}),
     ...(parsed.heroCopyStyle !== undefined
       ? { heroCopyStyle: normalizeHeroCopyStyleForWrite(parsed.heroCopyStyle) }

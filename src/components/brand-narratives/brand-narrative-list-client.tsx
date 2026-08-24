@@ -59,6 +59,7 @@ function toListItem(detail: AdminBrandNarrativeDetail): AdminBrandNarrativeListI
     backgroundImage: detail.backgroundImage,
     backgroundPreviewUrl: detail.backgroundPreviewUrl,
     showCoverOnBackground: detail.showCoverOnBackground,
+    coverDisplay: detail.coverDisplay,
     heroCopyStyle: detail.heroCopyStyle,
     title: detail.title,
     localeCount: detail.translations.length,

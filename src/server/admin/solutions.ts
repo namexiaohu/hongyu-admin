@@ -21,6 +21,10 @@ import {
   normalizeBackgroundWrite,
 } from '@/lib/partner-center-background-presets';
 import { normalizeHeroCopyStyleForWrite } from '@/lib/hero-copy-style';
+import {
+  normalizeHeroCoverDisplay,
+  resolveStorefrontHeroCoverDisplay,
+} from '@/lib/hero-cover-display';
 import { resolveOssAssetUrl, toOssStorageKey } from '@/lib/oss-asset-url';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import { normalizeSlug } from '@/lib/slug';
@@ -96,6 +100,7 @@ function mapListItem(
     backgroundImage: row.backgroundImage ?? '',
     backgroundPreviewUrl: bg.previewUrl,
     showCoverOnBackground: Boolean(row.showCoverOnBackground),
+    coverDisplay: resolveStorefrontHeroCoverDisplay(row.coverDisplay),
     heroCopyStyle: (row.heroCopyStyle as import('@/lib/hero-copy-style').HeroCopyStyle | null) ?? null,
     title,
     localeCount,
@@ -354,6 +359,9 @@ export async function updateAdminSolution(id: string, input: unknown) {
       ...(parsed.showCoverOnBackground !== undefined
         ? { showCoverOnBackground: parsed.showCoverOnBackground }
         : {}),
+      ...(parsed.coverDisplay !== undefined
+        ? { coverDisplay: normalizeHeroCoverDisplay(parsed.coverDisplay, undefined, true) }
+        : {}),
       ...(parsed.heroCopyStyle !== undefined
         ? { heroCopyStyle: normalizeHeroCopyStyleForWrite(parsed.heroCopyStyle) }
         : {}),
@@ -505,7 +513,8 @@ export async function createAdminSolution(input: unknown) {
       backgroundValue: bg.backgroundValue,
       backgroundImage: bg.backgroundImage,
       showCoverOnBackground: parsed.showCoverOnBackground ?? true,
-      heroCopyStyle: normalizeHeroCopyStyleForWrite(parsed.heroCopyStyle) ?? 'light',
+      coverDisplay: normalizeHeroCoverDisplay(parsed.coverDisplay, undefined, true),
+      heroCopyStyle: normalizeHeroCopyStyleForWrite(parsed.heroCopyStyle),
       materials: normalizeMaterials(parsed.materials),
       publishedAt: (parsed.status ?? 'draft') === 'published' ? new Date() : null,
     })

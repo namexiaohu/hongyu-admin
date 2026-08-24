@@ -11,7 +11,7 @@ import { CoverOptionField, type CoverOptionValue } from '@/components/shared/cov
 import { HeroBackgroundFitField } from '@/components/shared/hero-background-fit-field';
 import { HeroCopyStyleField } from '@/components/shared/hero-copy-style-field';
 import { ProductVideoField } from '@/components/products/product-video-field';
-import { defaultAdminHeroCopyStyle, type HeroCopyStyle } from '@/lib/hero-copy-style';
+import { defaultAdminHeroCopyStyle, resolveStorefrontHeroCopyStyle, type HeroCopyStyle } from '@/lib/hero-copy-style';
 import { defaultHeroBackgroundFitMode, resolveStorefrontHeroBackgroundFitMode, type HeroBackgroundFitMode } from '@/lib/hero-background-fit';
 import {
   LIST_HERO_COVER_DISPLAY_OPTIONS,
@@ -47,7 +47,7 @@ export function listHeroBoardToFormValues(board: AdminListHeroBoard): ListHeroBo
     videoUrl: board.videoUrl ?? '',
     showCoverOnBackground: Boolean(board.showCoverOnBackground),
     coverDisplay: listHeroCoverDisplayToCheckedValues(board.coverDisplay),
-    heroCopyStyle: board.heroCopyStyle === 'dark' ? 'dark' : 'light',
+    heroCopyStyle: resolveStorefrontHeroCopyStyle(board.heroCopyStyle),
     backgroundFitMode: resolveStorefrontHeroBackgroundFitMode(board.backgroundFitMode),
     background: {
       mode: (board.backgroundMode || '') as PartnerCenterBackgroundValue['mode'],
@@ -112,7 +112,7 @@ export function ListHeroBoardFields({ boardKey, value, onChange }: Props) {
           name="coverDisplay"
           label="封面显示"
           initialValue={['video', 'cover']}
-          extra="控制看板右侧封面区块显示内容；优先级：视频 → 封面 → 轮播图（三个列表页暂无轮播图）。取首个已勾选且有值的项，全部不勾选则不显示右侧封面区"
+          extra="控制看板右侧封面区块显示内容；按勾选过滤，顺序：视频 → 封面 → 轮播图（三个列表页暂无轮播图）。某项勾选且有素材才显示；全部不勾选则不显示右侧封面区"
         >
           <Checkbox.Group options={LIST_HERO_COVER_DISPLAY_OPTIONS} />
         </Form.Item>

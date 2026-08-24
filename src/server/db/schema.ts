@@ -88,6 +88,7 @@ import type {
 } from '@/lib/homepage-config';
 import type { NavColumn } from '@/lib/website-config';
 import type { ListHeroBoardsRecord } from '@/lib/list-hero-board';
+import type { HeroCoverDisplay } from '@/lib/hero-cover-display';
 import type {
   FeaturedPost,
   OverseasContact,
@@ -430,6 +431,8 @@ export const products = pgTable(
     /** solid token | preset id | R2 storage key when mode=upload */
     backgroundValue: text('background_value').notNull().default(''),
     showCoverOnBackground: boolean('show_cover_on_background').notNull().default(true),
+    /** Which hero right-slot sources are eligible: video / cover / gallery */
+    coverDisplay: jsonb('cover_display').$type<HeroCoverDisplay>().notNull().default({ video: true, cover: true, gallery: true }),
     /** light | dark — billboard left copy style; null = legacy light on storefront */
     heroCopyStyle: text('hero_copy_style'),
     coverImage: text('cover_image').notNull().default(''),
@@ -1418,6 +1421,7 @@ export const brandNarratives = pgTable(
     /** solid token | preset id | R2 storage key when mode=upload */
     backgroundValue: text('background_value').notNull().default(''),
     showCoverOnBackground: boolean('show_cover_on_background').notNull().default(true),
+    coverDisplay: jsonb('cover_display').$type<HeroCoverDisplay>().notNull().default({ video: true, cover: true, gallery: true }),
     heroCopyStyle: text('hero_copy_style'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -1488,6 +1492,7 @@ export const solutions = pgTable(
     /** solid token | preset id | R2 storage key when mode=upload */
     backgroundValue: text('background_value').notNull().default(''),
     showCoverOnBackground: boolean('show_cover_on_background').notNull().default(true),
+    coverDisplay: jsonb('cover_display').$type<HeroCoverDisplay>().notNull().default({ video: true, cover: true, gallery: true }),
     heroCopyStyle: text('hero_copy_style'),
     materials: jsonb('materials').$type<SolutionMaterial[]>().notNull().default([]),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -1628,6 +1633,7 @@ export const summits = pgTable(
     /** solid token | preset id | R2 storage key when mode=upload */
     backgroundValue: text('background_value').notNull().default(''),
     showCoverOnBackground: boolean('show_cover_on_background').notNull().default(true),
+    coverDisplay: jsonb('cover_display').$type<HeroCoverDisplay>().notNull().default({ video: true, cover: true, gallery: false }),
     heroCopyStyle: text('hero_copy_style'),
     venueImage: text('venue_image').notNull().default(''),
     agenda: jsonb('agenda').$type<AgendaGroup[]>().notNull().default([]),
@@ -1721,6 +1727,7 @@ export const partnerCenters = pgTable(
     backgroundValue: text('background_value').notNull().default(''),
     /** When true, detail hero shows cover image on the right over the background */
     showCoverOnBackground: boolean('show_cover_on_background').notNull().default(true),
+    coverDisplay: jsonb('cover_display').$type<HeroCoverDisplay>().notNull().default({ video: true, cover: true, gallery: true }),
     heroCopyStyle: text('hero_copy_style'),
     sortOrder: integer('sort_order').notNull().default(0),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

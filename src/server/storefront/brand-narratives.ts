@@ -8,6 +8,7 @@ import {
   resolvePartnerCenterBackgroundDisplay,
 } from '@/lib/partner-center-background-presets';
 import { resolveStorefrontHeroCopyStyle } from '@/lib/hero-copy-style';
+import { resolveStorefrontHeroCoverDisplay } from '@/lib/hero-cover-display';
 import { resolveStorefrontCoverUrl } from '@/lib/cover-presets';
 import { resolveUploadStorageKey } from '@/lib/upload-storage-key';
 import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
@@ -30,6 +31,7 @@ export type BrandNarrativePageData = {
     backgroundImage: string;
     backgroundSolidCss: string;
     showCoverOnBackground: boolean;
+    coverDisplay: import('@/lib/hero-cover-display').HeroCoverDisplay;
     heroCopyStyle: import('@/lib/hero-copy-style').HeroCopyStyle;
     videoUrl: string;
     gallery: Array<{ url: string; alt: string }>;
@@ -363,6 +365,7 @@ function mapPageData(
       backgroundImage: bg.imageUrl,
       backgroundSolidCss: bg.solidCss,
       showCoverOnBackground: Boolean(row.showCoverOnBackground),
+      coverDisplay: resolveStorefrontHeroCoverDisplay(row.coverDisplay),
       heroCopyStyle: resolveStorefrontHeroCopyStyle(row.heroCopyStyle),
       videoUrl: row.videoUrl?.trim() ? resolveOssAssetUrl(row.videoUrl) : '',
       gallery: ((row.gallery ?? []) as Array<{ url?: string; alt?: string }>)

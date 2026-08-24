@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { AgendaGroup, SpeakerItem, SponsorItem, SummitStat } from '@/server/db/schema';
 import { heroCopyStyleOptionalSchema, heroCopyStyleSchema, type HeroCopyStyle } from '@/lib/hero-copy-style';
+import { heroCoverDisplaySchema, type HeroCoverDisplay } from '@/lib/hero-cover-display';
 
 export { type AgendaGroup, type SpeakerItem, type SponsorItem, type SummitStat };
 export type { AgendaItem } from '@/server/db/schema';
@@ -106,6 +107,7 @@ export const adminSummitPatchSchema = z.object({
   backgroundMode: z.enum(['', 'solid', 'preset', 'upload']).optional(),
   backgroundValue: z.string().optional(),
   showCoverOnBackground: z.boolean().optional(),
+  coverDisplay: heroCoverDisplaySchema.optional(),
   heroCopyStyle: heroCopyStyleOptionalSchema,
   venueImage: z.string().optional(),
   agenda: z.array(agendaGroupSchema).optional(),
@@ -124,6 +126,7 @@ export const adminSummitCreateSchema = z.object({
   backgroundMode: z.enum(['', 'solid', 'preset', 'upload']).optional().default(''),
   backgroundValue: z.string().optional().default(''),
   showCoverOnBackground: z.boolean().optional().default(true),
+  coverDisplay: heroCoverDisplaySchema.optional(),
   heroCopyStyle: heroCopyStyleSchema.optional().default('light'),
   venueImage: z.string().optional().default(''),
   agenda: z.array(agendaGroupSchema).optional().default([]),
@@ -168,6 +171,7 @@ export type AdminSummitListItem = {
   backgroundImage: string;
   backgroundPreviewUrl: string;
   showCoverOnBackground: boolean;
+  coverDisplay: HeroCoverDisplay;
   heroCopyStyle: HeroCopyStyle | null;
   venueImage: string;
   sortOrder: number;

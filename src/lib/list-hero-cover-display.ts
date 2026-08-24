@@ -1,56 +1,58 @@
-import { z } from 'zod';
+/**
+ * List hero boards: video + cover only (no gallery).
+ * Re-exports / thin wrappers over hero-cover-display.
+ */
+import {
+  HERO_COVER_DISPLAY_OPTIONS_NO_GALLERY,
+  defaultHeroCoverDisplayNoGallery,
+  heroCoverDisplayFromCheckedValues,
+  heroCoverDisplaySchema,
+  heroCoverDisplayToCheckedValues,
+  normalizeHeroCoverDisplay,
+  resolveStorefrontHeroCoverDisplay,
+  type HeroCoverDisplay,
+  type HeroCoverDisplayKey,
+} from '@/lib/hero-cover-display';
 
-export type ListHeroCoverDisplayKey = 'video' | 'cover';
+export type ListHeroCoverDisplayKey = Exclude<HeroCoverDisplayKey, 'gallery'>;
 
 export type ListHeroCoverDisplay = {
   video: boolean;
   cover: boolean;
 };
 
-export const LIST_HERO_COVER_DISPLAY_OPTIONS: Array<{ value: ListHeroCoverDisplayKey; label: string }> = [
-  { value: 'video', label: '视频' },
-  { value: 'cover', label: '封面' },
-];
+export const LIST_HERO_COVER_DISPLAY_OPTIONS = HERO_COVER_DISPLAY_OPTIONS_NO_GALLERY;
 
-export const listHeroCoverDisplaySchema = z.object({
-  video: z.boolean().optional(),
-  cover: z.boolean().optional(),
-});
+export const listHeroCoverDisplaySchema = heroCoverDisplaySchema;
 
 export function defaultListHeroCoverDisplay(): ListHeroCoverDisplay {
-  return { video: true, cover: true };
+  return defaultHeroCoverDisplayNoGallery();
 }
 
 export function listHeroCoverDisplayToCheckedValues(display: ListHeroCoverDisplay): ListHeroCoverDisplayKey[] {
-  const values: ListHeroCoverDisplayKey[] = [];
-  if (display.video) values.push('video');
-  if (display.cover) values.push('cover');
-  return values;
+  return heroCoverDisplayToCheckedValues(display, false) as ListHeroCoverDisplayKey[];
 }
 
-export function listHeroCoverDisplayFromCheckedValues(values: ListHeroCoverDisplayKey[] | undefined): ListHeroCoverDisplay {
-  const checked = new Set(values ?? []);
-  return {
-    video: checked.has('video'),
-    cover: checked.has('cover'),
-  };
+export function listHeroCoverDisplayFromCheckedValues(
+  values: ListHeroCoverDisplayKey[] | undefined,
+): ListHeroCoverDisplay {
+  const full = heroCoverDisplayFromCheckedValues(values, false);
+  return { video: full.video, cover: full.cover };
 }
 
 export function normalizeListHeroCoverDisplay(
   input: Partial<ListHeroCoverDisplay> | undefined,
   current?: ListHeroCoverDisplay,
 ): ListHeroCoverDisplay {
-  const base = current ?? defaultListHeroCoverDisplay();
-  if (!input) return base;
-  return {
-    video: input.video ?? base.video,
-    cover: input.cover ?? base.cover,
-  };
+  const full = normalizeHeroCoverDisplay(input, current, false);
+  return { video: full.video, cover: full.cover };
 }
 
-export function resolveStorefrontListHeroCoverDisplay(input?: Partial<ListHeroCoverDisplay> | null): ListHeroCoverDisplay {
-  if (!input || (input.video === undefined && input.cover === undefined)) {
-    return defaultListHeroCoverDisplay();
-  }
-  return normalizeListHeroCoverDisplay(input, defaultListHeroCoverDisplay());
+export function resolveStorefrontListHeroCoverDisplay(
+  input?: Partial<ListHeroCoverDisplay> | null,
+): ListHeroCoverDisplay {
+  const full = resolveStorefrontHeroCoverDisplay(input, false);
+  return { video: full.video, cover: full.cover };
 }
+
+export type { HeroCoverDisplay };

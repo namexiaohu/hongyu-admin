@@ -9,7 +9,12 @@ import {
   type HeroBackgroundFitMode,
 } from '@/lib/hero-background-fit';
 import { defaultAdminHeroCopyStyle, heroCopyStyleOptionalSchema, normalizeHeroCopyStyleForWrite, resolveStorefrontHeroCopyStyle, type HeroCopyStyle } from '@/lib/hero-copy-style';
-import { normalizeBackgroundWrite, resolvePartnerCenterBackgroundDisplay, type PartnerCenterBackgroundMode } from '@/lib/partner-center-background-presets';
+import {
+  normalizeBackgroundWrite,
+  PARTNER_CENTER_SOLID_PRESETS,
+  resolvePartnerCenterBackgroundDisplay,
+  type PartnerCenterBackgroundMode,
+} from '@/lib/partner-center-background-presets';
 import { resolveStorefrontCoverUrl } from '@/lib/cover-presets';
 import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
 import {
@@ -33,7 +38,7 @@ export type ListHeroBoardConfig = {
   videoUrl: string;
   showCoverOnBackground: boolean;
   coverDisplay: ListHeroCoverDisplay;
-  heroCopyStyle: HeroCopyStyle | null;
+  heroCopyStyle: HeroCopyStyle;
   backgroundFitMode: HeroBackgroundFitMode;
   backgroundMode: string;
   backgroundValue: string;
@@ -88,6 +93,7 @@ export type ListHeroBoardPutInput = z.infer<typeof listHeroBoardInputSchema>;
 export type ListHeroBoardsPutInput = z.infer<typeof listHeroBoardsPutSchema>;
 
 export function createEmptyListHeroBoard(): ListHeroBoardConfig {
+  const firstSolid = PARTNER_CENTER_SOLID_PRESETS[0];
   return {
     coverMode: '',
     coverValue: '',
@@ -97,8 +103,9 @@ export function createEmptyListHeroBoard(): ListHeroBoardConfig {
     coverDisplay: defaultListHeroCoverDisplay(),
     heroCopyStyle: defaultAdminHeroCopyStyle(),
     backgroundFitMode: defaultHeroBackgroundFitMode(),
-    backgroundMode: '',
-    backgroundValue: '',
+    // 默认纯色第一色（品牌蓝暗色底），与浅色字文案默认成对
+    backgroundMode: firstSolid ? 'solid' : '',
+    backgroundValue: firstSolid?.id ?? '',
     backgroundImage: '',
   };
 }
@@ -132,7 +139,7 @@ function normalizeBoardWrite(input: ListHeroBoardPutInput | undefined, current: 
       : normalizeListHeroCoverDisplay(current.coverDisplay),
     heroCopyStyle: input?.heroCopyStyle !== undefined
       ? normalizeHeroCopyStyleForWrite(input.heroCopyStyle)
-      : current.heroCopyStyle,
+      : resolveStorefrontHeroCopyStyle(current.heroCopyStyle),
     backgroundFitMode: input?.backgroundFitMode !== undefined
       ? normalizeHeroBackgroundFitModeForWrite(input.backgroundFitMode)
       : current.backgroundFitMode,
@@ -154,25 +161,25 @@ export function normalizeListHeroBoardsWrite(
   };
 }
 
+function compactOneListHeroBoard(
+  input: Partial<ListHeroBoardConfig> | undefined,
+  empty: ListHeroBoardConfig,
+): ListHeroBoardConfig {
+  const merged = { ...empty, ...input };
+  return {
+    ...merged,
+    coverDisplay: normalizeListHeroCoverDisplay(input?.coverDisplay, empty.coverDisplay),
+    heroCopyStyle: resolveStorefrontHeroCopyStyle(input?.heroCopyStyle ?? empty.heroCopyStyle),
+  };
+}
+
 export function compactListHeroBoards(input: ListHeroBoardsRecord | undefined): ListHeroBoardsRecord {
   const empty = createEmptyListHeroBoards();
   if (!input) return empty;
   return {
-    insights: {
-      ...empty.insights,
-      ...input.insights,
-      coverDisplay: normalizeListHeroCoverDisplay(input.insights?.coverDisplay, empty.insights.coverDisplay),
-    },
-    surgeons: {
-      ...empty.surgeons,
-      ...input.surgeons,
-      coverDisplay: normalizeListHeroCoverDisplay(input.surgeons?.coverDisplay, empty.surgeons.coverDisplay),
-    },
-    centers: {
-      ...empty.centers,
-      ...input.centers,
-      coverDisplay: normalizeListHeroCoverDisplay(input.centers?.coverDisplay, empty.centers.coverDisplay),
-    },
+    insights: compactOneListHeroBoard(input.insights, empty.insights),
+    surgeons: compactOneListHeroBoard(input.surgeons, empty.surgeons),
+    centers: compactOneListHeroBoard(input.centers, empty.centers),
   };
 }
 

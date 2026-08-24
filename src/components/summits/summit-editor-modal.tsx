@@ -20,7 +20,12 @@ import {
   type CoverOptionValue,
 } from '@/components/shared/cover-option-field';
 import { HeroCopyStyleField } from '@/components/shared/hero-copy-style-field';
+import {
+  HeroCoverDisplayField,
+  HERO_COVER_DISPLAY_FIELD_EXTRA_NO_GALLERY,
+} from '@/components/shared/hero-cover-display-field';
 import { defaultAdminHeroCopyStyle, type HeroCopyStyle } from '@/lib/hero-copy-style';
+import { defaultHeroCoverDisplay, type HeroCoverDisplay } from '@/lib/hero-cover-display';
 import { applyNonemptyTranslatedFields } from '@/lib/content-translate-config';
 import { hasMeaningfulHtmlBody } from '@/lib/editorial-html';
 import { deserializeSpeakers, deserializeSponsors, serializeSpeakers, serializeSponsors } from '@/lib/content-translate-serialize';
@@ -68,6 +73,7 @@ type SharedFormValues = {
   cover: CoverOptionValue;
   videoUrl: string;
   showCoverOnBackground: boolean;
+  coverDisplay: HeroCoverDisplay;
   heroCopyStyle: HeroCopyStyle;
   background: PartnerCenterBackgroundValue;
   venueImage: string;
@@ -276,6 +282,7 @@ export function SummitEditorModal({ open, detail, activeLanguages, onClose, onSa
       },
       videoUrl: detail?.videoUrl ?? '',
       showCoverOnBackground: detail?.showCoverOnBackground ?? true,
+      coverDisplay: detail?.coverDisplay ?? defaultHeroCoverDisplay(false),
       heroCopyStyle: detail?.heroCopyStyle ?? defaultAdminHeroCopyStyle(),
       background: {
         mode: detail?.backgroundMode ?? '',
@@ -350,6 +357,7 @@ export function SummitEditorModal({ open, detail, activeLanguages, onClose, onSa
           backgroundMode: shared.background?.mode ?? '',
           backgroundValue: shared.background?.value?.trim() ?? '',
           showCoverOnBackground: Boolean(shared.showCoverOnBackground),
+          coverDisplay: shared.coverDisplay ?? defaultHeroCoverDisplay(false),
           heroCopyStyle: shared.heroCopyStyle ?? defaultAdminHeroCopyStyle(),
           venueImage: shared.venueImage?.trim() ?? '',
           agenda,
@@ -479,6 +487,14 @@ export function SummitEditorModal({ open, detail, activeLanguages, onClose, onSa
                 extra="开启后，详情页看板在大背景图右侧同时展示封面图"
               >
                 <Switch checkedChildren="开" unCheckedChildren="关" />
+              </Form.Item>
+              <Form.Item
+                name="coverDisplay"
+                label="封面显示"
+                extra={HERO_COVER_DISPLAY_FIELD_EXTRA_NO_GALLERY}
+                initialValue={defaultHeroCoverDisplay(false)}
+              >
+                <HeroCoverDisplayField includeGallery={false} />
               </Form.Item>
               <Form.Item
                 name="heroCopyStyle"

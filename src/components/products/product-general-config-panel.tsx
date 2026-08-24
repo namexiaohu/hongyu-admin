@@ -13,7 +13,12 @@ import {
   type CoverOptionValue,
 } from '@/components/shared/cover-option-field';
 import { HeroCopyStyleField } from '@/components/shared/hero-copy-style-field';
+import {
+  HeroCoverDisplayField,
+  HERO_COVER_DISPLAY_FIELD_EXTRA,
+} from '@/components/shared/hero-cover-display-field';
 import type { HeroCopyStyle } from '@/lib/hero-copy-style';
+import type { HeroCoverDisplay } from '@/lib/hero-cover-display';
 import { ProductBoardMultiSelect, type ProductBoardOption } from '@/components/products/product-board-multi-select';
 import { ProductGalleryField } from '@/components/products/product-gallery-field';
 import { ProductVideoField } from '@/components/products/product-video-field';
@@ -43,6 +48,8 @@ type ProductGeneralConfigPanelProps = {
   onBackgroundChange: (value: PartnerCenterBackgroundValue) => void;
   showCoverOnBackground: boolean;
   onShowCoverOnBackgroundChange: (value: boolean) => void;
+  coverDisplay: HeroCoverDisplay;
+  onCoverDisplayChange: (value: HeroCoverDisplay) => void;
   heroCopyStyle: HeroCopyStyle;
   onHeroCopyStyleChange: (value: HeroCopyStyle) => void;
 };
@@ -72,6 +79,8 @@ export function ProductGeneralConfigPanel({
   onBackgroundChange,
   showCoverOnBackground,
   onShowCoverOnBackgroundChange,
+  coverDisplay,
+  onCoverDisplayChange,
   heroCopyStyle,
   onHeroCopyStyleChange,
 }: ProductGeneralConfigPanelProps) {
@@ -149,6 +158,14 @@ export function ProductGeneralConfigPanel({
           unCheckedChildren="关"
           onChange={onShowCoverOnBackgroundChange}
         />
+      </Form.Item>
+      <Form.Item
+        label="封面显示"
+        layout="vertical"
+        style={fieldStyle}
+        extra={HERO_COVER_DISPLAY_FIELD_EXTRA}
+      >
+        <HeroCoverDisplayField value={coverDisplay} onChange={onCoverDisplayChange} />
       </Form.Item>
       <Form.Item label="看板文案风格" layout="vertical" style={fieldStyle}>
         <HeroCopyStyleField value={heroCopyStyle} onChange={onHeroCopyStyleChange} />

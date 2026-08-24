@@ -8,6 +8,7 @@ import {
   type BrandNarrativeBlockDraft,
 } from '@/lib/brand-narrative-blocks';
 import { heroCopyStyleOptionalSchema, heroCopyStyleSchema, type HeroCopyStyle } from '@/lib/hero-copy-style';
+import { heroCoverDisplaySchema, type HeroCoverDisplay } from '@/lib/hero-cover-display';
 import type { ProductGalleryImage } from '@/lib/product-content';
 
 export const brandNarrativeSlugs = ['about', 'patents', 'history', 'training'] as const;
@@ -59,6 +60,7 @@ export type AdminBrandNarrativeListItem = {
   backgroundImage: string;
   backgroundPreviewUrl: string;
   showCoverOnBackground: boolean;
+  coverDisplay: HeroCoverDisplay;
   heroCopyStyle: HeroCopyStyle | null;
   title: string;
   localeCount: number;
@@ -161,6 +163,7 @@ export const adminBrandNarrativePatchSchema = z.object({
   backgroundMode: backgroundModeSchema.optional(),
   backgroundValue: z.string().optional(),
   showCoverOnBackground: z.boolean().optional(),
+  coverDisplay: heroCoverDisplaySchema.optional(),
   heroCopyStyle: heroCopyStyleOptionalSchema,
   blocks: brandNarrativeBlocksSchema.optional(),
   publishedAt: z.coerce.date().nullable().optional(),
@@ -177,6 +180,7 @@ export const adminBrandNarrativeCreateSchema = z.object({
   backgroundMode: backgroundModeSchema.optional().default(''),
   backgroundValue: z.string().optional().default(''),
   showCoverOnBackground: z.boolean().optional().default(true),
+  coverDisplay: heroCoverDisplaySchema.optional(),
   heroCopyStyle: heroCopyStyleSchema.optional().default('light'),
   blocks: brandNarrativeBlocksSchema.optional(),
   translation: adminBrandNarrativeTranslationSchema,

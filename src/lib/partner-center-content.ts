@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import type { CoverImageMode } from '@/lib/cover-presets';
 import { heroCopyStyleOptionalSchema, heroCopyStyleSchema, type HeroCopyStyle } from '@/lib/hero-copy-style';
+import { heroCoverDisplaySchema, type HeroCoverDisplay } from '@/lib/hero-cover-display';
 import type { PartnerCenterBackgroundMode } from '@/lib/partner-center-background-presets';
 import type { ProductGalleryImage } from '@/lib/product-content';
 
@@ -52,6 +53,7 @@ export type AdminPartnerCenterListItem = {
   /** Admin preview: resolved image URL or empty (solid uses CSS on client) */
   backgroundPreviewUrl: string;
   showCoverOnBackground: boolean;
+  coverDisplay: HeroCoverDisplay;
   heroCopyStyle: HeroCopyStyle | null;
   sortOrder: number;
   name: string;
@@ -129,6 +131,7 @@ export const adminPartnerCenterPatchSchema = z.object({
   backgroundMode: backgroundModeSchema.optional(),
   backgroundValue: z.string().optional(),
   showCoverOnBackground: z.boolean().optional(),
+  coverDisplay: heroCoverDisplaySchema.optional(),
   heroCopyStyle: heroCopyStyleOptionalSchema,
   sortOrder: z.number().int().optional(),
   surgeonIds: z.array(z.string().uuid()).optional(),
@@ -148,6 +151,7 @@ export const adminPartnerCenterCreateSchema = z.object({
   backgroundMode: backgroundModeSchema.optional().default(''),
   backgroundValue: z.string().optional().default(''),
   showCoverOnBackground: z.boolean().optional().default(true),
+  coverDisplay: heroCoverDisplaySchema.optional(),
   heroCopyStyle: heroCopyStyleSchema.optional().default('light'),
   sortOrder: z.number().int().optional(),
   surgeonIds: z.array(z.string().uuid()).optional().default([]),

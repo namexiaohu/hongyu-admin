@@ -4,6 +4,7 @@ import type { SolutionBlockDraft } from '@/lib/solution-blocks';
 import { resolveOssAssetUrl, rewriteHtmlOssAssets } from '@/lib/oss-asset-url';
 import { resolvePartnerCenterBackgroundDisplay } from '@/lib/partner-center-background-presets';
 import { resolveStorefrontHeroCopyStyle } from '@/lib/hero-copy-style';
+import { resolveStorefrontHeroCoverDisplay } from '@/lib/hero-cover-display';
 import { resolveUploadStorageKey } from '@/lib/upload-storage-key';
 import { db } from '@/server/db';
 import {
@@ -945,6 +946,7 @@ export async function getProductBySlug(slug: string, localeInput?: string | null
         backgroundValue: products.backgroundValue,
         backgroundImage: products.backgroundImage,
         showCoverOnBackground: products.showCoverOnBackground,
+        coverDisplay: products.coverDisplay,
         heroCopyStyle: products.heroCopyStyle,
         coverMode: products.coverMode,
         coverValue: products.coverValue,
@@ -1057,6 +1059,7 @@ export async function getProductBySlug(slug: string, localeInput?: string | null
       backgroundImage: bg.imageUrl,
       backgroundSolidCss: bg.solidCss,
       showCoverOnBackground: Boolean(product.showCoverOnBackground),
+      coverDisplay: resolveStorefrontHeroCoverDisplay(product.coverDisplay),
       heroCopyStyle: resolveStorefrontHeroCopyStyle(product.heroCopyStyle),
       price: asMoney(product.price, product.currencyCode),
       compareAtPrice: product.compareAtPrice ? asMoney(product.compareAtPrice, product.currencyCode) : null,

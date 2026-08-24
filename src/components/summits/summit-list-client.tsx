@@ -47,6 +47,7 @@ function toListItem(d: AdminSummitDetail): AdminSummitListItem {
     backgroundImage: d.backgroundImage,
     backgroundPreviewUrl: d.backgroundPreviewUrl,
     showCoverOnBackground: d.showCoverOnBackground,
+    coverDisplay: d.coverDisplay,
     heroCopyStyle: d.heroCopyStyle,
     venueImage: d.venueImage,
     sortOrder: d.sortOrder, title: d.title,

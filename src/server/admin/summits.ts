@@ -28,6 +28,10 @@ import { summits, summitTranslations } from '@/server/db/schema';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
 import { resolveCoverFieldsForWrite } from '@/server/admin/cover-images';
 import { normalizeHeroCopyStyleForWrite, type HeroCopyStyle } from '@/lib/hero-copy-style';
+import {
+  normalizeHeroCoverDisplay,
+  resolveStorefrontHeroCoverDisplay,
+} from '@/lib/hero-cover-display';
 
 function toIso(value: Date | null | undefined): string | null {
   return value ? value.toISOString() : null;
@@ -60,6 +64,7 @@ function mapListItem(
     backgroundValue: bg.value,
     backgroundPreviewUrl: bg.previewUrl,
     showCoverOnBackground: Boolean(row.showCoverOnBackground),
+    coverDisplay: resolveStorefrontHeroCoverDisplay(row.coverDisplay, false),
     heroCopyStyle: (row.heroCopyStyle as HeroCopyStyle | null) ?? null,
     venueImage: row.venueImage,
     sortOrder: row.sortOrder,
@@ -168,7 +173,8 @@ export async function createAdminSummit(input: unknown) {
     backgroundValue: bg.backgroundValue,
     backgroundImage: bg.backgroundImage,
     showCoverOnBackground: parsed.showCoverOnBackground ?? true,
-    heroCopyStyle: normalizeHeroCopyStyleForWrite(parsed.heroCopyStyle) ?? 'light',
+    coverDisplay: normalizeHeroCoverDisplay(parsed.coverDisplay, undefined, false),
+    heroCopyStyle: normalizeHeroCopyStyleForWrite(parsed.heroCopyStyle),
     venueImage: parsed.venueImage ?? '',
     agenda: (parsed.agenda ?? []) as AgendaGroup[],
     sortOrder: parsed.sortOrder ?? (maxSort?.sortOrder ?? 0) + 10,
@@ -229,6 +235,9 @@ export async function updateAdminSummit(id: string, input: unknown) {
     ...(parsed.videoUrl !== undefined ? { videoUrl: normalizeVideoUrl(parsed.videoUrl) } : {}),
     ...bgPatch,
     ...(parsed.showCoverOnBackground !== undefined ? { showCoverOnBackground: parsed.showCoverOnBackground } : {}),
+    ...(parsed.coverDisplay !== undefined
+      ? { coverDisplay: normalizeHeroCoverDisplay(parsed.coverDisplay, undefined, false) }
+      : {}),
     ...(parsed.heroCopyStyle !== undefined
       ? { heroCopyStyle: normalizeHeroCopyStyleForWrite(parsed.heroCopyStyle) }
       : {}),

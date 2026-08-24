@@ -17,7 +17,12 @@ import {
   type CoverOptionValue,
 } from '@/components/shared/cover-option-field';
 import { HeroCopyStyleField } from '@/components/shared/hero-copy-style-field';
+import {
+  HeroCoverDisplayField,
+  HERO_COVER_DISPLAY_FIELD_EXTRA,
+} from '@/components/shared/hero-cover-display-field';
 import { defaultAdminHeroCopyStyle, type HeroCopyStyle } from '@/lib/hero-copy-style';
+import { defaultHeroCoverDisplay, type HeroCoverDisplay } from '@/lib/hero-cover-display';
 import { ProductGalleryField } from '@/components/products/product-gallery-field';
 import { ProductVideoField } from '@/components/products/product-video-field';
 import { SurgeonPickerField } from '@/components/surgeons/surgeon-picker-field';
@@ -78,6 +83,7 @@ type SharedFormValues = {
   videoUrl: string;
   logo: string;
   showCoverOnBackground: boolean;
+  coverDisplay: HeroCoverDisplay;
   heroCopyStyle: HeroCopyStyle;
   background: PartnerCenterBackgroundValue;
   surgeonIds: string[];
@@ -307,6 +313,7 @@ export function PartnerCenterEditorModal({ open, detail, activeLanguages, onClos
       videoUrl: detail?.videoUrl ?? '',
       logo: detail?.logo ?? '',
       showCoverOnBackground: detail?.showCoverOnBackground ?? true,
+      coverDisplay: detail?.coverDisplay ?? defaultHeroCoverDisplay(true),
       heroCopyStyle: detail?.heroCopyStyle ?? defaultAdminHeroCopyStyle(),
       background: {
         mode: detail?.backgroundMode ?? '',
@@ -373,6 +380,7 @@ export function PartnerCenterEditorModal({ open, detail, activeLanguages, onClos
           videoUrl: shared.videoUrl?.trim() ?? '',
           logo: shared.logo?.trim() ?? '',
           showCoverOnBackground: Boolean(shared.showCoverOnBackground),
+          coverDisplay: shared.coverDisplay ?? defaultHeroCoverDisplay(true),
           heroCopyStyle: shared.heroCopyStyle ?? defaultAdminHeroCopyStyle(),
           backgroundMode: shared.background?.mode ?? '',
           backgroundValue: shared.background?.value?.trim() ?? '',
@@ -496,6 +504,14 @@ export function PartnerCenterEditorModal({ open, detail, activeLanguages, onClos
               extra="开启后，详情页看板在大背景图右侧同时展示封面图"
             >
               <Switch checkedChildren="开" unCheckedChildren="关" />
+            </Form.Item>
+            <Form.Item
+              name="coverDisplay"
+              label="封面显示"
+              extra={HERO_COVER_DISPLAY_FIELD_EXTRA}
+              initialValue={defaultHeroCoverDisplay(true)}
+            >
+              <HeroCoverDisplayField />
             </Form.Item>
             <Form.Item name="heroCopyStyle" label="看板文案风格" initialValue="light">
               <HeroCopyStyleField />

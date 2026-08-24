@@ -16,7 +16,12 @@ import {
   type CoverOptionValue,
 } from '@/components/shared/cover-option-field';
 import { HeroCopyStyleField } from '@/components/shared/hero-copy-style-field';
+import {
+  HeroCoverDisplayField,
+  HERO_COVER_DISPLAY_FIELD_EXTRA,
+} from '@/components/shared/hero-cover-display-field';
 import { defaultAdminHeroCopyStyle, type HeroCopyStyle } from '@/lib/hero-copy-style';
+import { defaultHeroCoverDisplay, type HeroCoverDisplay } from '@/lib/hero-cover-display';
 import { ProductGalleryField } from '@/components/products/product-gallery-field';
 import { ProductVideoField } from '@/components/products/product-video-field';
 import { BrandNarrativeBlockEditorModal, type BrandNarrativeBlockEditorHandle } from '@/components/brand-narratives/brand-narrative-block-editor-modal';
@@ -95,6 +100,7 @@ type SharedFormValues = {
   videoUrl: string;
   slug: string;
   showCoverOnBackground: boolean;
+  coverDisplay: HeroCoverDisplay;
   heroCopyStyle: HeroCopyStyle;
   background: PartnerCenterBackgroundValue;
 };
@@ -347,6 +353,7 @@ export function BrandNarrativeEditorModal({
       videoUrl: detail?.videoUrl ?? '',
       slug: detail?.slug ?? '',
       showCoverOnBackground: detail?.showCoverOnBackground ?? true,
+      coverDisplay: detail?.coverDisplay ?? defaultHeroCoverDisplay(true),
       heroCopyStyle: detail?.heroCopyStyle ?? defaultAdminHeroCopyStyle(),
       background: {
         mode: detail?.backgroundMode ?? '',
@@ -442,6 +449,7 @@ export function BrandNarrativeEditorModal({
         const gallery = (sharedValues.gallery ?? []).filter((item) => item.url?.trim());
         const videoUrl = sharedValues.videoUrl?.trim() ?? '';
         const showCoverOnBackground = Boolean(sharedValues.showCoverOnBackground);
+        const coverDisplay = sharedValues.coverDisplay ?? defaultHeroCoverDisplay(true);
         const heroCopyStyle = sharedValues.heroCopyStyle ?? defaultAdminHeroCopyStyle();
         const backgroundMode = sharedValues.background?.mode ?? '';
         const backgroundValue = sharedValues.background?.value?.trim() ?? '';
@@ -449,6 +457,7 @@ export function BrandNarrativeEditorModal({
           coverMode,
           coverValue,
           showCoverOnBackground,
+          coverDisplay,
           heroCopyStyle,
           backgroundMode,
           backgroundValue,
@@ -647,6 +656,14 @@ export function BrandNarrativeEditorModal({
                 extra="开启后，详情页看板在大背景图右侧同时展示封面图"
               >
                 <Switch checkedChildren="开" unCheckedChildren="关" />
+              </Form.Item>
+              <Form.Item
+                name="coverDisplay"
+                label="封面显示"
+                extra={HERO_COVER_DISPLAY_FIELD_EXTRA}
+                initialValue={defaultHeroCoverDisplay(true)}
+              >
+                <HeroCoverDisplayField />
               </Form.Item>
               <Form.Item name="heroCopyStyle" label="看板文案风格" initialValue="light">
                 <HeroCopyStyleField />

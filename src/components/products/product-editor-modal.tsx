@@ -16,6 +16,7 @@ import { ProductAttachmentsField } from '@/components/products/product-attachmen
 import { ProductGeneralConfigPanel } from '@/components/products/product-general-config-panel';
 import type { PartnerCenterBackgroundValue } from '@/components/partner-centers/partner-center-background-field';
 import { defaultAdminHeroCopyStyle, type HeroCopyStyle } from '@/lib/hero-copy-style';
+import { defaultHeroCoverDisplay, resolveStorefrontHeroCoverDisplay } from '@/lib/hero-cover-display';
 import type { CoverOptionValue } from '@/components/shared/cover-option-field';
 import type { ProductBoardOption } from '@/components/products/product-board-multi-select';
 import { productLifecycleOptions } from '@/lib/admin-display';
@@ -329,6 +330,7 @@ export function ProductEditorModal({
   const [cover, setCover] = useState<CoverOptionValue>({ mode: '', value: '', previewUrl: '' });
   const [background, setBackground] = useState<PartnerCenterBackgroundValue>(EMPTY_BACKGROUND);
   const [showCoverOnBackground, setShowCoverOnBackground] = useState(true);
+  const [coverDisplay, setCoverDisplay] = useState(() => defaultHeroCoverDisplay(true));
   const [heroCopyStyle, setHeroCopyStyle] = useState<HeroCopyStyle>(defaultAdminHeroCopyStyle());
   const [activeLocale, setActiveLocale] = useState('');
   const [sectionTab, setSectionTab] = useState<SectionTabKey>('content');
@@ -468,6 +470,7 @@ export function ProductEditorModal({
       previewUrl: editingEntry.coverPreviewUrl ?? '',
     });
     setShowCoverOnBackground(editingEntry.showCoverOnBackground ?? true);
+    setCoverDisplay(resolveStorefrontHeroCoverDisplay(editingEntry.coverDisplay));
     setHeroCopyStyle(editingEntry.heroCopyStyle ?? defaultAdminHeroCopyStyle());
     setLoadingGroup(true);
 
@@ -505,6 +508,7 @@ export function ProductEditorModal({
           previewUrl: payload.item.coverPreviewUrl ?? '',
         });
         setShowCoverOnBackground(payload.item.showCoverOnBackground ?? true);
+        setCoverDisplay(resolveStorefrontHeroCoverDisplay(payload.item.coverDisplay));
         setHeroCopyStyle(payload.item.heroCopyStyle ?? defaultAdminHeroCopyStyle());
 
         const nextDrafts = Object.fromEntries(
@@ -791,6 +795,7 @@ export function ProductEditorModal({
         coverMode: cover.mode ?? '',
         coverValue: cover.value ?? '',
         showCoverOnBackground,
+        coverDisplay,
         heroCopyStyle,
       };
 
@@ -884,6 +889,8 @@ export function ProductEditorModal({
       onBackgroundChange={setBackground}
       showCoverOnBackground={showCoverOnBackground}
       onShowCoverOnBackgroundChange={setShowCoverOnBackground}
+      coverDisplay={coverDisplay}
+      onCoverDisplayChange={setCoverDisplay}
       heroCopyStyle={heroCopyStyle}
       onHeroCopyStyleChange={setHeroCopyStyle}
     />

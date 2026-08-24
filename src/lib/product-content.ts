@@ -80,6 +80,7 @@ export type AdminProductListItem = {
   backgroundImage: string;
   backgroundPreviewUrl: string;
   showCoverOnBackground: boolean;
+  coverDisplay: import('@/lib/hero-cover-display').HeroCoverDisplay;
   heroCopyStyle: HeroCopyStyle | null;
   createdAt: string;
   updatedAt: string;

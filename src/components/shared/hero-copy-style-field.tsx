@@ -28,7 +28,7 @@ export function HeroCopyStyleField({ value, onChange, disabled = false }: Props)
         }))}
       />
       <Typography.Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
-        明亮大背景图选暗色字浅色底；深色或纯色背景选浅色字暗色底。
+        默认浅色字暗色底（与纯色第一色暗色底一致）。明亮大背景图再改选暗色字浅色底。
       </Typography.Text>
     </div>
   );
