@@ -1,5 +1,5 @@
 /**
- * Translate CMS content from English → zh-CN (skip if Chinese exists) + es (always overwrite).
+ * Translate CMS content from English → zh-CN (skip if real Chinese exists) + es (always overwrite).
  *
  * Usage:
  *   pnpm exec tsx scripts/translate-content-from-en.ts
@@ -157,6 +157,25 @@ function rowHasText(row: RowLike | null, textKeys: string[]) {
   return collectText(textKeys.map((key) => row[key])).length > 0;
 }
 
+/** zh-CN row counts as translated only when text is actually Chinese (not English placeholder). */
+function rowHasChineseText(row: RowLike | null, textKeys: string[]) {
+  if (!row) return false;
+  const text = collectText(textKeys.map((key) => row[key]));
+  if (!text) return false;
+  const lang = detectLang(text);
+  return lang === 'zh' || lang === 'mixed';
+}
+
+function localesCopyIsChinese(copy: Record<string, unknown> | null | undefined, fieldKeys: string[]) {
+  const text = fieldKeys
+    .map((key) => copy?.[key])
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .join(' ');
+  if (!text) return false;
+  const lang = detectLang(text);
+  return lang === 'zh' || lang === 'mixed';
+}
+
 function pickTextPayload(row: RowLike, textKeys: string[]): Record<string, unknown> {
   const payload: Record<string, unknown> = {};
   for (const key of textKeys) payload[key] = cloneJson(row[key]);
@@ -264,7 +283,7 @@ async function translateTranslationGroup(options: {
 
   try {
     if (WANT_ZH) {
-      if (rowHasText(zhRow, textKeys)) {
+      if (rowHasChineseText(zhRow, textKeys)) {
         summary.skip_zh += 1;
         record({ module, entity, action: 'skip_zh' });
       } else {
@@ -351,7 +370,7 @@ async function translateLocalesMap(options: {
 
   try {
     if (WANT_ZH) {
-      if (zhText) {
+      if (localesCopyIsChinese(zh.copy, options.fieldKeys)) {
         summary.skip_zh += 1;
         record({ module: options.module, entity: options.entity, action: 'skip_zh-locales' });
       } else if (DRY_RUN) {

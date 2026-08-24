@@ -132,6 +132,8 @@ CREATE TABLE "brand_narratives" (
 	"background_mode" text DEFAULT '' NOT NULL,
 	"background_value" text DEFAULT '' NOT NULL,
 	"show_cover_on_background" boolean DEFAULT true NOT NULL,
+	"cover_display" jsonb DEFAULT '{"video":true,"cover":true,"gallery":true}'::jsonb NOT NULL,
+	"hero_copy_style" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -758,6 +760,8 @@ CREATE TABLE "partner_centers" (
 	"background_mode" text DEFAULT '' NOT NULL,
 	"background_value" text DEFAULT '' NOT NULL,
 	"show_cover_on_background" boolean DEFAULT true NOT NULL,
+	"cover_display" jsonb DEFAULT '{"video":true,"cover":true,"gallery":true}'::jsonb NOT NULL,
+	"hero_copy_style" text,
 	"sort_order" integer DEFAULT 0 NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
@@ -920,6 +924,8 @@ CREATE TABLE "products" (
 	"background_mode" text DEFAULT '' NOT NULL,
 	"background_value" text DEFAULT '' NOT NULL,
 	"show_cover_on_background" boolean DEFAULT true NOT NULL,
+	"cover_display" jsonb DEFAULT '{"video":true,"cover":true,"gallery":true}'::jsonb NOT NULL,
+	"hero_copy_style" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -1040,6 +1046,8 @@ CREATE TABLE "solutions" (
 	"background_mode" text DEFAULT '' NOT NULL,
 	"background_value" text DEFAULT '' NOT NULL,
 	"show_cover_on_background" boolean DEFAULT true NOT NULL,
+	"cover_display" jsonb DEFAULT '{"video":true,"cover":true,"gallery":true}'::jsonb NOT NULL,
+	"hero_copy_style" text,
 	"materials" jsonb DEFAULT '[]'::jsonb NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
@@ -1068,6 +1076,8 @@ CREATE TABLE "summits" (
 	"start_date" timestamp with time zone,
 	"end_date" timestamp with time zone,
 	"cover_image" text DEFAULT '' NOT NULL,
+	"cover_display" jsonb DEFAULT '{"video":true,"cover":true,"gallery":false}'::jsonb NOT NULL,
+	"hero_copy_style" text,
 	"venue_image" text DEFAULT '' NOT NULL,
 	"agenda" jsonb DEFAULT '[]'::jsonb NOT NULL,
 	"sort_order" integer DEFAULT 0 NOT NULL,
@@ -1164,6 +1174,7 @@ CREATE TABLE "verification_tokens" (
 CREATE TABLE "website_configs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"nav_columns" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"list_hero_boards" jsonb DEFAULT '{}'::jsonb NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -1414,4 +1425,10 @@ ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "hero_copy_style" text;--> state
 ALTER TABLE "brand_narratives" ADD COLUMN IF NOT EXISTS "hero_copy_style" text;--> statement-breakpoint
 ALTER TABLE "solutions" ADD COLUMN IF NOT EXISTS "hero_copy_style" text;--> statement-breakpoint
 ALTER TABLE "summits" ADD COLUMN IF NOT EXISTS "hero_copy_style" text;--> statement-breakpoint
-ALTER TABLE "partner_centers" ADD COLUMN IF NOT EXISTS "hero_copy_style" text;
+ALTER TABLE "partner_centers" ADD COLUMN IF NOT EXISTS "hero_copy_style" text;--> statement-breakpoint
+ALTER TABLE "website_configs" ADD COLUMN IF NOT EXISTS "list_hero_boards" jsonb DEFAULT '{}'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "cover_display" jsonb DEFAULT '{"video":true,"cover":true,"gallery":true}'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "brand_narratives" ADD COLUMN IF NOT EXISTS "cover_display" jsonb DEFAULT '{"video":true,"cover":true,"gallery":true}'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "solutions" ADD COLUMN IF NOT EXISTS "cover_display" jsonb DEFAULT '{"video":true,"cover":true,"gallery":true}'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "partner_centers" ADD COLUMN IF NOT EXISTS "cover_display" jsonb DEFAULT '{"video":true,"cover":true,"gallery":true}'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "summits" ADD COLUMN IF NOT EXISTS "cover_display" jsonb DEFAULT '{"video":true,"cover":true,"gallery":false}'::jsonb NOT NULL;

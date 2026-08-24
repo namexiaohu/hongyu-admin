@@ -14,8 +14,10 @@ pnpm-debug.log*
 .DS_Store
 *.tsbuildinfo
 .tmp/
+scripts/.cache/
 custom-fetch-result.txt
 .env.production
 foot English doc/
 pnpm-lock.yaml
 package-lock.json
+*.log
