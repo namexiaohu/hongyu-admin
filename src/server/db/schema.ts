@@ -1831,6 +1831,7 @@ export const homepageConfigTranslations = pgTable(
 export const websiteConfigs = pgTable('website_configs', {
   id: uuid('id').defaultRandom().primaryKey(),
   navColumns: jsonb('nav_columns').$type<NavColumn[]>().notNull().default([]),
+  footerNavColumns: jsonb('footer_nav_columns').$type<NavColumn[]>().notNull().default([]),
   listHeroBoards: jsonb('list_hero_boards').$type<ListHeroBoardsRecord>().notNull().default({} as ListHeroBoardsRecord),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

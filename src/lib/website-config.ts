@@ -34,6 +34,8 @@ export type NavItem = {
 
 export type NavColumn = {
   id: string;
+  /** Optional top-level link; when set (often with empty items), header renders as a direct `<a>`. */
+  href?: string;
   name: string;
   items: NavItem[];
   locales?: Record<string, NavColumnLocale>;
@@ -41,7 +43,8 @@ export type NavColumn = {
 
 export type AdminWebsiteConfig = {
   id: string;
-  navColumns: NavColumn[];
+  headerNavColumns: NavColumn[];
+  footerNavColumns: NavColumn[];
   listHeroBoards: AdminListHeroBoardsRecord;
   createdAt: string;
   updatedAt: string;
@@ -55,13 +58,15 @@ export type StorefrontNavItem = {
 
 export type StorefrontNavColumn = {
   id: string;
+  href: string;
   name: string;
   items: StorefrontNavItem[];
 };
 
 export type StorefrontWebsiteConfig = {
   locale: string;
-  navColumns: StorefrontNavColumn[];
+  headerNavColumns: StorefrontNavColumn[];
+  footerNavColumns: StorefrontNavColumn[];
   listHeroBoards: StorefrontListHeroBoardsRecord;
 };
 
@@ -82,13 +87,15 @@ const navColumnLocaleSchema = z.object({
 
 const navColumnSchema = z.object({
   id: z.string().optional().default(''),
+  href: z.string().optional().default(''),
   name: z.string().optional().default(''),
   items: z.array(navItemSchema).optional().default([]),
   locales: z.record(z.string(), navColumnLocaleSchema).optional(),
 });
 
 export const adminWebsiteConfigPutSchema = z.object({
-  navColumns: z.array(navColumnSchema).optional(),
+  headerNavColumns: z.array(navColumnSchema).optional(),
+  footerNavColumns: z.array(navColumnSchema).optional(),
   listHeroBoards: listHeroBoardsPutSchema.optional(),
 });
 
@@ -126,12 +133,34 @@ export function compactNavColumns(rows: NavColumn[] | undefined): NavColumn[] {
       );
       return {
         id: row.id?.trim() || `nav-column-${index + 1}`,
+        href: row.href?.trim() ?? '',
         name: row.name?.trim() ?? '',
         items: compactNavItems(row.items),
         ...(Object.keys(locales).length ? { locales } : {}),
       };
     })
-    .filter((row) => row.name || row.items.length || Object.keys(row.locales ?? {}).length);
+    .filter((row) => row.name || row.href || row.items.length || Object.keys(row.locales ?? {}).length);
+}
+
+/** Deep clone nav columns including nested items and locales. */
+export function cloneNavColumns(rows: NavColumn[] | undefined): NavColumn[] {
+  return compactNavColumns(rows).map((column) => ({
+    ...column,
+    items: column.items.map((item) => ({
+      ...item,
+      ...(item.locales ? { locales: { ...item.locales } } : {}),
+    })),
+    ...(column.locales ? { locales: { ...column.locales } } : {}),
+  }));
+}
+
+/** Footer nav: use stored footer; if empty but header has data, clone header (upgrade fallback). */
+export function resolveAdminFooterNavColumns(header: NavColumn[] | undefined, footer: NavColumn[] | undefined): NavColumn[] {
+  const compactedFooter = compactNavColumns(footer);
+  if (compactedFooter.length) return compactedFooter;
+  const compactedHeader = compactNavColumns(header);
+  if (compactedHeader.length) return cloneNavColumns(compactedHeader);
+  return [];
 }
 
 function localeKeysMatch(left: string, right: string) {
@@ -154,6 +183,19 @@ export function resolveNavName(
   ));
   if (match?.[1]?.name?.trim()) return match[1].name.trim();
   return entity.name?.trim() || '';
+}
+
+export function resolveStorefrontNavColumns(raw: NavColumn[] | undefined, locale: string): StorefrontNavColumn[] {
+  return compactNavColumns(raw).map((column) => ({
+    id: column.id,
+    href: column.href?.trim() ?? '',
+    name: resolveNavName(column, locale),
+    items: column.items.map((item) => ({
+      id: item.id,
+      href: item.href,
+      name: resolveNavName(item, locale),
+    })).filter((item) => item.name && item.href),
+  })).filter((column) => column.name && (column.href || column.items.length));
 }
 
 /** Seed navigation aligned with storefront footer structure (zh default + en/es titles). */
@@ -338,6 +380,7 @@ export function getDefaultWebsiteNavColumns(): NavColumn[] {
 
 export const EMPTY_STOREFRONT_WEBSITE_CONFIG: StorefrontWebsiteConfig = {
   locale: '',
-  navColumns: [],
+  headerNavColumns: [],
+  footerNavColumns: [],
   listHeroBoards: resolveStorefrontListHeroBoards(createEmptyListHeroBoards()),
 };

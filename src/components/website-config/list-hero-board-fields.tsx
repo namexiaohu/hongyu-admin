@@ -32,6 +32,7 @@ export type ListHeroBoardFormValues = {
 };
 
 const boardLabels: Record<ListHeroBoardKey, string> = {
+  solutions: '解决方案列表',
   insights: '前沿资讯列表',
   surgeons: '认证术者列表',
   centers: '合作中心列表',

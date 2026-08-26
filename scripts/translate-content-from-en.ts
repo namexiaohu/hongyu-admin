@@ -1417,52 +1417,67 @@ async function runHomepage() {
   }
 }
 
+async function translateNavColumnsArray(
+  columns: Array<Record<string, unknown>>,
+  scope: string,
+): Promise<boolean> {
+  let changed = false;
+
+  for (let ci = 0; ci < columns.length; ci += 1) {
+    const column = columns[ci]!;
+    const colLocales = (column.locales && typeof column.locales === 'object')
+      ? cloneJson(column.locales) as LocalesMap
+      : {};
+    const colResult = await translateNavNameNode({
+      module: 'websiteConfig',
+      entity: `${scope}.col:${String(column.id ?? ci)}`,
+      name: String(column.name ?? ''),
+      locales: colLocales,
+      contentType: 'websiteNavColumn',
+    });
+    column.name = colResult.name;
+    column.locales = colResult.locales;
+    changed = changed || colResult.changed;
+
+    const items = Array.isArray(column.items) ? column.items as Array<Record<string, unknown>> : [];
+    for (let ii = 0; ii < items.length; ii += 1) {
+      const item = items[ii]!;
+      const itemLocales = (item.locales && typeof item.locales === 'object')
+        ? cloneJson(item.locales) as LocalesMap
+        : {};
+      const itemResult = await translateNavNameNode({
+        module: 'websiteConfig',
+        entity: `${scope}.col:${String(column.id ?? ci)}.item:${String(item.id ?? ii)}`,
+        name: String(item.name ?? ''),
+        locales: itemLocales,
+        contentType: 'websiteNavItem',
+      });
+      item.name = itemResult.name;
+      item.locales = itemResult.locales;
+      changed = changed || itemResult.changed;
+    }
+  }
+
+  return changed;
+}
+
 async function runWebsiteNav() {
   if (!shouldRun('websiteConfig')) return;
   log('\n=== 网站配置 website nav ===');
   const configs = await db!.select().from(websiteConfigs);
   for (const config of configs) {
-    const columns = cloneJson(config.navColumns ?? []) as Array<Record<string, unknown>>;
-    let changed = false;
+    const headerColumns = cloneJson(config.navColumns ?? []) as Array<Record<string, unknown>>;
+    const footerColumns = cloneJson(config.footerNavColumns ?? []) as Array<Record<string, unknown>>;
+    const headerChanged = await translateNavColumnsArray(headerColumns, 'header');
+    const footerChanged = await translateNavColumnsArray(footerColumns, 'footer');
 
-    for (let ci = 0; ci < columns.length; ci += 1) {
-      const column = columns[ci]!;
-      const colLocales = (column.locales && typeof column.locales === 'object')
-        ? cloneJson(column.locales) as LocalesMap
-        : {};
-      const colResult = await translateNavNameNode({
-        module: 'websiteConfig',
-        entity: `col:${String(column.id ?? ci)}`,
-        name: String(column.name ?? ''),
-        locales: colLocales,
-        contentType: 'websiteNavColumn',
-      });
-      column.name = colResult.name;
-      column.locales = colResult.locales;
-      changed = changed || colResult.changed;
-
-      const items = Array.isArray(column.items) ? column.items as Array<Record<string, unknown>> : [];
-      for (let ii = 0; ii < items.length; ii += 1) {
-        const item = items[ii]!;
-        const itemLocales = (item.locales && typeof item.locales === 'object')
-          ? cloneJson(item.locales) as LocalesMap
-          : {};
-        const itemResult = await translateNavNameNode({
-          module: 'websiteConfig',
-          entity: `col:${String(column.id ?? ci)}.item:${String(item.id ?? ii)}`,
-          name: String(item.name ?? ''),
-          locales: itemLocales,
-          contentType: 'websiteNavItem',
-        });
-        item.name = itemResult.name;
-        item.locales = itemResult.locales;
-        changed = changed || itemResult.changed;
-      }
-    }
-
-    if (changed && !DRY_RUN) {
+    if ((headerChanged || footerChanged) && !DRY_RUN) {
       await db!.update(websiteConfigs)
-        .set({ navColumns: columns as never, updatedAt: new Date() })
+        .set({
+          navColumns: headerColumns as never,
+          footerNavColumns: footerColumns as never,
+          updatedAt: new Date(),
+        })
         .where(eq(websiteConfigs.id, config.id));
       record({ module: 'websiteConfig', entity: config.id.slice(0, 8), action: 'updated-nav' });
     }

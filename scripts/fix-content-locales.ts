@@ -1081,108 +1081,121 @@ async function fixHomepage() {
   }
 }
 
+async function repairNavColumnsArray(
+  columns: Array<Record<string, unknown>>,
+  scope: string,
+): Promise<boolean> {
+  let changed = false;
+
+  for (let ci = 0; ci < columns.length; ci += 1) {
+    const column = columns[ci]!;
+    const locales = (column.locales && typeof column.locales === 'object')
+      ? cloneJson(column.locales) as LocalesMap
+      : {};
+    const mainName = String(column.name ?? '');
+    const mainLang = detectLang(mainName);
+    const zh = pickLocaleCopy(locales, 'zh');
+    const en = pickLocaleCopy(locales, 'en');
+
+    const virtual: LocalesMap = { ...locales };
+    if (mainLang === 'zh' && !zh.copy) virtual[CANONICAL_ZH] = { name: mainName };
+    if (mainLang === 'en' && !en.copy) virtual[CANONICAL_EN] = { name: mainName };
+    if (mainLang === 'zh') virtual[CANONICAL_ZH] = { name: mainName, ...(zh.copy ?? {}) };
+    if (mainLang === 'en') virtual[CANONICAL_EN] = { name: mainName, ...(en.copy ?? {}) };
+
+    const repaired = await repairLocalesMap({
+      module: 'websiteConfig',
+      entity: `${scope}.col:${String(column.id ?? ci)}`,
+      locales: virtual,
+      contentType: 'websiteNavColumn',
+      fieldKeys: ['name'],
+    });
+    const nextZh = pickLocaleCopy(repaired.locales, 'zh');
+    const nextEn = pickLocaleCopy(repaired.locales, 'en');
+    if (nextZh.copy?.name) {
+      column.name = String(nextZh.copy.name);
+      const nextLocales: LocalesMap = {};
+      for (const [code, copy] of Object.entries(repaired.locales)) {
+        if (isZhLocale(code)) continue;
+        nextLocales[code] = copy;
+      }
+      if (nextEn.copy) nextLocales[CANONICAL_EN] = nextEn.copy;
+      column.locales = nextLocales;
+      changed = true;
+    } else if (nextEn.copy?.name) {
+      column.name = String(nextEn.copy.name);
+      column.locales = Object.fromEntries(
+        Object.entries(repaired.locales).filter(([code]) => !isEnLocale(code)),
+      );
+      changed = changed || repaired.changed;
+    } else if (repaired.changed) {
+      column.locales = repaired.locales;
+      changed = true;
+    }
+
+    const items = Array.isArray(column.items) ? column.items as Array<Record<string, unknown>> : [];
+    for (let ii = 0; ii < items.length; ii += 1) {
+      const item = items[ii]!;
+      const itemLocales = (item.locales && typeof item.locales === 'object')
+        ? cloneJson(item.locales) as LocalesMap
+        : {};
+      const itemName = String(item.name ?? '');
+      const itemLang = detectLang(itemName);
+      const itemVirtual: LocalesMap = { ...itemLocales };
+      if (itemLang === 'zh') itemVirtual[CANONICAL_ZH] = { name: itemName };
+      if (itemLang === 'en') itemVirtual[CANONICAL_EN] = { name: itemName };
+
+      const itemRepaired = await repairLocalesMap({
+        module: 'websiteConfig',
+        entity: `${scope}.col:${String(column.id ?? ci)}.item:${String(item.id ?? ii)}`,
+        locales: itemVirtual,
+        contentType: 'websiteNavItem',
+        fieldKeys: ['name'],
+      });
+      const itemZh = pickLocaleCopy(itemRepaired.locales, 'zh');
+      const itemEn = pickLocaleCopy(itemRepaired.locales, 'en');
+      if (itemZh.copy?.name) {
+        item.name = String(itemZh.copy.name);
+        const nextItemLocales: LocalesMap = {};
+        for (const [code, copy] of Object.entries(itemRepaired.locales)) {
+          if (isZhLocale(code)) continue;
+          nextItemLocales[code] = copy;
+        }
+        if (itemEn.copy) nextItemLocales[CANONICAL_EN] = itemEn.copy;
+        item.locales = nextItemLocales;
+        changed = true;
+      } else if (itemEn.copy?.name) {
+        item.name = String(itemEn.copy.name);
+        item.locales = Object.fromEntries(
+          Object.entries(itemRepaired.locales).filter(([code]) => !isEnLocale(code)),
+        );
+        changed = true;
+      } else if (itemRepaired.changed) {
+        item.locales = itemRepaired.locales;
+        changed = true;
+      }
+    }
+  }
+
+  return changed;
+}
+
 async function fixWebsiteNav() {
   if (!shouldRun('websiteConfig')) return;
   log('\n=== 网站配置 website nav ===');
   const configs = await db!.select().from(websiteConfigs);
   for (const config of configs) {
-    const columns = cloneJson(config.navColumns ?? []) as Array<Record<string, unknown>>;
-    let changed = false;
+    const headerColumns = cloneJson(config.navColumns ?? []) as Array<Record<string, unknown>>;
+    const footerColumns = cloneJson(config.footerNavColumns ?? []) as Array<Record<string, unknown>>;
+    const headerChanged = await repairNavColumnsArray(headerColumns, 'header');
+    const footerChanged = await repairNavColumnsArray(footerColumns, 'footer');
 
-    for (let ci = 0; ci < columns.length; ci += 1) {
-      const column = columns[ci]!;
-      const locales = (column.locales && typeof column.locales === 'object')
-        ? cloneJson(column.locales) as LocalesMap
-        : {};
-      const mainName = String(column.name ?? '');
-      const mainLang = detectLang(mainName);
-      const zh = pickLocaleCopy(locales, 'zh');
-      const en = pickLocaleCopy(locales, 'en');
-
-      // Treat main name as default-language text; fold into locales map for repair
-      const virtual: LocalesMap = { ...locales };
-      if (mainLang === 'zh' && !zh.copy) virtual[CANONICAL_ZH] = { name: mainName };
-      if (mainLang === 'en' && !en.copy) virtual[CANONICAL_EN] = { name: mainName };
-      if (mainLang === 'zh') virtual[CANONICAL_ZH] = { name: mainName, ...(zh.copy ?? {}) };
-      if (mainLang === 'en') virtual[CANONICAL_EN] = { name: mainName, ...(en.copy ?? {}) };
-
-      const repaired = await repairLocalesMap({
-        module: 'websiteConfig',
-        entity: `col:${String(column.id ?? ci)}`,
-        locales: virtual,
-        contentType: 'websiteNavColumn',
-        fieldKeys: ['name'],
-      });
-      const nextZh = pickLocaleCopy(repaired.locales, 'zh');
-      const nextEn = pickLocaleCopy(repaired.locales, 'en');
-      // Prefer Chinese as main name if site default is zh; else keep English main when only en
-      if (nextZh.copy?.name) {
-        column.name = String(nextZh.copy.name);
-        const nextLocales: LocalesMap = {};
-        for (const [code, copy] of Object.entries(repaired.locales)) {
-          if (isZhLocale(code)) continue;
-          nextLocales[code] = copy;
-        }
-        if (nextEn.copy) nextLocales[CANONICAL_EN] = nextEn.copy;
-        column.locales = nextLocales;
-        changed = true;
-      } else if (nextEn.copy?.name) {
-        column.name = String(nextEn.copy.name);
-        column.locales = Object.fromEntries(
-          Object.entries(repaired.locales).filter(([code]) => !isEnLocale(code)),
-        );
-        changed = changed || repaired.changed;
-      } else if (repaired.changed) {
-        column.locales = repaired.locales;
-        changed = true;
-      }
-
-      const items = Array.isArray(column.items) ? column.items as Array<Record<string, unknown>> : [];
-      for (let ii = 0; ii < items.length; ii += 1) {
-        const item = items[ii]!;
-        const itemLocales = (item.locales && typeof item.locales === 'object')
-          ? cloneJson(item.locales) as LocalesMap
-          : {};
-        const itemName = String(item.name ?? '');
-        const itemLang = detectLang(itemName);
-        const itemVirtual: LocalesMap = { ...itemLocales };
-        if (itemLang === 'zh') itemVirtual[CANONICAL_ZH] = { name: itemName };
-        if (itemLang === 'en') itemVirtual[CANONICAL_EN] = { name: itemName };
-
-        const itemRepaired = await repairLocalesMap({
-          module: 'websiteConfig',
-          entity: `col:${String(column.id ?? ci)}.item:${String(item.id ?? ii)}`,
-          locales: itemVirtual,
-          contentType: 'websiteNavItem',
-          fieldKeys: ['name'],
-        });
-        const itemZh = pickLocaleCopy(itemRepaired.locales, 'zh');
-        const itemEn = pickLocaleCopy(itemRepaired.locales, 'en');
-        if (itemZh.copy?.name) {
-          item.name = String(itemZh.copy.name);
-          const nextItemLocales: LocalesMap = {};
-          for (const [code, copy] of Object.entries(itemRepaired.locales)) {
-            if (isZhLocale(code)) continue;
-            nextItemLocales[code] = copy;
-          }
-          if (itemEn.copy) nextItemLocales[CANONICAL_EN] = itemEn.copy;
-          item.locales = nextItemLocales;
-          changed = true;
-        } else if (itemEn.copy?.name) {
-          item.name = String(itemEn.copy.name);
-          item.locales = Object.fromEntries(
-            Object.entries(itemRepaired.locales).filter(([code]) => !isEnLocale(code)),
-          );
-          changed = true;
-        } else if (itemRepaired.changed) {
-          item.locales = itemRepaired.locales;
-          changed = true;
-        }
-      }
-    }
-
-    if (changed && !DRY_RUN) {
-      await db!.update(websiteConfigs).set({ navColumns: columns as never, updatedAt: new Date() }).where(eq(websiteConfigs.id, config.id));
+    if ((headerChanged || footerChanged) && !DRY_RUN) {
+      await db!.update(websiteConfigs).set({
+        navColumns: headerColumns as never,
+        footerNavColumns: footerColumns as never,
+        updatedAt: new Date(),
+      }).where(eq(websiteConfigs.id, config.id));
       record({ module: 'websiteConfig', entity: config.id.slice(0, 8), action: 'updated-nav' });
     }
   }
@@ -1685,12 +1698,11 @@ async function verifyCoverage() {
     pushJsonCheck('summit.agenda', missingEn, zhInEn);
   }
 
-  // Website nav: main name + locales.en
+  // Website nav: main name + locales.en (header + footer)
   {
     let missingEn = 0;
     let zhInEn = 0;
-    for (const config of await db!.select().from(websiteConfigs)) {
-      const columns = Array.isArray(config.navColumns) ? config.navColumns as Array<Record<string, unknown>> : [];
+    const visitNavColumns = (columns: Array<Record<string, unknown>>) => {
       const visitNav = (name: unknown, locales: unknown) => {
         const map: LocalesMap = (locales && typeof locales === 'object')
           ? cloneJson(locales as LocalesMap)
@@ -1710,6 +1722,10 @@ async function verifyCoverage() {
         const items = Array.isArray(column.items) ? column.items as Array<Record<string, unknown>> : [];
         for (const item of items) visitNav(item.name, item.locales);
       }
+    };
+    for (const config of await db!.select().from(websiteConfigs)) {
+      visitNavColumns(Array.isArray(config.navColumns) ? config.navColumns as Array<Record<string, unknown>> : []);
+      visitNavColumns(Array.isArray(config.footerNavColumns) ? config.footerNavColumns as Array<Record<string, unknown>> : []);
     }
     pushJsonCheck('websiteConfig.nav', missingEn, zhInEn);
   }

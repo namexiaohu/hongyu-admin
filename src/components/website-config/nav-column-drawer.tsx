@@ -12,6 +12,7 @@ import { createNavId, type NavColumn, type NavItem } from '@/lib/website-config'
 import type { AdminSiteLanguageRow } from '@/server/admin/languages';
 
 type LocaleColumnDraft = { name: string };
+type SharedValues = { href: string };
 
 type Props = {
   open: boolean;
@@ -35,6 +36,7 @@ function draftFromColumn(column: NavColumn | null, locale: string, defaultLocale
 }
 
 export function NavColumnDrawer({ open, column, activeLanguages, onClose, onSave }: Props) {
+  const [sharedForm] = Form.useForm<SharedValues>();
   const [localeForm] = Form.useForm<LocaleColumnDraft>();
   const [activeLocale, setActiveLocale] = useState(activeLanguages[0]?.code ?? 'zh');
   const [drafts, setDrafts] = useState<Record<string, LocaleColumnDraft>>({});
@@ -55,6 +57,7 @@ export function NavColumnDrawer({ open, column, activeLanguages, onClose, onSave
     const first = activeLanguages.find((language) => language.isDefault)?.code ?? activeLanguages[0]?.code ?? 'zh';
     setActiveLocale(first);
     setItems(column?.items ?? []);
+    sharedForm.setFieldsValue({ href: column?.href ?? '' });
     const next: Record<string, LocaleColumnDraft> = {};
     for (const language of activeLanguages) {
       next[language.code] = draftFromColumn(column, language.code, first);
@@ -91,6 +94,7 @@ export function NavColumnDrawer({ open, column, activeLanguages, onClose, onSave
   }
 
   function handleSave() {
+    const shared = sharedForm.getFieldsValue(true) as SharedValues;
     const merged = getMergedDrafts();
     const primary = merged[defaultLocale] ?? merged[activeLocale] ?? emptyDraft();
     const locales: NonNullable<NavColumn['locales']> = {};
@@ -100,8 +104,10 @@ export function NavColumnDrawer({ open, column, activeLanguages, onClose, onSave
         locales[language.code] = { name: draft.name.trim() };
       }
     }
+    const href = shared.href?.trim() ?? '';
     onSave({
       id: column?.id ?? createNavId('nav-column'),
+      href,
       name: primary.name ?? '',
       items,
       locales,
@@ -162,6 +168,18 @@ export function NavColumnDrawer({ open, column, activeLanguages, onClose, onSave
         destroyOnClose
       >
         <Space orientation="vertical" size="large" style={{ width: '100%' }}>
+          <div className="content-editor-shared-section">
+            <Form form={sharedForm} layout="vertical">
+              <Form.Item
+                name="href"
+                label="链接"
+                extra="选填。填写后一级菜单可直接跳转；可不配置下级导航条目。"
+              >
+                <Input placeholder="/solutions 或 https://..." allowClear />
+              </Form.Item>
+            </Form>
+          </div>
+
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <Typography.Text strong>导航条目</Typography.Text>
@@ -173,7 +191,7 @@ export function NavColumnDrawer({ open, column, activeLanguages, onClose, onSave
               pagination={false}
               columns={columns}
               dataSource={items}
-              locale={{ emptyText: '暂无导航条目' }}
+              locale={{ emptyText: '暂无导航条目（可仅配置一级链接）' }}
             />
           </div>
 

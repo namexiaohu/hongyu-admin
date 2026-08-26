@@ -6,8 +6,10 @@ import {
   type AdminWebsiteConfig,
   type AdminWebsiteConfigPutInput,
   adminWebsiteConfigPutSchema,
+  cloneNavColumns,
   compactNavColumns,
   getDefaultWebsiteNavColumns,
+  resolveAdminFooterNavColumns,
 } from '@/lib/website-config';
 import {
   compactListHeroBoards,
@@ -23,9 +25,11 @@ function toIso(value: Date) {
 }
 
 function mapConfig(row: typeof websiteConfigs.$inferSelect): AdminWebsiteConfig {
+  const headerNavColumns = compactNavColumns(row.navColumns);
   return {
     id: row.id,
-    navColumns: compactNavColumns(row.navColumns),
+    headerNavColumns,
+    footerNavColumns: resolveAdminFooterNavColumns(headerNavColumns, row.footerNavColumns),
     listHeroBoards: mapAdminListHeroBoards(row.listHeroBoards),
     createdAt: toIso(row.createdAt),
     updatedAt: toIso(row.updatedAt),
@@ -36,10 +40,12 @@ async function ensureWebsiteConfigRow() {
   const [existing] = await db.select().from(websiteConfigs).limit(1);
   if (existing) return existing;
 
+  const defaultHeader = getDefaultWebsiteNavColumns();
   const [inserted] = await db
     .insert(websiteConfigs)
     .values({
-      navColumns: getDefaultWebsiteNavColumns(),
+      navColumns: defaultHeader,
+      footerNavColumns: cloneNavColumns(defaultHeader),
       listHeroBoards: createEmptyListHeroBoards(),
     })
     .returning();
@@ -63,12 +69,16 @@ export async function updateAdminWebsiteConfig(input: AdminWebsiteConfigPutInput
 
   const patch: {
     navColumns?: ReturnType<typeof compactNavColumns>;
+    footerNavColumns?: ReturnType<typeof compactNavColumns>;
     listHeroBoards?: typeof nextBoards;
     updatedAt: Date;
   } = { updatedAt: new Date() };
 
-  if (parsed.navColumns !== undefined) {
-    patch.navColumns = compactNavColumns(parsed.navColumns);
+  if (parsed.headerNavColumns !== undefined) {
+    patch.navColumns = compactNavColumns(parsed.headerNavColumns);
+  }
+  if (parsed.footerNavColumns !== undefined) {
+    patch.footerNavColumns = compactNavColumns(parsed.footerNavColumns);
   }
   if (parsed.listHeroBoards !== undefined) {
     patch.listHeroBoards = nextBoards;

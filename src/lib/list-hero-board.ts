@@ -28,7 +28,7 @@ import { resolveUploadStorageKey } from '@/lib/upload-storage-key';
 
 export type { ListHeroCoverDisplay };
 
-export const listHeroBoardKeys = ['insights', 'surgeons', 'centers'] as const;
+export const listHeroBoardKeys = ['solutions', 'insights', 'surgeons', 'centers'] as const;
 export type ListHeroBoardKey = (typeof listHeroBoardKeys)[number];
 
 export type ListHeroBoardConfig = {
@@ -84,6 +84,7 @@ export const listHeroBoardInputSchema = z.object({
 });
 
 export const listHeroBoardsPutSchema = z.object({
+  solutions: listHeroBoardInputSchema.optional(),
   insights: listHeroBoardInputSchema.optional(),
   surgeons: listHeroBoardInputSchema.optional(),
   centers: listHeroBoardInputSchema.optional(),
@@ -112,6 +113,7 @@ export function createEmptyListHeroBoard(): ListHeroBoardConfig {
 
 export function createEmptyListHeroBoards(): ListHeroBoardsRecord {
   return {
+    solutions: createEmptyListHeroBoard(),
     insights: createEmptyListHeroBoard(),
     surgeons: createEmptyListHeroBoard(),
     centers: createEmptyListHeroBoard(),
@@ -155,6 +157,7 @@ export function normalizeListHeroBoardsWrite(
 ): ListHeroBoardsRecord {
   if (!input) return current;
   return {
+    solutions: normalizeBoardWrite(input.solutions, current.solutions),
     insights: normalizeBoardWrite(input.insights, current.insights),
     surgeons: normalizeBoardWrite(input.surgeons, current.surgeons),
     centers: normalizeBoardWrite(input.centers, current.centers),
@@ -177,6 +180,7 @@ export function compactListHeroBoards(input: ListHeroBoardsRecord | undefined): 
   const empty = createEmptyListHeroBoards();
   if (!input) return empty;
   return {
+    solutions: compactOneListHeroBoard(input.solutions, empty.solutions),
     insights: compactOneListHeroBoard(input.insights, empty.insights),
     surgeons: compactOneListHeroBoard(input.surgeons, empty.surgeons),
     centers: compactOneListHeroBoard(input.centers, empty.centers),
@@ -221,6 +225,7 @@ export function resolveStorefrontListHeroBoard(row: ListHeroBoardConfig): Storef
 export function resolveStorefrontListHeroBoards(input: ListHeroBoardsRecord | undefined): StorefrontListHeroBoardsRecord {
   const boards = compactListHeroBoards(input);
   return {
+    solutions: resolveStorefrontListHeroBoard(boards.solutions),
     insights: resolveStorefrontListHeroBoard(boards.insights),
     surgeons: resolveStorefrontListHeroBoard(boards.surgeons),
     centers: resolveStorefrontListHeroBoard(boards.centers),

@@ -11,7 +11,7 @@ import {
 } from '@/lib/list-hero-board';
 import { resolveAdminRowMediaPreviews } from '@/lib/admin-media-previews';
 
-const boardKeys: ListHeroBoardKey[] = ['insights', 'surgeons', 'centers'];
+const boardKeys: ListHeroBoardKey[] = ['solutions', 'insights', 'surgeons', 'centers'];
 
 export function mapAdminListHeroBoards(input: ListHeroBoardsRecord | undefined): AdminListHeroBoardsRecord {
   const boards = compactListHeroBoards(input);
@@ -37,6 +37,7 @@ export function mergeListHeroBoardsForWrite(
   const base = compactListHeroBoards(current ?? createEmptyListHeroBoards());
   if (!patch) return base;
   return compactListHeroBoards({
+    solutions: patch.solutions ? { ...base.solutions, ...patch.solutions } : base.solutions,
     insights: patch.insights ? { ...base.insights, ...patch.insights } : base.insights,
     surgeons: patch.surgeons ? { ...base.surgeons, ...patch.surgeons } : base.surgeons,
     centers: patch.centers ? { ...base.centers, ...patch.centers } : base.centers,

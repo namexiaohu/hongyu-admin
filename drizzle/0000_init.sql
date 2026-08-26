@@ -1174,6 +1174,7 @@ CREATE TABLE "verification_tokens" (
 CREATE TABLE "website_configs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"nav_columns" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"footer_nav_columns" jsonb DEFAULT '[]'::jsonb NOT NULL,
 	"list_hero_boards" jsonb DEFAULT '{}'::jsonb NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
@@ -1431,4 +1432,6 @@ ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "cover_display" jsonb DEFAULT '{
 ALTER TABLE "brand_narratives" ADD COLUMN IF NOT EXISTS "cover_display" jsonb DEFAULT '{"video":true,"cover":true,"gallery":true}'::jsonb NOT NULL;--> statement-breakpoint
 ALTER TABLE "solutions" ADD COLUMN IF NOT EXISTS "cover_display" jsonb DEFAULT '{"video":true,"cover":true,"gallery":true}'::jsonb NOT NULL;--> statement-breakpoint
 ALTER TABLE "partner_centers" ADD COLUMN IF NOT EXISTS "cover_display" jsonb DEFAULT '{"video":true,"cover":true,"gallery":true}'::jsonb NOT NULL;--> statement-breakpoint
-ALTER TABLE "summits" ADD COLUMN IF NOT EXISTS "cover_display" jsonb DEFAULT '{"video":true,"cover":true,"gallery":false}'::jsonb NOT NULL;
+ALTER TABLE "summits" ADD COLUMN IF NOT EXISTS "cover_display" jsonb DEFAULT '{"video":true,"cover":true,"gallery":false}'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "website_configs" ADD COLUMN IF NOT EXISTS "footer_nav_columns" jsonb DEFAULT '[]'::jsonb NOT NULL;--> statement-breakpoint
+UPDATE "website_configs" SET "footer_nav_columns" = "nav_columns" WHERE COALESCE(jsonb_array_length("footer_nav_columns"), 0) = 0 AND COALESCE(jsonb_array_length("nav_columns"), 0) > 0;
