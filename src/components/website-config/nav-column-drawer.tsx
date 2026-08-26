@@ -8,7 +8,7 @@ import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale
 import { ContentTranslateButton } from '@/components/admin/content-translate-button';
 import { NavItemModal } from '@/components/website-config/nav-item-modal';
 import { applyNonemptyTranslatedFields } from '@/lib/content-translate-config';
-import { createNavId, type NavColumn, type NavItem } from '@/lib/website-config';
+import { createNavId, hasNavLocaleContent, resolveNavEditorDraftName, resolveNavName, type NavColumn, type NavItem } from '@/lib/website-config';
 import type { AdminSiteLanguageRow } from '@/server/admin/languages';
 
 type LocaleColumnDraft = { name: string };
@@ -27,12 +27,7 @@ function emptyDraft(): LocaleColumnDraft {
 }
 
 function draftFromColumn(column: NavColumn | null, locale: string, defaultLocale: string): LocaleColumnDraft {
-  const copy = column?.locales?.[locale];
-  if (copy) return { name: copy.name ?? '' };
-  if (locale === defaultLocale || !column?.locales) {
-    return { name: column?.name ?? '' };
-  }
-  return emptyDraft();
+  return { name: resolveNavEditorDraftName(column, locale, defaultLocale) };
 }
 
 export function NavColumnDrawer({ open, column, activeLanguages, onClose, onSave }: Props) {
@@ -120,12 +115,9 @@ export function NavColumnDrawer({ open, column, activeLanguages, onClose, onSave
     setItemLocale(first);
     const next: Record<string, { name: string }> = {};
     for (const language of activeLanguages) {
-      const copy = item?.locales?.[language.code];
-      next[language.code] = copy
-        ? { name: copy.name ?? '' }
-        : language.code === first
-          ? { name: item?.name ?? '' }
-          : { name: '' };
+      next[language.code] = {
+        name: resolveNavEditorDraftName(item, language.code, first),
+      };
     }
     setItemDrafts(next);
     setItemModalOpen(true);
@@ -141,7 +133,7 @@ export function NavColumnDrawer({ open, column, activeLanguages, onClose, onSave
   }
 
   const columns = [
-    { title: '标题', dataIndex: 'name', ellipsis: true },
+    { title: '标题', ellipsis: true, render: (_: unknown, record: NavItem) => resolveNavName(record, defaultLocale) || record.name || '—' },
     { title: '链接', dataIndex: 'href', ellipsis: true },
     {
       title: '操作',
@@ -161,7 +153,9 @@ export function NavColumnDrawer({ open, column, activeLanguages, onClose, onSave
     <>
       <Drawer
         open={open}
-        title={column ? `编辑导航栏目 · ${column.name || column.id}` : '添加导航栏目'}
+        title={column
+          ? `编辑导航栏目 · ${resolveNavName(column, defaultLocale) || column.name || column.id}`
+          : '添加导航栏目'}
         width={720}
         onClose={onClose}
         extra={<Button type="primary" onClick={handleSave}>保存栏目</Button>}
@@ -203,7 +197,7 @@ export function NavColumnDrawer({ open, column, activeLanguages, onClose, onSave
                     key={language.code}
                     language={language}
                     isActive={language.code === activeLocale}
-                    persisted={Boolean(column?.locales?.[language.code] || (language.code === defaultLocale && column))}
+                    persisted={hasNavLocaleContent(column, language.code, defaultLocale)}
                     onClick={() => switchLocale(language.code)}
                   />
                 ))}

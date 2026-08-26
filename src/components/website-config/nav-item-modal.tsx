@@ -6,7 +6,7 @@ import { useEffect, useTransition } from 'react';
 import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
 import { ContentTranslateButton } from '@/components/admin/content-translate-button';
 import { applyNonemptyTranslatedFields } from '@/lib/content-translate-config';
-import { createNavId, type NavItem } from '@/lib/website-config';
+import { createNavId, hasNavLocaleContent, type NavItem } from '@/lib/website-config';
 import type { AdminSiteLanguageRow } from '@/server/admin/languages';
 
 type LocaleItemDraft = { name: string };
@@ -140,7 +140,7 @@ export function NavItemModal({
                   key={language.code}
                   language={language}
                   isActive={language.code === activeLocale}
-                  persisted={Boolean(item?.locales?.[language.code] || (language.code === defaultLocale && item))}
+                  persisted={hasNavLocaleContent(item, language.code, defaultLocale)}
                   onClick={() => switchLocale(language.code)}
                 />
               ))}

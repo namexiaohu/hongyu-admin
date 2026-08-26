@@ -172,7 +172,12 @@ function localeKeysMatch(left: string, right: string) {
   return Boolean(ap && bp && ap === bp);
 }
 
-export function resolveNavName(
+export function isZhLocale(code: string) {
+  const normalized = code.trim().toLowerCase();
+  return normalized === 'zh' || normalized.startsWith('zh-');
+}
+
+function localeCopyName(
   entity: { name: string; locales?: Record<string, { name?: string }> },
   locale: string,
 ) {
@@ -181,8 +186,46 @@ export function resolveNavName(
   const match = Object.entries(entity.locales ?? {}).find(([key, copy]) => (
     localeKeysMatch(key, locale) && Boolean(copy?.name?.trim())
   ));
-  if (match?.[1]?.name?.trim()) return match[1].name.trim();
-  return entity.name?.trim() || '';
+  return match?.[1]?.name?.trim() || '';
+}
+
+/**
+ * Storefront label resolution.
+ * - zh*: locales first, then top-level `name` (canonical Chinese storage)
+ * - other locales: locales only — never fall back to Chinese `name`
+ */
+export function resolveNavName(
+  entity: { name: string; locales?: Record<string, { name?: string }> },
+  locale: string,
+) {
+  const fromLocales = localeCopyName(entity, locale);
+  if (fromLocales) return fromLocales;
+  if (isZhLocale(locale)) return entity.name?.trim() || '';
+  return '';
+}
+
+/** Admin editor draft: zh / default language may read top-level `name` when locales lack that key. */
+export function resolveNavEditorDraftName(
+  entity: { name: string; locales?: Record<string, { name?: string }> } | null | undefined,
+  locale: string,
+  defaultLocale: string,
+) {
+  if (!entity) return '';
+  const fromLocales = localeCopyName(entity, locale);
+  if (fromLocales) return fromLocales;
+  if (isZhLocale(locale) || localeKeysMatch(locale, defaultLocale)) {
+    return entity.name?.trim() || '';
+  }
+  return '';
+}
+
+export function hasNavLocaleContent(
+  entity: { name: string; locales?: Record<string, { name?: string }> } | null | undefined,
+  locale: string,
+  defaultLocale: string,
+) {
+  if (!entity) return false;
+  return Boolean(resolveNavEditorDraftName(entity, locale, defaultLocale));
 }
 
 export function resolveStorefrontNavColumns(raw: NavColumn[] | undefined, locale: string): StorefrontNavColumn[] {

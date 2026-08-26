@@ -5,7 +5,7 @@ import { Button, Popconfirm, Space, Table, Typography } from 'antd';
 import { useMemo, useState } from 'react';
 
 import { NavColumnDrawer } from '@/components/website-config/nav-column-drawer';
-import type { NavColumn } from '@/lib/website-config';
+import { resolveNavName, type NavColumn } from '@/lib/website-config';
 import type { AdminSiteLanguageRow } from '@/server/admin/languages';
 
 type Props = {
@@ -19,12 +19,15 @@ type Props = {
 export function NavColumnsEditor({ title, description, columns, onChange, activeLanguages }: Props) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingColumn, setEditingColumn] = useState<NavColumn | null>(null);
+  const defaultLocale = activeLanguages.find((language) => language.isDefault)?.code
+    ?? activeLanguages[0]?.code
+    ?? 'zh-CN';
 
   const tableColumns = useMemo(() => [
     {
       title: '栏目标题',
-      dataIndex: 'name',
       ellipsis: true,
+      render: (_: unknown, record: NavColumn) => resolveNavName(record, defaultLocale) || record.name || '—',
     },
     {
       title: '链接',
@@ -70,7 +73,7 @@ export function NavColumnsEditor({ title, description, columns, onChange, active
         </Space>
       ),
     },
-  ], [columns]);
+  ], [columns, defaultLocale]);
 
   function moveColumn(index: number, offset: number) {
     const nextIndex = index + offset;
