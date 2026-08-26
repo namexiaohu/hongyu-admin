@@ -5,7 +5,7 @@ import { and, asc, eq, inArray, ne } from 'drizzle-orm';
 import { resolveOssAssetUrl, rewriteHtmlOssAssets } from '@/lib/oss-asset-url';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import type { CenterRegion, PartnerCenterMetric } from '@/lib/partner-center-content';
-import { centerRegions, normalizePartnerCenterMetrics } from '@/lib/partner-center-content';
+import { centerRegionLabelForLocale, centerRegions, normalizePartnerCenterMetrics } from '@/lib/partner-center-content';
 import {
   type PartnerCenterBackgroundMode,
   resolvePartnerCenterBackgroundDisplay,
@@ -89,27 +89,8 @@ export type StorefrontPartnerCentersResponse = {
   groups: StorefrontCenterGroup[];
 };
 
-const regionLabelsZh: Record<CenterRegion, string> = {
-  'asia-pacific': '亚太地区',
-  'europe': '欧洲',
-  'north-america': '北美',
-  'latin-america': '拉丁美洲',
-  'middle-east-africa': '中东与非洲',
-  'oceania': '大洋洲',
-};
-
-const regionLabelsEn: Record<CenterRegion, string> = {
-  'asia-pacific': 'Asia Pacific',
-  'europe': 'Europe',
-  'north-america': 'North America',
-  'latin-america': 'Latin America',
-  'middle-east-africa': 'Middle East & Africa',
-  'oceania': 'Oceania',
-};
-
 function resolveRegionLabel(region: CenterRegion, locale: string): string {
-  if (locale.startsWith('zh')) return regionLabelsZh[region];
-  return regionLabelsEn[region];
+  return centerRegionLabelForLocale(region, locale);
 }
 
 function shuffleIds<T>(items: T[]): T[] {

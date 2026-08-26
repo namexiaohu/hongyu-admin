@@ -1,6 +1,12 @@
 import { z } from 'zod';
 
-import { centerRegions, type CenterRegion } from '@/lib/partner-center-content';
+import {
+  centerRegionLabelForLocale,
+  centerRegionLabelsEn,
+  centerRegionLabelsZh,
+  centerRegions,
+  type CenterRegion,
+} from '@/lib/partner-center-content';
 
 export const socialPlatformTypes = [
   'facebook',
@@ -157,26 +163,9 @@ export function translationHasContent(input: {
   return compactFeaturedPosts(input.featuredPosts).length > 0;
 }
 
-export const regionLabelsEn: Record<CenterRegion, string> = {
-  'asia-pacific': 'Asia Pacific',
-  europe: 'Europe',
-  'north-america': 'North America',
-  'latin-america': 'Latin America',
-  'middle-east-africa': 'Middle East & Africa',
-  oceania: 'Oceania',
-};
-
-export const regionLabelsZh: Record<CenterRegion, string> = {
-  'asia-pacific': '亚太区',
-  europe: '欧洲区',
-  'north-america': '北美区',
-  'latin-america': '拉丁美洲',
-  'middle-east-africa': '中东与非洲',
-  oceania: '大洋洲',
-};
+export const regionLabelsEn = centerRegionLabelsEn;
+export const regionLabelsZh = centerRegionLabelsZh;
 
 export function regionLabelForLocale(region: CenterRegion, locale: string) {
-  return locale.toLowerCase().startsWith('zh')
-    ? regionLabelsZh[region]
-    : regionLabelsEn[region];
+  return centerRegionLabelForLocale(region, locale);
 }

@@ -1678,12 +1678,12 @@ export const summitTranslations = pgTable(
 /* ───── Partner Centers (合作中心) ───── */
 
 export const centerRegionEnum = pgEnum('center_region', [
-  'asia-pacific',
-  'europe',
   'north-america',
-  'latin-america',
-  'middle-east-africa',
-  'oceania',
+  'south-america',
+  'europe',
+  'china',
+  'asia-pacific',
+  'africa',
 ]);
 
 /** Uploaded media library; type e.g. background (shared 大背景图) */

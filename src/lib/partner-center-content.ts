@@ -7,24 +7,52 @@ import type { PartnerCenterBackgroundMode } from '@/lib/partner-center-backgroun
 import type { ProductGalleryImage } from '@/lib/product-content';
 
 export const centerRegions = [
-  'asia-pacific',
-  'europe',
   'north-america',
-  'latin-america',
-  'middle-east-africa',
-  'oceania',
+  'south-america',
+  'europe',
+  'china',
+  'asia-pacific',
+  'africa',
 ] as const;
 
 export type CenterRegion = (typeof centerRegions)[number];
 
+/** Admin UI default (Chinese). */
 export const centerRegionLabels: Record<CenterRegion, string> = {
-  'asia-pacific': '亚太地区',
-  'europe': '欧洲',
   'north-america': '北美',
-  'latin-america': '拉丁美洲',
-  'middle-east-africa': '中东与非洲',
-  'oceania': '大洋洲',
+  'south-america': '南美',
+  'europe': '欧洲',
+  'china': '中国',
+  'asia-pacific': '亚太',
+  'africa': '非洲',
 };
+
+export const centerRegionLabelsZh = centerRegionLabels;
+
+export const centerRegionLabelsEn: Record<CenterRegion, string> = {
+  'north-america': 'North America',
+  'south-america': 'South America',
+  'europe': 'Europe',
+  'china': 'China',
+  'asia-pacific': 'Asia Pacific',
+  'africa': 'Africa',
+};
+
+export const centerRegionLabelsEs: Record<CenterRegion, string> = {
+  'north-america': 'América del Norte',
+  'south-america': 'América del Sur',
+  'europe': 'Europa',
+  'china': 'China',
+  'asia-pacific': 'Asia-Pacífico',
+  'africa': 'África',
+};
+
+export function centerRegionLabelForLocale(region: CenterRegion, locale: string): string {
+  const normalized = locale.trim().toLowerCase();
+  if (normalized.startsWith('zh')) return centerRegionLabelsZh[region];
+  if (normalized.startsWith('es')) return centerRegionLabelsEs[region];
+  return centerRegionLabelsEn[region];
+}
 
 export type PartnerCenterMetric = {
   label: string;

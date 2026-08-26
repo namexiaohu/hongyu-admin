@@ -25,9 +25,9 @@ const regionColors: Record<CenterRegion, string> = {
   'asia-pacific': 'blue',
   'europe': 'purple',
   'north-america': 'green',
-  'latin-america': 'orange',
-  'middle-east-africa': 'gold',
-  'oceania': 'cyan',
+  'south-america': 'orange',
+  'china': 'red',
+  'africa': 'gold',
 };
 
 async function fetchDetail(id: string): Promise<AdminPartnerCenterDetail> {

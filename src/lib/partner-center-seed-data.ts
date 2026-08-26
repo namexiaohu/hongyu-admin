@@ -1,6 +1,6 @@
 export type PartnerCenterSeedRecord = {
   slug: string;
-  region: 'asia-pacific' | 'europe' | 'north-america' | 'latin-america' | 'middle-east-africa' | 'oceania';
+  region: 'north-america' | 'south-america' | 'europe' | 'china' | 'asia-pacific' | 'africa';
   sortOrder: number;
   coverUrl: string;
   logoUrl: string;
@@ -21,7 +21,7 @@ export const PARTNER_CENTER_SEED_RECORDS: PartnerCenterSeedRecord[] = [
   // ── Asia Pacific ──────────────────────────────────────────────────────────
   {
     slug: 'beijing-companion-animal-hospital',
-    region: 'asia-pacific',
+    region: 'china',
     sortOrder: 10,
     coverUrl: 'https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=640&h=320&fit=crop',
     logoUrl: 'https://images.unsplash.com/photo-1559305616-3f99cd43e353?w=120&h=120&fit=crop',
@@ -52,7 +52,7 @@ export const PARTNER_CENTER_SEED_RECORDS: PartnerCenterSeedRecord[] = [
   },
   {
     slug: 'china-agricultural-university-animal-hospital',
-    region: 'asia-pacific',
+    region: 'china',
     sortOrder: 20,
     coverUrl: 'https://images.unsplash.com/photo-1551190822-a9333d879b1f?w=640&h=320&fit=crop',
     logoUrl: 'https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=120&h=120&fit=crop',
@@ -300,10 +300,10 @@ export const PARTNER_CENTER_SEED_RECORDS: PartnerCenterSeedRecord[] = [
       },
     },
   },
-  // ── Middle East & Africa ──────────────────────────────────────────────────
+  // ── Middle East (Asia Pacific) ────────────────────────────────────────────
   {
     slug: 'dubai-veterinary-center',
-    region: 'middle-east-africa',
+    region: 'asia-pacific',
     sortOrder: 100,
     coverUrl: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=640&h=320&fit=crop',
     logoUrl: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=120&h=120&fit=crop',
