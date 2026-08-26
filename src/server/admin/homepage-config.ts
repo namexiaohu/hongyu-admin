@@ -10,6 +10,7 @@ import {
   adminHomepageConfigPutSchema,
   compactEducationItems,
   compactMediaSlides,
+  compactSolutionItems,
   compactStatItems,
   getDefaultHomepageAboutSlides,
   getDefaultHomepageBannerSlides,
@@ -17,6 +18,7 @@ import {
   homepageTranslationHasContent,
   type HomepageEducationItem,
   type HomepageMediaSlide,
+  type HomepageSolutionItem,
 } from '@/lib/homepage-config';
 import { shouldPersistLocaleDraft } from '@/lib/locale-draft-persistence';
 import { toOssStorageKey } from '@/lib/oss-asset-url';
@@ -46,6 +48,7 @@ function mapTranslation(row: typeof homepageConfigTranslations.$inferSelect): Ad
     educationTitle: row.educationTitle,
     educationDescription: row.educationDescription,
     educationItems: compactEducationItems(row.educationItems),
+    solutionItems: compactSolutionItems(row.solutionItems),
     createdAt: toIso(row.createdAt),
     updatedAt: toIso(row.updatedAt),
   };
@@ -88,6 +91,15 @@ async function normalizeEducationItems(items: HomepageEducationItem[]) {
     compactEducationItems(items).map(async (item) => ({
       ...item,
       coverImage: await persistMediaUrl(item.coverImage, 'homepage/education'),
+    })),
+  );
+}
+
+async function normalizeSolutionItems(items: HomepageSolutionItem[]) {
+  return Promise.all(
+    compactSolutionItems(items).map(async (item) => ({
+      ...item,
+      coverImage: await persistMediaUrl(item.coverImage, 'homepage/solutions'),
     })),
   );
 }
@@ -184,6 +196,7 @@ export async function updateAdminHomepageConfig(input: unknown): Promise<AdminHo
     keepLocales.push(translation.locale);
 
     const educationItems = await normalizeEducationItems(translation.educationItems);
+    const solutionItems = await normalizeSolutionItems(translation.solutionItems);
 
     const payload = {
       bannerTitle: translation.bannerTitle.trim(),
@@ -199,6 +212,7 @@ export async function updateAdminHomepageConfig(input: unknown): Promise<AdminHo
       educationTitle: translation.educationTitle.trim(),
       educationDescription: translation.educationDescription.trim(),
       educationItems,
+      solutionItems,
       updatedAt: new Date(),
     };
 

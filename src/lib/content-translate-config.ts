@@ -231,6 +231,7 @@ export const CONTENT_TRANSLATE_PROFILES: Record<ContentTranslateType, ContentTra
       'educationDescription',
       'statsText',
       'educationText',
+      'solutionsText',
     ],
     plainTextFields: [
       'bannerTitle',
@@ -246,11 +247,12 @@ export const CONTENT_TRANSLATE_PROFILES: Record<ContentTranslateType, ContentTra
       'educationDescription',
       'statsText',
       'educationText',
+      'solutionsText',
     ],
     serverLabel: 'homepage configuration',
     tooltip: '将默认语言已保存的首页文案翻译到当前语言；轮播媒体、资讯封面与链接直接沿用默认语言',
     translateNotes:
-      'statsText uses TITLE|||SUBTITLE|||DESCRIPTION per line. educationText uses TITLE|||DESCRIPTION|||BADGE|||EXTRA per line. Keep line count and ||| separators. Do not translate URLs or image paths.',
+      'statsText uses TITLE|||SUBTITLE|||DESCRIPTION per line. educationText uses TITLE|||DESCRIPTION|||BADGE|||EXTRA per line. solutionsText uses TITLE|||DESCRIPTION|||BADGE per line. Keep line count and ||| separators. Do not translate URLs or image paths.',
   },
   surgeon: {
     sourceFields: [

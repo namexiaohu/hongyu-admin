@@ -84,6 +84,7 @@ import type {
 import type {
   HomepageEducationItem,
   HomepageMediaSlide,
+  HomepageSolutionItem,
   HomepageStatItem,
 } from '@/lib/homepage-config';
 import type { NavColumn } from '@/lib/website-config';
@@ -1819,6 +1820,7 @@ export const homepageConfigTranslations = pgTable(
     educationTitle: text('education_title').notNull().default(''),
     educationDescription: text('education_description').notNull().default(''),
     educationItems: jsonb('education_items').$type<HomepageEducationItem[]>().notNull().default([]),
+    solutionItems: jsonb('solutions_items').$type<HomepageSolutionItem[]>().notNull().default([]),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

@@ -21,6 +21,14 @@ export type HomepageEducationItem = {
   coverImage: string;
 };
 
+export type HomepageSolutionItem = {
+  title: string;
+  description: string;
+  badgeText: string;
+  coverImage: string;
+  href: string;
+};
+
 export type AdminHomepageConfigTranslation = {
   id: string;
   configId: string;
@@ -38,6 +46,7 @@ export type AdminHomepageConfigTranslation = {
   educationTitle: string;
   educationDescription: string;
   educationItems: HomepageEducationItem[];
+  solutionItems: HomepageSolutionItem[];
   createdAt: string;
   updatedAt: string;
 };
@@ -68,6 +77,7 @@ export type StorefrontHomepageConfig = {
   educationTitle: string;
   educationDescription: string;
   educationItems: HomepageEducationItem[];
+  solutionItems: HomepageSolutionItem[];
 };
 
 const mediaSlideSchema = z.object({
@@ -91,6 +101,14 @@ const educationItemSchema = z.object({
   coverImage: z.string().optional().default(''),
 });
 
+const solutionItemSchema = z.object({
+  title: z.string().optional().default(''),
+  description: z.string().optional().default(''),
+  badgeText: z.string().optional().default(''),
+  coverImage: z.string().optional().default(''),
+  href: z.string().optional().default(''),
+});
+
 export const adminHomepageTranslationSchema = z.object({
   locale: z.string().trim().min(2),
   bannerTitle: z.string().optional().default(''),
@@ -106,6 +124,7 @@ export const adminHomepageTranslationSchema = z.object({
   educationTitle: z.string().optional().default(''),
   educationDescription: z.string().optional().default(''),
   educationItems: z.array(educationItemSchema).optional().default([]),
+  solutionItems: z.array(solutionItemSchema).optional().default([]),
 });
 
 export const adminHomepageConfigPutSchema = z.object({
@@ -149,6 +168,18 @@ export function compactEducationItems(rows: HomepageEducationItem[] | undefined)
     .filter((row) => row.title || row.description || row.badgeText || row.extraText || row.href || row.coverImage);
 }
 
+export function compactSolutionItems(rows: HomepageSolutionItem[] | undefined): HomepageSolutionItem[] {
+  return (rows ?? [])
+    .map((row) => ({
+      title: row.title?.trim() ?? '',
+      description: row.description?.trim() ?? '',
+      badgeText: row.badgeText?.trim() ?? '',
+      coverImage: row.coverImage?.trim() ?? '',
+      href: row.href?.trim() ?? '',
+    }))
+    .filter((row) => row.title || row.description || row.badgeText || row.coverImage || row.href);
+}
+
 export function homepageTranslationHasContent(input: {
   bannerTitle?: string;
   bannerSubtitle?: string;
@@ -163,6 +194,7 @@ export function homepageTranslationHasContent(input: {
   educationTitle?: string;
   educationDescription?: string;
   educationItems?: HomepageEducationItem[];
+  solutionItems?: HomepageSolutionItem[];
 }) {
   return Boolean(
     input.bannerTitle?.trim()
@@ -177,7 +209,8 @@ export function homepageTranslationHasContent(input: {
     || input.educationTitle?.trim()
     || input.educationDescription?.trim()
     || compactStatItems(input.stats).length
-    || compactEducationItems(input.educationItems).length,
+    || compactEducationItems(input.educationItems).length
+    || compactSolutionItems(input.solutionItems).length,
   );
 }
 
@@ -263,6 +296,7 @@ export function getDefaultHomepageZhTranslation() {
         coverImage: '/images/edu-3.jpg',
       },
     ] satisfies HomepageEducationItem[],
+    solutionItems: [] satisfies HomepageSolutionItem[],
   };
 }
 
@@ -334,6 +368,7 @@ export function getDefaultHomepageEnTranslation() {
         coverImage: '/images/edu-3.jpg',
       },
     ] satisfies HomepageEducationItem[],
+    solutionItems: [] satisfies HomepageSolutionItem[],
   };
 }
 
@@ -366,4 +401,5 @@ export const EMPTY_STOREFRONT_HOMEPAGE: StorefrontHomepageConfig = {
   educationTitle: '',
   educationDescription: '',
   educationItems: [],
+  solutionItems: [],
 };

@@ -7,6 +7,7 @@ import {
   type StorefrontHomepageConfig,
   compactEducationItems,
   compactMediaSlides,
+  compactSolutionItems,
   compactStatItems,
 } from '@/lib/homepage-config';
 import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
@@ -58,6 +59,10 @@ export async function getStorefrontHomepageConfig(locale: string): Promise<Store
     educationTitle: display?.educationTitle ?? '',
     educationDescription: display?.educationDescription ?? '',
     educationItems: compactEducationItems(display?.educationItems).map((item) => ({
+      ...item,
+      coverImage: resolveSlideUrl(item.coverImage),
+    })),
+    solutionItems: compactSolutionItems(display?.solutionItems).map((item) => ({
       ...item,
       coverImage: resolveSlideUrl(item.coverImage),
     })),

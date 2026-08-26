@@ -14,6 +14,7 @@ import {
   type AdminHomepageConfig,
   type HomepageEducationItem,
   type HomepageMediaSlide,
+  type HomepageSolutionItem,
   type HomepageStatItem,
   homepageTranslationHasContent,
 } from '@/lib/homepage-config';
@@ -41,6 +42,7 @@ type LocaleDraft = {
   educationTitle: string;
   educationDescription: string;
   educationItems: HomepageEducationItem[];
+  solutionItems: HomepageSolutionItem[];
 };
 
 function emptyDraft(): LocaleDraft {
@@ -58,6 +60,7 @@ function emptyDraft(): LocaleDraft {
     educationTitle: '',
     educationDescription: '',
     educationItems: [],
+    solutionItems: [],
   };
 }
 
@@ -77,6 +80,7 @@ function translationToDraft(translation?: AdminHomepageConfig['translations'][nu
     educationTitle: translation.educationTitle,
     educationDescription: translation.educationDescription,
     educationItems: translation.educationItems.length ? translation.educationItems : [],
+    solutionItems: translation.solutionItems.length ? translation.solutionItems : [],
   };
 }
 
@@ -95,6 +99,7 @@ function readLocaleForm(values: Partial<LocaleDraft>): LocaleDraft {
     educationTitle: values.educationTitle ?? '',
     educationDescription: values.educationDescription ?? '',
     educationItems: values.educationItems ?? [],
+    solutionItems: values.solutionItems ?? [],
   };
 }
 
@@ -146,6 +151,39 @@ function deserializeEducation(text: string, source: HomepageEducationItem[]): Ho
       extraText,
       href: prev?.href ?? '',
       coverImage: prev?.coverImage ?? '',
+    };
+  });
+}
+
+function serializeSolutions(rows: HomepageSolutionItem[]) {
+  return rows
+    .map((row) => [row.title, row.description, row.badgeText].join('|||'))
+    .join('\n');
+}
+
+function deserializeSolutions(text: string, source: HomepageSolutionItem[]): HomepageSolutionItem[] {
+  if (!text.trim()) {
+    return source.map((item) => ({
+      title: item.title ?? '',
+      description: item.description ?? '',
+      badgeText: item.badgeText ?? '',
+      coverImage: item.coverImage ?? '',
+      href: item.href ?? '',
+    }));
+  }
+  const lines = text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  return lines.map((line, index) => {
+    const [title = '', description = '', badgeText = ''] = line.split('|||');
+    const prev = source[index];
+    return {
+      title,
+      description,
+      badgeText,
+      coverImage: prev?.coverImage ?? '',
+      href: prev?.href ?? '',
     };
   });
 }
@@ -214,6 +252,7 @@ export function HomepageConfigEditor({ initialConfig, activeLanguages }: Homepag
       educationDescription: draft.educationDescription,
       statsText: serializeStats(draft.stats),
       educationText: serializeEducation(draft.educationItems),
+      solutionsText: serializeSolutions(draft.solutionItems),
     };
   }
 
@@ -226,11 +265,12 @@ export function HomepageConfigEditor({ initialConfig, activeLanguages }: Homepag
     const merged = getMergedDrafts();
     const current = merged[activeLocale] ?? emptyDraft();
     const source = merged[defaultLocale] ?? emptyDraft();
-    const { statsText, educationText, ...plainFields } = fields;
+    const { statsText, educationText, solutionsText, ...plainFields } = fields;
     const nextDraft = applyNonemptyTranslatedFields(current, plainFields);
     const stats = deserializeStats(statsText ?? '');
     nextDraft.stats = stats.length ? stats : source.stats;
     nextDraft.educationItems = deserializeEducation(educationText ?? '', source.educationItems);
+    nextDraft.solutionItems = deserializeSolutions(solutionsText ?? '', source.solutionItems);
     const nextDrafts = { ...merged, [activeLocale]: nextDraft };
     setDrafts(nextDrafts);
     form.setFieldsValue(nextDraft);
@@ -377,6 +417,63 @@ export function HomepageConfigEditor({ initialConfig, activeLanguages }: Homepag
               <Form.Item name="solutionsDescription" label="描述">
                 <Input.TextArea rows={3} />
               </Form.Item>
+
+              <div style={{ fontWeight: 600, margin: '16px 0 12px' }}>内容项</div>
+              <Form.List name="solutionItems">
+                {(fields, { add, remove }) => (
+                  <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
+                    {fields.map((field) => (
+                      <div
+                        key={field.key}
+                        style={{
+                          border: '1px solid rgba(0,0,0,0.06)',
+                          borderRadius: 8,
+                          padding: 16,
+                        }}
+                      >
+                        <Space orientation="vertical" style={{ width: '100%' }} size="small">
+                          <Form.Item {...field} name={[field.name, 'badgeText']} label="角标文案">
+                            <Input placeholder="如 旗舰产品" />
+                          </Form.Item>
+                          <Form.Item {...field} name={[field.name, 'title']} label="标题">
+                            <Input />
+                          </Form.Item>
+                          <Form.Item {...field} name={[field.name, 'description']} label="描述">
+                            <Input.TextArea rows={3} />
+                          </Form.Item>
+                          <Form.Item {...field} name={[field.name, 'href']} label="链接地址">
+                            <Input placeholder="/solutions/v-clamp" />
+                          </Form.Item>
+                          <Form.Item
+                            {...field}
+                            name={[field.name, 'coverImage']}
+                            label="封面图"
+                            getValueFromEvent={(value: string | null) => value ?? ''}
+                          >
+                            <CoverImageField folder="homepage/solutions" />
+                          </Form.Item>
+                          <Button danger icon={<DeleteOutlined />} onClick={() => remove(field.name)}>
+                            删除
+                          </Button>
+                        </Space>
+                      </div>
+                    ))}
+                    <Button
+                      type="dashed"
+                      icon={<PlusOutlined />}
+                      onClick={() => add({
+                        title: '',
+                        description: '',
+                        badgeText: '',
+                        coverImage: '',
+                        href: '',
+                      })}
+                    >
+                      添加内容项
+                    </Button>
+                  </Space>
+                )}
+              </Form.List>
             </div>
 
             <div style={{ display: sectionTab === 'about' ? 'block' : 'none' }}>

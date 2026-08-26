@@ -982,6 +982,7 @@ async function fixHomepage() {
     'aboutTitle', 'aboutDescription',
     'stats', 'globalTitle', 'globalDescription',
     'educationTitle', 'educationDescription', 'educationItems',
+    'solutionItems',
   ];
   const [parents, all] = await Promise.all([
     db!.select({ id: homepageConfigs.id }).from(homepageConfigs),
@@ -1025,6 +1026,10 @@ async function fixHomepage() {
           ? (row.educationItems as Array<Record<string, string>>).map((item) =>
             [item.title ?? '', item.description ?? '', item.badgeText ?? '', item.extraText ?? ''].join('|||')).join('\n')
           : '',
+        solutionsText: Array.isArray(row.solutionItems)
+          ? (row.solutionItems as Array<Record<string, string>>).map((item) =>
+            [item.title ?? '', item.description ?? '', item.badgeText ?? ''].join('|||')).join('\n')
+          : '',
       }),
       fromTranslateFields: (fields, base) => {
         const stats = Array.isArray(base.stats) ? cloneJson(base.stats) as Array<Record<string, string>> : [];
@@ -1055,6 +1060,20 @@ async function fixHomepage() {
             });
           });
         }
+        const solutionItems = Array.isArray(base.solutionItems)
+          ? cloneJson(base.solutionItems) as Array<Record<string, string>>
+          : [];
+        if (fields.solutionsText) {
+          fields.solutionsText.split(/\r?\n/).forEach((line, index) => {
+            if (!solutionItems[index]) return;
+            const [title, description, badgeText] = line.split('|||');
+            Object.assign(solutionItems[index]!, {
+              title: title ?? solutionItems[index]!.title,
+              description: description ?? solutionItems[index]!.description,
+              badgeText: badgeText ?? solutionItems[index]!.badgeText,
+            });
+          });
+        }
         return {
           bannerTitle: fields.bannerTitle ?? base.bannerTitle,
           bannerSubtitle: fields.bannerSubtitle ?? base.bannerSubtitle,
@@ -1069,6 +1088,7 @@ async function fixHomepage() {
           educationDescription: fields.educationDescription ?? base.educationDescription,
           stats,
           educationItems,
+          solutionItems,
         };
       },
       insert: async (values) => {
