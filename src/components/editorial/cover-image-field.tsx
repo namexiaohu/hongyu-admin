@@ -16,6 +16,11 @@ type CoverImageFieldProps = {
   folder?: string;
   uploadLabel?: string;
   previewAlt?: string;
+  removeLabel?: string;
+  /** cover = wide media preview; avatar = compact square thumb */
+  variant?: 'cover' | 'avatar';
+  /** Pass null to hide the helper line */
+  hint?: string | null;
 };
 
 export function CoverImageField({
@@ -23,10 +28,20 @@ export function CoverImageField({
   onChange,
   disabled = false,
   folder = 'editorial/images',
-  uploadLabel = '上传封面图',
-  previewAlt = '封面预览',
+  uploadLabel,
+  previewAlt,
+  removeLabel,
+  variant = 'cover',
+  hint,
 }: CoverImageFieldProps) {
   const [uploading, setUploading] = useState(false);
+  const isAvatar = variant === 'avatar';
+  const resolvedUploadLabel = uploadLabel ?? (isAvatar ? '上传头像' : '上传封面图');
+  const resolvedPreviewAlt = previewAlt ?? (isAvatar ? '头像预览' : '封面预览');
+  const resolvedRemoveLabel = removeLabel ?? (isAvatar ? '移除头像' : '移除封面');
+  const resolvedHint = hint === undefined
+    ? (isAvatar ? 'JPG / PNG / WebP 等，最大 10MB' : '支持 JPG / PNG / GIF / WebP / SVG，最大 10MB，上传至对象存储。')
+    : hint;
 
   const uploadProps: UploadProps = {
     accept: IMAGE_UPLOAD_MIME_TYPES.join(','),
@@ -49,7 +64,7 @@ export function CoverImageField({
         const result = await uploadMediaFile(file as File, { kind: 'image', folder });
         onChange?.(result.key);
         onSuccess?.(result);
-        void message.success('封面上传成功');
+        void message.success(isAvatar ? '头像上传成功' : '封面上传成功');
       } catch (error) {
         const err = error instanceof Error ? error : new Error('上传失败');
         onError?.(err);
@@ -61,30 +76,39 @@ export function CoverImageField({
   };
 
   return (
-    <Space orientation="vertical" size="small" style={{ width: '100%' }}>
+    <Space orientation="vertical" size={isAvatar ? 6 : 'small'} style={{ width: '100%' }}>
       {value ? (
-        <div style={{ position: 'relative', display: 'inline-block' }}>
-          <MediaPreviewImage src={resolveOssAssetUrl(value)} alt={previewAlt} />
+        <div className={isAvatar ? 'cover-image-field-avatar' : undefined} style={{ position: 'relative', display: 'inline-block' }}>
+          <MediaPreviewImage
+            src={resolveOssAssetUrl(value)}
+            alt={resolvedPreviewAlt}
+            className={isAvatar ? 'media-preview-thumb--avatar' : undefined}
+          />
           {!disabled ? (
             <Button
               danger
               size="small"
+              type={isAvatar ? 'link' : 'default'}
               icon={<DeleteOutlined />}
-              style={{ marginTop: 8 }}
+              style={{ marginTop: isAvatar ? 4 : 8, paddingInline: isAvatar ? 0 : undefined }}
               onClick={() => onChange?.(null)}
             >
-              移除封面
+              {resolvedRemoveLabel}
             </Button>
           ) : null}
         </div>
       ) : (
         <Upload {...uploadProps}>
-          <Button icon={uploading ? <LoadingOutlined /> : <PlusOutlined />} disabled={disabled || uploading}>
-            {uploadLabel}
+          <Button
+            icon={uploading ? <LoadingOutlined /> : <PlusOutlined />}
+            disabled={disabled || uploading}
+            className={isAvatar ? 'cover-image-field-avatar-upload' : undefined}
+          >
+            {resolvedUploadLabel}
           </Button>
         </Upload>
       )}
-      <Typography.Text type="secondary">支持 JPG / PNG / GIF / WebP / SVG，最大 10MB，上传至对象存储。</Typography.Text>
+      {resolvedHint ? <Typography.Text type="secondary" style={{ fontSize: isAvatar ? 12 : undefined, lineHeight: 1.4 }}>{resolvedHint}</Typography.Text> : null}
     </Space>
   );
 }

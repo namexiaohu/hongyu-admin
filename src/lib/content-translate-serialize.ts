@@ -23,19 +23,85 @@ export function deserializeLineList(text: string): string[] {
   return text.split('\n').map((line) => line.trim()).filter(Boolean);
 }
 
-export function serializeTeamMembers(rows: Array<{ title: string; name: string }>): string {
+export function serializeTeamMembers(rows: Array<{
+  title: string;
+  name: string;
+  email?: string;
+  contact?: string;
+  region?: string;
+}>): string {
   return rows
-    .filter((row) => row.title?.trim() || row.name?.trim())
-    .map((row) => `${row.title ?? ''}${PAIR_SEP}${row.name ?? ''}`)
+    .filter((row) => row.title?.trim() || row.name?.trim() || row.email?.trim() || row.contact?.trim() || row.region?.trim())
+    .map((row) => [
+      row.name ?? '',
+      row.title ?? '',
+      row.email ?? '',
+      row.contact ?? '',
+      row.region ?? '',
+    ].join(PAIR_SEP))
     .join('\n');
 }
 
-export function deserializeTeamMembers(text: string): Array<{ title: string; name: string }> {
+export function deserializeTeamMembers(text: string): Array<{
+  name: string;
+  title: string;
+  email: string;
+  contact: string;
+  region: string;
+}> {
   if (!text.trim()) return [];
   return text.split('\n').map((line) => {
-    const [title = '', name = ''] = line.split(PAIR_SEP);
-    return { title: title.trim(), name: name.trim() };
-  }).filter((row) => row.title || row.name);
+    const [name = '', title = '', email = '', contact = '', region = ''] = line.split(PAIR_SEP);
+    return {
+      name: name.trim(),
+      title: title.trim(),
+      email: email.trim(),
+      contact: contact.trim(),
+      region: region.trim(),
+    };
+  }).filter((row) => row.name || row.title || row.email || row.contact || row.region);
+}
+
+export type ManagementTeamTranslateSource = {
+  id: string;
+  level: 'executive' | 'manager' | 'staff';
+  sortOrder: number;
+  name: string;
+  title: string;
+  email: string;
+  contact: string;
+  region: string;
+  avatarUrl: string;
+  supervisorId: string;
+};
+
+export function serializeManagementTeam(rows: ManagementTeamTranslateSource[]): string {
+  return serializeTeamMembers(rows);
+}
+
+export function deserializeManagementTeam(
+  text: string,
+  sourceRows: ManagementTeamTranslateSource[],
+): ManagementTeamTranslateSource[] {
+  if (!text.trim()) {
+    return sourceRows.map((row) => ({ ...row }));
+  }
+  return text.split('\n').map((line, index) => {
+    const [name = '', title = '', email = '', contact = '', region = ''] = line.split(PAIR_SEP);
+    const source = sourceRows[index];
+    return {
+      id: source?.id ?? crypto.randomUUID(),
+      level: source?.level ?? 'staff',
+      sortOrder: source?.sortOrder ?? index,
+      avatarUrl: source?.avatarUrl ?? '',
+      supervisorId: source?.supervisorId ?? '',
+      name: name.trim(),
+      title: title.trim(),
+      email: email.trim(),
+      contact: contact.trim(),
+      region: region.trim(),
+    };
+  }).filter((row) => row.name || row.title || row.email || row.contact || row.region || row.avatarUrl);
 }
 
 export type FeaturedPostTranslateSource = {

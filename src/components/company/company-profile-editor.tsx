@@ -7,16 +7,17 @@ import { useEffect, useMemo, useState, useTransition } from 'react';
 import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
 import { ContentTranslateButton } from '@/components/admin/content-translate-button';
 import { CommercePageHeader } from '@/components/commerce/commerce-page-header';
+import { CompanyManagementTeamFormItem } from '@/components/company/company-management-team-field';
 import { CompanyPublicFilesField } from '@/components/company/company-public-files-field';
 import { CoverImageField } from '@/components/editorial/cover-image-field';
 import { applyNonemptyTranslatedFields } from '@/lib/content-translate-config';
 import {
+  deserializeManagementTeam,
   deserializeOffices,
   deserializePairRows,
-  deserializeTeamMembers,
+  serializeManagementTeam,
   serializeOffices,
   serializePairRows,
-  serializeTeamMembers,
 } from '@/lib/content-translate-serialize';
 import {
   type AdminCompanyProfile,
@@ -49,8 +50,7 @@ type LocaleDraft = {
   businessHours: string;
   businessHotline: string;
   basicInfo: CompanyLabelValue[];
-  executives: CompanyTeamMember[];
-  managers: CompanyTeamMember[];
+  managementTeam: CompanyTeamMember[];
   offices: CompanyOffice[];
 };
 
@@ -65,8 +65,7 @@ function emptyDraft(): LocaleDraft {
     businessHours: '',
     businessHotline: '',
     basicInfo: [],
-    executives: [],
-    managers: [],
+    managementTeam: [],
     offices: [],
   };
 }
@@ -83,8 +82,7 @@ function translationToDraft(translation?: AdminCompanyProfile['translations'][nu
     businessHours: translation.businessHours,
     businessHotline: translation.businessHotline,
     basicInfo: translation.basicInfo.length ? translation.basicInfo : [],
-    executives: translation.executives.length ? translation.executives : [],
-    managers: translation.managers.length ? translation.managers : [],
+    managementTeam: translation.managementTeam.length ? translation.managementTeam : [],
     offices: translation.offices.length ? translation.offices : [],
   };
 }
@@ -100,8 +98,7 @@ function readLocaleForm(values: Partial<LocaleDraft>): LocaleDraft {
     businessHours: values.businessHours ?? '',
     businessHotline: values.businessHotline ?? '',
     basicInfo: values.basicInfo ?? [],
-    executives: values.executives ?? [],
-    managers: values.managers ?? [],
+    managementTeam: values.managementTeam ?? [],
     offices: values.offices ?? [],
   };
 }
@@ -167,8 +164,7 @@ export function CompanyProfileEditor({ initialProfile, activeLanguages }: Compan
       businessHours: draft.businessHours,
       businessHotline: draft.businessHotline,
       basicInfoText: serializePairRows(draft.basicInfo),
-      executivesText: serializeTeamMembers(draft.executives),
-      managersText: serializeTeamMembers(draft.managers),
+      managementTeamText: serializeManagementTeam(draft.managementTeam),
       officesText: serializeOffices(draft.offices),
     };
   }
@@ -184,18 +180,15 @@ export function CompanyProfileEditor({ initialProfile, activeLanguages }: Compan
     const source = merged[defaultLocale] ?? emptyDraft();
     const {
       basicInfoText,
-      executivesText,
-      managersText,
+      managementTeamText,
       officesText,
       ...plainFields
     } = fields;
     const nextDraft = applyNonemptyTranslatedFields(current, plainFields);
     const basicInfo = deserializePairRows(basicInfoText ?? '');
     if (basicInfo.length) nextDraft.basicInfo = basicInfo;
-    const executives = deserializeTeamMembers(executivesText ?? '');
-    if (executives.length) nextDraft.executives = executives;
-    const managers = deserializeTeamMembers(managersText ?? '');
-    if (managers.length) nextDraft.managers = managers;
+    const managementTeam = deserializeManagementTeam(managementTeamText ?? '', source.managementTeam);
+    if (managementTeam.length) nextDraft.managementTeam = managementTeam;
     const offices = deserializeOffices(officesText ?? '', source.offices);
     nextDraft.offices = offices;
     const nextDrafts = { ...merged, [activeLocale]: nextDraft };
@@ -216,6 +209,7 @@ export function CompanyProfileEditor({ initialProfile, activeLanguages }: Compan
       setStatusMessage(null);
       try {
         const shared = await sharedForm.validateFields();
+        await form.validateFields();
         const merged = mergeActiveFormIntoDrafts(drafts, activeLocale);
         setDrafts(merged);
 
@@ -381,54 +375,7 @@ export function CompanyProfileEditor({ initialProfile, activeLanguages }: Compan
             </div>
 
             <div style={{ display: sectionTab === 'team' ? 'block' : 'none' }}>
-              <Space orientation="vertical" size="large" style={{ width: '100%' }}>
-                <div>
-                  <div style={{ fontWeight: 600, marginBottom: 8 }}>高层</div>
-                  <Form.List name="executives">
-                    {(fields, { add, remove }) => (
-                      <Space orientation="vertical" size="small" style={{ width: '100%' }}>
-                        {fields.map((field) => (
-                          <div key={field.key} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                            <Form.Item name={[field.name, 'title']} style={{ flex: 1, marginBottom: 0 }}>
-                              <Input placeholder="职位" />
-                            </Form.Item>
-                            <Form.Item name={[field.name, 'name']} style={{ flex: 1, marginBottom: 0 }}>
-                              <Input placeholder="姓名" />
-                            </Form.Item>
-                            <Button type="text" danger icon={<DeleteOutlined />} onClick={() => remove(field.name)} />
-                          </div>
-                        ))}
-                        <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />}>
-                          添加高层
-                        </Button>
-                      </Space>
-                    )}
-                  </Form.List>
-                </div>
-                <div>
-                  <div style={{ fontWeight: 600, marginBottom: 8 }}>中层</div>
-                  <Form.List name="managers">
-                    {(fields, { add, remove }) => (
-                      <Space orientation="vertical" size="small" style={{ width: '100%' }}>
-                        {fields.map((field) => (
-                          <div key={field.key} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                            <Form.Item name={[field.name, 'title']} style={{ flex: 1, marginBottom: 0 }}>
-                              <Input placeholder="职位" />
-                            </Form.Item>
-                            <Form.Item name={[field.name, 'name']} style={{ flex: 1, marginBottom: 0 }}>
-                              <Input placeholder="姓名" />
-                            </Form.Item>
-                            <Button type="text" danger icon={<DeleteOutlined />} onClick={() => remove(field.name)} />
-                          </div>
-                        ))}
-                        <Button type="dashed" onClick={() => add()} icon={<PlusOutlined />}>
-                          添加中层
-                        </Button>
-                      </Space>
-                    )}
-                  </Form.List>
-                </div>
-              </Space>
+              <CompanyManagementTeamFormItem />
             </div>
 
             <div style={{ display: sectionTab === 'offices' ? 'block' : 'none' }}>

@@ -9973,6 +9973,113 @@ main {
   object-fit: contain;
 }
 
+.media-preview-thumb--avatar {
+  width: 140px;
+  height: 140px;
+  max-width: 140px;
+  max-height: 140px;
+  border-radius: 8px;
+  border: 1px solid #f0f0f0;
+}
+
+.media-preview-thumb--avatar .ant-image,
+.media-preview-thumb--avatar .ant-image-img {
+  width: 140px !important;
+  height: 140px !important;
+  max-width: 140px !important;
+  max-height: 140px !important;
+  object-fit: cover;
+}
+
+.cover-image-field-avatar-upload {
+  width: 140px;
+  height: 140px;
+  padding: 0;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  white-space: normal;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.company-team-level-title {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.company-team-member-card {
+  padding: 14px 16px;
+  border: 1px solid #f0f0f0;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.company-team-member-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.company-team-member-card__body {
+  display: grid;
+  grid-template-columns: 156px minmax(0, 1fr);
+  gap: 16px 24px;
+  align-items: start;
+}
+
+.company-team-member-card__avatar {
+  min-width: 0;
+}
+
+.company-team-member-card__fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+  align-items: start;
+  min-width: 0;
+}
+
+.company-team-member-card__field {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.company-team-member-card__field--span {
+  grid-column: 1 / -1;
+}
+
+.company-team-member-card__label {
+  font-size: 13px;
+  line-height: 1.4;
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.company-team-member-card__required {
+  color: #ff4d4f;
+  margin-left: 4px;
+}
+
+@media (max-width: 720px) {
+  .company-team-member-card__body {
+    grid-template-columns: 1fr;
+  }
+
+  .company-team-member-card__fields {
+    grid-template-columns: 1fr;
+  }
+
+  .company-team-member-card__field--span {
+    grid-column: auto;
+  }
+}
+
 .media-preview-video-thumb {
   position: relative;
   max-width: 280px;

@@ -1144,7 +1144,7 @@ async function runCompanyProfile() {
   log('\n=== 企业信息 company profile ===');
   const textKeys = [
     'companyName', 'slogan', 'positioning', 'copyright', 'contactPhone', 'address',
-    'businessHours', 'businessHotline', 'basicInfo', 'executives', 'managers', 'offices',
+    'businessHours', 'businessHotline', 'basicInfo', 'managementTeam', 'offices',
   ];
   const [parents, all] = await Promise.all([
     db!.select({ id: companyProfiles.id }).from(companyProfiles),
@@ -1180,11 +1180,10 @@ async function runCompanyProfile() {
         basicInfoText: Array.isArray(row.basicInfo)
           ? (row.basicInfo as Array<{ label: string; value: string }>).map((item) => `${item.label}|||${item.value}`).join('\n')
           : '',
-        executivesText: Array.isArray(row.executives)
-          ? (row.executives as Array<{ title: string; name: string }>).map((item) => `${item.title}|||${item.name}`).join('\n')
-          : '',
-        managersText: Array.isArray(row.managers)
-          ? (row.managers as Array<{ title: string; name: string }>).map((item) => `${item.title}|||${item.name}`).join('\n')
+        managementTeamText: Array.isArray(row.managementTeam)
+          ? (row.managementTeam as Array<{ name: string; title: string; email: string; contact: string; region: string }>)
+              .map((item) => [item.name, item.title, item.email, item.contact, item.region].join('|||'))
+              .join('\n')
           : '',
         officesText: Array.isArray(row.offices)
           ? (row.offices as Array<Record<string, string>>).map((item) =>
@@ -1221,18 +1220,24 @@ async function runCompanyProfile() {
                 return { label: label.trim(), value: value.trim() };
               })
             : base.basicInfo,
-          executives: fields.executivesText
-            ? fields.executivesText.split(/\r?\n/).map((line) => {
-                const [title = '', name = ''] = line.split('|||');
-                return { title: title.trim(), name: name.trim() };
-              })
-            : base.executives,
-          managers: fields.managersText
-            ? fields.managersText.split(/\r?\n/).map((line) => {
-                const [title = '', name = ''] = line.split('|||');
-                return { title: title.trim(), name: name.trim() };
-              })
-            : base.managers,
+          managementTeam: (() => {
+            const baseTeam = Array.isArray(base.managementTeam)
+              ? cloneJson(base.managementTeam) as Array<Record<string, unknown>>
+              : [];
+            if (!fields.managementTeamText) return base.managementTeam;
+            fields.managementTeamText.split(/\r?\n/).forEach((line, index) => {
+              if (!baseTeam[index]) return;
+              const [name, title, email, contact, region] = line.split('|||');
+              Object.assign(baseTeam[index]!, {
+                name: name?.trim() ?? baseTeam[index]!.name,
+                title: title?.trim() ?? baseTeam[index]!.title,
+                email: email?.trim() ?? baseTeam[index]!.email,
+                contact: contact?.trim() ?? baseTeam[index]!.contact,
+                region: region?.trim() ?? baseTeam[index]!.region,
+              });
+            });
+            return baseTeam;
+          })(),
           offices,
         };
       },

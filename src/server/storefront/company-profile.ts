@@ -5,9 +5,9 @@ import { eq } from 'drizzle-orm';
 import {
   type StorefrontCompanyProfile,
   compactLabelValues,
+  compactManagementTeam,
   compactOffices,
   compactPublicFiles,
-  compactTeamMembers,
 } from '@/lib/company-profile';
 import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
@@ -35,8 +35,7 @@ export async function getStorefrontCompanyProfile(locale: string): Promise<Store
       businessHours: '',
       businessHotline: '',
       basicInfo: [],
-      executives: [],
-      managers: [],
+      managementTeam: [],
       offices: [],
       publicFiles: [],
     };
@@ -65,8 +64,10 @@ export async function getStorefrontCompanyProfile(locale: string): Promise<Store
     businessHours: display?.businessHours ?? '',
     businessHotline: display?.businessHotline ?? '',
     basicInfo: compactLabelValues(display?.basicInfo),
-    executives: compactTeamMembers(display?.executives),
-    managers: compactTeamMembers(display?.managers),
+    managementTeam: compactManagementTeam(display?.managementTeam).map((member) => ({
+      ...member,
+      avatarUrl: resolveOssAssetUrl(member.avatarUrl),
+    })),
     offices: compactOffices(display?.offices).map((office) => ({
       ...office,
       coverImage: resolveOssAssetUrl(office.coverImage),

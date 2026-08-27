@@ -7,10 +7,11 @@ import {
   type AdminCompanyProfilePutInput,
   type AdminCompanyProfileTranslation,
   adminCompanyProfilePutSchema,
+  alignManagementTeamStructure,
   compactLabelValues,
+  compactManagementTeam,
   compactOffices,
   compactPublicFiles,
-  compactTeamMembers,
   translationHasContent,
 } from '@/lib/company-profile';
 import { shouldPersistLocaleDraft } from '@/lib/locale-draft-persistence';
@@ -37,8 +38,10 @@ function mapTranslation(row: typeof companyProfileTranslations.$inferSelect): Ad
     businessHours: row.businessHours,
     businessHotline: row.businessHotline,
     basicInfo: compactLabelValues(row.basicInfo),
-    executives: compactTeamMembers(row.executives),
-    managers: compactTeamMembers(row.managers),
+    managementTeam: compactManagementTeam(row.managementTeam).map((member) => ({
+      ...member,
+      avatarUrl: member.avatarUrl,
+    })),
     offices: compactOffices(row.offices),
     createdAt: toIso(row.createdAt),
     updatedAt: toIso(row.updatedAt),
@@ -115,14 +118,25 @@ export async function updateAdminCompanyProfile(input: unknown): Promise<AdminCo
     })
     .where(eq(companyProfiles.id, row.id));
 
+  const defaultTranslation = parsed.translations.find((item) => item.locale === defaultLocale)
+    ?? parsed.translations[0];
+  const structureSource = compactManagementTeam(defaultTranslation?.managementTeam);
+
   const keepLocales: string[] = [];
 
   for (const translation of parsed.translations) {
+    const alignedTeam = translation.locale === defaultLocale
+      ? structureSource
+      : alignManagementTeamStructure(structureSource, translation.managementTeam);
+
     const persist = shouldPersistLocaleDraft({
       locale: translation.locale,
       defaultLocale,
       primaryText: translation.companyName,
-    }) || (translation.locale !== defaultLocale && translationHasContent(translation));
+    }) || (translation.locale !== defaultLocale && translationHasContent({
+      ...translation,
+      managementTeam: alignedTeam,
+    }));
 
     if (!persist) continue;
     keepLocales.push(translation.locale);
@@ -137,8 +151,10 @@ export async function updateAdminCompanyProfile(input: unknown): Promise<AdminCo
       businessHours: translation.businessHours.trim(),
       businessHotline: translation.businessHotline.trim(),
       basicInfo: compactLabelValues(translation.basicInfo),
-      executives: compactTeamMembers(translation.executives),
-      managers: compactTeamMembers(translation.managers),
+      managementTeam: compactManagementTeam(alignedTeam).map((member) => ({
+        ...member,
+        avatarUrl: toOssStorageKey(member.avatarUrl),
+      })),
       offices: compactOffices(translation.offices).map((office) => ({
         ...office,
         coverImage: toOssStorageKey(office.coverImage),

@@ -193,8 +193,7 @@ export const CONTENT_TRANSLATE_PROFILES: Record<ContentTranslateType, ContentTra
       'businessHours',
       'businessHotline',
       'basicInfoText',
-      'executivesText',
-      'managersText',
+      'managementTeamText',
       'officesText',
     ],
     plainTextFields: [
@@ -207,14 +206,13 @@ export const CONTENT_TRANSLATE_PROFILES: Record<ContentTranslateType, ContentTra
       'businessHours',
       'businessHotline',
       'basicInfoText',
-      'executivesText',
-      'managersText',
+      'managementTeamText',
       'officesText',
     ],
     serverLabel: 'company profile page',
     tooltip: '将默认语言已保存的企业资料翻译到当前语言；办公地点封面图与公开文件直接沿用默认语言',
     translateNotes:
-      'basicInfoText uses LABEL|||VALUE per line. executivesText and managersText use TITLE|||NAME per line. officesText uses NAME|||LOCATION|||PHONE|||CONTACT|||EMAIL per line. Translate human-readable text only; keep numbers, emails, and ||| separators.',
+      'basicInfoText uses LABEL|||VALUE per line. managementTeamText uses NAME|||TITLE|||EMAIL|||CONTACT|||REGION per line (keep row order). officesText uses NAME|||LOCATION|||PHONE|||CONTACT|||EMAIL per line. Translate human-readable text only; keep numbers, emails, and ||| separators.',
   },
   homepageConfig: {
     sourceFields: [
