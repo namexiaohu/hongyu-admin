@@ -2,22 +2,11 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
-function trimUrl(value: string | undefined) {
-  return value?.trim().replace(/\/$/, '') || null;
-}
+import { resolveCorsAllowOrigin } from '@/lib/app-urls';
 
-function resolveSiteCorsOrigin() {
-  return (
-    trimUrl(process.env.CORS_ALLOWED_ORIGINS?.split(',')[0])
-    ?? trimUrl(process.env.SITE_URL)
-    ?? trimUrl(process.env.APP_URL)
-    ?? 'http://localhost:5000'
-  );
-}
-
-function corsHeaders() {
+function corsHeaders(request: NextRequest) {
   return {
-    'Access-Control-Allow-Origin': resolveSiteCorsOrigin(),
+    'Access-Control-Allow-Origin': resolveCorsAllowOrigin(request.headers.get('origin')),
     'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Cart-Token, X-Guest-Order-Token, x-vex-locale',
   };
@@ -28,11 +17,11 @@ export async function middleware(request: NextRequest) {
 
   if (pathname.startsWith('/api/front')) {
     if (request.method === 'OPTIONS') {
-      return new NextResponse(null, { status: 204, headers: corsHeaders() });
+      return new NextResponse(null, { status: 204, headers: corsHeaders(request) });
     }
 
     const response = NextResponse.next();
-    Object.entries(corsHeaders()).forEach(([key, value]) => {
+    Object.entries(corsHeaders(request)).forEach(([key, value]) => {
       response.headers.set(key, value);
     });
     return response;

@@ -33,6 +33,7 @@ tags:
   - name: Commerce
   - name: Newsletter
   - name: Sitemap
+  - name: Academy
 components:
   securitySchemes:
     bearerAuth:
@@ -1898,6 +1899,260 @@ components:
         note:
           type: string
       required: [productId, spu, name, slug, quantity, unitPrice, currency]
+    AcademyStat:
+      type: object
+      properties:
+        label:
+          type: string
+        value:
+          type: string
+      required: [label, value]
+    AcademyCertificateListItem:
+      type: object
+      properties:
+        slug:
+          type: string
+        href:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+        coverImage:
+          type: string
+          description: 公开封面 URL（R2 或预设图）
+        teacherCount:
+          type: integer
+        studentCount:
+          type: integer
+        courseCount:
+          type: integer
+      required: [slug, href, title, summary, coverImage, teacherCount, studentCount, courseCount]
+    AcademyCertificateCourseItem:
+      type: object
+      properties:
+        slug:
+          type: string
+        href:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+        coverImage:
+          type: string
+        sortOrder:
+          type: integer
+        units:
+          type: array
+          items:
+            $ref: '#/components/schemas/AcademyCertificateUnitItem'
+      required: [slug, href, title, summary, coverImage, sortOrder, units]
+    AcademyCertificateUnitItem:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        sortOrder:
+          type: integer
+      required: [id, title, sortOrder]
+    AcademyLessonItem:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        videoUrl:
+          type: string
+        durationSeconds:
+          type: integer
+        durationLabel:
+          type: string
+        sortOrder:
+          type: integer
+      required: [id, title, description, videoUrl, durationSeconds, durationLabel, sortOrder]
+    AcademyUnitItem:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        coverImage:
+          type: string
+        sortOrder:
+          type: integer
+        lessons:
+          type: array
+          items:
+            $ref: '#/components/schemas/AcademyLessonItem'
+      required: [id, title, coverImage, sortOrder, lessons]
+    AcademyCertificateListResponse:
+      type: object
+      properties:
+        locale:
+          type: string
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AcademyCertificateListItem'
+      required: [locale, page, pageSize, total, items]
+    AcademyCertificateDetail:
+      type: object
+      properties:
+        slug:
+          type: string
+        locale:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+        description:
+          type: string
+          description: 富文本 HTML
+        coverImage:
+          type: string
+        teacherCount:
+          type: integer
+        studentCount:
+          type: integer
+        stats:
+          type: array
+          items:
+            $ref: '#/components/schemas/AcademyStat'
+        learnings:
+          type: array
+          items:
+            type: string
+        skills:
+          type: array
+          items:
+            type: string
+        tools:
+          type: array
+          items:
+            type: string
+        courses:
+          type: array
+          items:
+            $ref: '#/components/schemas/AcademyCertificateCourseItem'
+        seo:
+          type: object
+          properties:
+            title:
+              type: string
+            description:
+              type: string
+          required: [title, description]
+      required: [slug, locale, title, summary, description, coverImage, teacherCount, studentCount, stats, learnings, skills, tools, courses, seo]
+    AcademyCourseListItem:
+      type: object
+      properties:
+        slug:
+          type: string
+        href:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+        coverImage:
+          type: string
+        teacherCount:
+          type: integer
+        studentCount:
+          type: integer
+      required: [slug, href, title, summary, coverImage, teacherCount, studentCount]
+    AcademyCourseListResponse:
+      type: object
+      properties:
+        locale:
+          type: string
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AcademyCourseListItem'
+      required: [locale, page, pageSize, total, items]
+    AcademyCourseCertificateLink:
+      type: object
+      properties:
+        slug:
+          type: string
+        href:
+          type: string
+        title:
+          type: string
+      required: [slug, href, title]
+    AcademyCourseDetail:
+      type: object
+      properties:
+        slug:
+          type: string
+        locale:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+        description:
+          type: string
+        coverImage:
+          type: string
+        teacherCount:
+          type: integer
+        studentCount:
+          type: integer
+        stats:
+          type: array
+          items:
+            $ref: '#/components/schemas/AcademyStat'
+        learnings:
+          type: array
+          items:
+            type: string
+        skills:
+          type: array
+          items:
+            type: string
+        tools:
+          type: array
+          items:
+            type: string
+        units:
+          type: array
+          items:
+            $ref: '#/components/schemas/AcademyUnitItem'
+        certificates:
+          type: array
+          items:
+            $ref: '#/components/schemas/AcademyCourseCertificateLink'
+        seo:
+          type: object
+          properties:
+            title:
+              type: string
+            description:
+              type: string
+          required: [title, description]
+      required: [slug, locale, title, summary, description, coverImage, teacherCount, studentCount, stats, learnings, skills, tools, units, certificates, seo]
 paths:
   /api/front/home:
     get:
@@ -3334,6 +3589,98 @@ paths:
                 path: /products/17-single-shaft-bipolar-stepper-motor
         '400':
           description: 缺少 pathname
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/front/academy/certificates:
+    get:
+      tags: [Academy]
+      summary: 获取已发布证书列表
+      parameters:
+        - $ref: '#/components/parameters/LocaleHeader'
+        - $ref: '#/components/parameters/LocaleQueryParam'
+        - $ref: '#/components/parameters/PageParam'
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 24
+            maximum: 50
+      responses:
+        '200':
+          description: 证书分页列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcademyCertificateListResponse'
+  /api/front/academy/certificates/{slug}:
+    get:
+      tags: [Academy]
+      summary: 获取证书详情（含有序课程摘要）
+      parameters:
+        - $ref: '#/components/parameters/LocaleHeader'
+        - $ref: '#/components/parameters/LocaleQueryParam'
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 证书详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcademyCertificateDetail'
+        '404':
+          description: 未找到
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/front/academy/courses:
+    get:
+      tags: [Academy]
+      summary: 获取已发布课程列表
+      parameters:
+        - $ref: '#/components/parameters/LocaleHeader'
+        - $ref: '#/components/parameters/LocaleQueryParam'
+        - $ref: '#/components/parameters/PageParam'
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 24
+            maximum: 50
+      responses:
+        '200':
+          description: 课程分页列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcademyCourseListResponse'
+  /api/front/academy/courses/{slug}:
+    get:
+      tags: [Academy]
+      summary: 获取课程详情（含所属证书链接）
+      parameters:
+        - $ref: '#/components/parameters/LocaleHeader'
+        - $ref: '#/components/parameters/LocaleQueryParam'
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 课程详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcademyCourseDetail'
+        '404':
+          description: 未找到
           content:
             application/json:
               schema:

@@ -101,6 +101,8 @@ import type { SolutionMaterial, SolutionProductParam, SolutionStat } from '@/lib
 import type { PartnerCenterMetric } from '@/lib/partner-center-content';
 import type { ProductCoverageBoard } from '@/lib/product-boards';
 import type { SurgeonMetric } from '@/lib/surgeon-content';
+import type { AcademyStat } from '@/lib/academy-content-shared';
+import type { AcademyLessonMaterial } from '@/lib/academy-lesson-content';
 import {
   defaultEditorialAutomationConfig,
   type EditorialAiTemplate,
@@ -1887,5 +1889,188 @@ export const partnerCenterTranslations = pgTable(
   (table) => ({
     centerLocaleUnique: uniqueIndex('partner_centers_i18n_center_locale_unique').on(table.centerId, table.locale),
     centerIdIdx: index('partner_centers_i18n_center_id_idx').on(table.centerId),
+  }),
+);
+
+/* ───── Academy (竑宇医疗学院) ───── */
+
+export const academyCertificates = pgTable(
+  'academy_certificates',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    slug: varchar('slug', { length: 64 }).notNull(),
+    sortOrder: integer('sort_order').notNull().default(0),
+    status: cmsStatusEnum('status').notNull().default('draft'),
+    publishedAt: timestamp('published_at', { withTimezone: true }),
+    coverImage: text('cover_image').notNull().default(''),
+    coverMode: text('cover_mode').notNull().default(''),
+    coverValue: text('cover_value').notNull().default(''),
+    gallery: jsonb('gallery').$type<ProductGalleryImage[]>().notNull().default([]),
+    videoUrl: text('video_url').notNull().default(''),
+    showCoverOnBackground: boolean('show_cover_on_background').notNull().default(false),
+    coverDisplay: jsonb('cover_display').$type<HeroCoverDisplay>().notNull().default({ video: true, cover: true, gallery: true }),
+    teacherCount: integer('teacher_count').notNull().default(0),
+    studentCount: integer('student_count').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    slugUnique: uniqueIndex('academy_certificates_slug_unique').on(table.slug),
+    statusSortIdx: index('academy_certificates_status_sort_idx').on(table.status, table.sortOrder),
+  }),
+);
+
+export const academyCertificateTranslations = pgTable(
+  'academy_certificates_i18n',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    certificateId: uuid('certificate_id').notNull().references(() => academyCertificates.id, { onDelete: 'cascade' }),
+    locale: varchar('locale', { length: 16 }).notNull(),
+    title: varchar('title', { length: 255 }).notNull().default(''),
+    summary: text('summary').notNull().default(''),
+    description: text('description').notNull().default(''),
+    seoTitle: varchar('seo_title', { length: 255 }).notNull().default(''),
+    seoDescription: varchar('seo_description', { length: 500 }).notNull().default(''),
+    stats: jsonb('stats').$type<AcademyStat[]>().notNull().default([]),
+    learnings: jsonb('learnings').$type<string[]>().notNull().default([]),
+    skills: jsonb('skills').$type<string[]>().notNull().default([]),
+    tools: jsonb('tools').$type<string[]>().notNull().default([]),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    certificateLocaleUnique: uniqueIndex('academy_certificates_i18n_cert_locale_unique').on(table.certificateId, table.locale),
+    certificateIdIdx: index('academy_certificates_i18n_certificate_id_idx').on(table.certificateId),
+  }),
+);
+
+export const academyCourses = pgTable(
+  'academy_courses',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    slug: varchar('slug', { length: 64 }).notNull(),
+    sortOrder: integer('sort_order').notNull().default(0),
+    status: cmsStatusEnum('status').notNull().default('draft'),
+    publishedAt: timestamp('published_at', { withTimezone: true }),
+    coverImage: text('cover_image').notNull().default(''),
+    coverMode: text('cover_mode').notNull().default(''),
+    coverValue: text('cover_value').notNull().default(''),
+    gallery: jsonb('gallery').$type<ProductGalleryImage[]>().notNull().default([]),
+    videoUrl: text('video_url').notNull().default(''),
+    showCoverOnBackground: boolean('show_cover_on_background').notNull().default(false),
+    coverDisplay: jsonb('cover_display').$type<HeroCoverDisplay>().notNull().default({ video: true, cover: true, gallery: true }),
+    teacherCount: integer('teacher_count').notNull().default(0),
+    studentCount: integer('student_count').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    slugUnique: uniqueIndex('academy_courses_slug_unique').on(table.slug),
+    statusSortIdx: index('academy_courses_status_sort_idx').on(table.status, table.sortOrder),
+  }),
+);
+
+export const academyCourseTranslations = pgTable(
+  'academy_courses_i18n',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    courseId: uuid('course_id').notNull().references(() => academyCourses.id, { onDelete: 'cascade' }),
+    locale: varchar('locale', { length: 16 }).notNull(),
+    title: varchar('title', { length: 255 }).notNull().default(''),
+    summary: text('summary').notNull().default(''),
+    description: text('description').notNull().default(''),
+    seoTitle: varchar('seo_title', { length: 255 }).notNull().default(''),
+    seoDescription: varchar('seo_description', { length: 500 }).notNull().default(''),
+    stats: jsonb('stats').$type<AcademyStat[]>().notNull().default([]),
+    learnings: jsonb('learnings').$type<string[]>().notNull().default([]),
+    skills: jsonb('skills').$type<string[]>().notNull().default([]),
+    tools: jsonb('tools').$type<string[]>().notNull().default([]),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    courseLocaleUnique: uniqueIndex('academy_courses_i18n_course_locale_unique').on(table.courseId, table.locale),
+    courseIdIdx: index('academy_courses_i18n_course_id_idx').on(table.courseId),
+  }),
+);
+
+export const academyCertificateCourses = pgTable(
+  'academy_certificate_courses',
+  {
+    certificateId: uuid('certificate_id').notNull().references(() => academyCertificates.id, { onDelete: 'cascade' }),
+    courseId: uuid('course_id').notNull().references(() => academyCourses.id, { onDelete: 'cascade' }),
+    sortOrder: integer('sort_order').notNull().default(0),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.certificateId, table.courseId] }),
+    certificateIdIdx: index('academy_certificate_courses_certificate_id_idx').on(table.certificateId),
+    courseIdIdx: index('academy_certificate_courses_course_id_idx').on(table.courseId),
+  }),
+);
+
+export const academyUnits = pgTable(
+  'academy_units',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    courseId: uuid('course_id').notNull().references(() => academyCourses.id, { onDelete: 'cascade' }),
+    sortOrder: integer('sort_order').notNull().default(0),
+    coverImage: text('cover_image').notNull().default(''),
+    coverMode: text('cover_mode').notNull().default(''),
+    coverValue: text('cover_value').notNull().default(''),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    courseSortIdx: index('academy_units_course_sort_idx').on(table.courseId, table.sortOrder),
+  }),
+);
+
+export const academyUnitTranslations = pgTable(
+  'academy_units_i18n',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    unitId: uuid('unit_id').notNull().references(() => academyUnits.id, { onDelete: 'cascade' }),
+    locale: varchar('locale', { length: 16 }).notNull(),
+    title: varchar('title', { length: 255 }).notNull().default(''),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    unitLocaleUnique: uniqueIndex('academy_units_i18n_unit_locale_unique').on(table.unitId, table.locale),
+    unitIdIdx: index('academy_units_i18n_unit_id_idx').on(table.unitId),
+  }),
+);
+
+export const academyLessons = pgTable(
+  'academy_lessons',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    unitId: uuid('unit_id').notNull().references(() => academyUnits.id, { onDelete: 'cascade' }),
+    sortOrder: integer('sort_order').notNull().default(0),
+    videoUrl: text('video_url').notNull().default(''),
+    durationSeconds: integer('duration_seconds').notNull().default(0),
+    materials: jsonb('materials').$type<AcademyLessonMaterial[]>().notNull().default([]),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    unitSortIdx: index('academy_lessons_unit_sort_idx').on(table.unitId, table.sortOrder),
+  }),
+);
+
+export const academyLessonTranslations = pgTable(
+  'academy_lessons_i18n',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    lessonId: uuid('lesson_id').notNull().references(() => academyLessons.id, { onDelete: 'cascade' }),
+    locale: varchar('locale', { length: 16 }).notNull(),
+    title: varchar('title', { length: 255 }).notNull().default(''),
+    description: text('description').notNull().default(''),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    lessonLocaleUnique: uniqueIndex('academy_lessons_i18n_lesson_locale_unique').on(table.lessonId, table.locale),
+    lessonIdIdx: index('academy_lessons_i18n_lesson_id_idx').on(table.lessonId),
   }),
 );

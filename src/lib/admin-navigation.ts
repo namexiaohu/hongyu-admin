@@ -22,7 +22,9 @@ export const adminNavItems: AdminNavItem[] = [
     key: 'order-management',
     title: '订单管理',
     children: [
+      { key: '/admin/orders', title: '订单管理', href: '/admin/orders' },
       { key: '/admin/inquiries', title: '询盘管理', href: '/admin/inquiries' },
+      { key: '/admin/customers', title: '客户管理', href: '/admin/customers' },
     ],
   },
   {
@@ -46,6 +48,16 @@ export const adminNavItems: AdminNavItem[] = [
     children: [
       { key: '/admin/editorial/boards', title: '内容看板', href: '/admin/editorial/boards' },
       { key: '/admin/editorial', title: '博客管理', href: '/admin/editorial' },
+    ],
+  },
+  {
+    key: 'course-management',
+    title: '课程管理',
+    children: [
+      { key: '/admin/academy/certificates', title: '证书管理', href: '/admin/academy/certificates' },
+      { key: '/admin/academy/courses', title: '课程管理', href: '/admin/academy/courses' },
+      { key: '/admin/academy/question-banks', title: '题库管理', href: '/admin/academy/question-banks' },
+      { key: '/admin/academy/exam-records', title: '考试记录', href: '/admin/academy/exam-records' },
     ],
   },
   {

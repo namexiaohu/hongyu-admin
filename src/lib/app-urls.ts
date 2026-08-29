@@ -42,8 +42,31 @@ export function getSiteUrl() {
 /**
  * Primary storefront origin allowed by CORS. Falls back to {@link getSiteUrl}.
  */
+export function getAllowedCorsOrigins(): string[] {
+  const fromEnv = process.env.CORS_ALLOWED_ORIGINS?.split(',')
+    .map((value) => trimUrl(value))
+    .filter((value): value is string => Boolean(value)) ?? [];
+
+  const origins = fromEnv.length ? [...fromEnv] : [getSiteUrl()];
+  const courseSite = trimUrl(process.env.COURSE_SITE_URL)
+    ?? (process.env.NODE_ENV !== 'production' ? 'http://localhost:5001' : null);
+  if (courseSite && !origins.includes(courseSite)) {
+    origins.push(courseSite);
+  }
+  return [...new Set(origins)];
+}
+
+export function resolveCorsAllowOrigin(requestOrigin?: string | null): string {
+  const allowed = getAllowedCorsOrigins();
+  const origin = trimUrl(requestOrigin ?? undefined);
+  if (origin && allowed.includes(origin)) {
+    return origin;
+  }
+  return allowed[0] ?? getSiteUrl();
+}
+
 export function getSiteCorsOrigin() {
-  return trimUrl(process.env.CORS_ALLOWED_ORIGINS?.split(',')[0]) ?? getSiteUrl();
+  return getAllowedCorsOrigins()[0] ?? getSiteUrl();
 }
 
 export function getFrontOAuthCallbackUrl() {

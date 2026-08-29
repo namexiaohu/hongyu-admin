@@ -10157,7 +10157,15 @@ main {
   display: flex;
   align-items: flex-start;
   gap: 10px;
+  flex: 1;
   min-width: 0;
+}
+
+.entity-picker-selected__actions {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 0;
 }
 
 .entity-picker-selected__body {

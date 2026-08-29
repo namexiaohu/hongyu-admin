@@ -548,6 +548,8 @@ async function main() {
   }
 
   await seedBrandNarratives();
+  const { seedAcademy } = await import('../../../scripts/seed-academy');
+  await seedAcademy();
 
   console.log('Seed complete');
   console.log('Admin login:', 'admin@lianchuan.local / Admin123456');

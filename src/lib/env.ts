@@ -32,5 +32,11 @@ process.env.AUTH_URL ??= adminUrl;
 process.env.NEXTAUTH_URL ??= adminUrl;
 
 if (!process.env.CORS_ALLOWED_ORIGINS?.trim()) {
-  process.env.CORS_ALLOWED_ORIGINS = siteUrl;
+  const courseSite = trimUrl(process.env.COURSE_SITE_URL)
+    ?? (process.env.NODE_ENV !== 'production' ? 'http://localhost:5001' : null);
+  const origins = [siteUrl];
+  if (courseSite && courseSite !== siteUrl) {
+    origins.push(courseSite);
+  }
+  process.env.CORS_ALLOWED_ORIGINS = origins.join(',');
 }
