@@ -22,7 +22,6 @@ export const adminNavItems: AdminNavItem[] = [
     key: 'order-management',
     title: '订单管理',
     children: [
-      { key: '/admin/orders', title: '订单管理', href: '/admin/orders' },
       { key: '/admin/inquiries', title: '询盘管理', href: '/admin/inquiries' },
       { key: '/admin/customers', title: '客户管理', href: '/admin/customers' },
     ],

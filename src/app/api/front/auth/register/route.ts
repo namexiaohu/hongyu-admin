@@ -83,6 +83,7 @@ export async function POST(request: NextRequest) {
         companySize: parsed.data.companySize,
         website: parsed.data.website,
         taxId: parsed.data.taxId,
+        documents: parsed.data.documents ?? [],
         termsAccepted: parsed.data.termsAccepted,
         privacyAccepted: parsed.data.privacyAccepted,
       });

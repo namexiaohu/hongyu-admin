@@ -1,12 +1,18 @@
-import { Card, Empty, Typography } from 'antd';
+import { Suspense } from 'react';
 
-export default function AcademyQuestionBanksPage() {
+import { QuestionBankListClient } from '@/components/academy/question-bank-list-client';
+import { getActiveAdminSiteLanguages } from '@/server/admin/languages';
+import { getAdminAcademyQuestionBankList } from '@/server/admin/academy-question-banks';
+
+export default async function AcademyQuestionBanksPage() {
+  const [list, activeLanguages] = await Promise.all([
+    getAdminAcademyQuestionBankList(),
+    getActiveAdminSiteLanguages(),
+  ]);
+
   return (
-    <Card>
-      <Empty description="题库管理功能开发中，敬请期待" />
-      <Typography.Paragraph type="secondary" style={{ marginTop: 16 }}>
-        本期仅提供菜单入口，后续将支持单选、多选、判断、填空等题型管理。
-      </Typography.Paragraph>
-    </Card>
+    <Suspense fallback={null}>
+      <QuestionBankListClient initialList={list} activeLanguages={activeLanguages} />
+    </Suspense>
   );
 }

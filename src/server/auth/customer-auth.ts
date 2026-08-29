@@ -198,6 +198,7 @@ export type RegisterEmailAccountInput = {
   companySize?: string | null;
   website?: string | null;
   taxId?: string | null;
+  documents?: RegistrationDocumentInput[];
   termsAccepted?: boolean;
   privacyAccepted?: boolean;
 };
@@ -206,12 +207,21 @@ export async function registerEmailAccount(input: RegisterEmailAccountInput): Pr
   const normalizedEmail = normalizeEmail(input.email);
   const { firstName, lastName } = splitName(input);
   const existing = await getAuthUserByEmail(normalizedEmail);
+  const documents = input.documents ?? [];
 
   if (existing) {
     return {
       ok: false,
       code: 'EMAIL_EXISTS',
       message: 'This email is already registered. Sign in to continue.',
+    };
+  }
+
+  if (documents.length > 0 && !validateRegistrationDocuments(documents)) {
+    return {
+      ok: false,
+      code: 'INVALID_STATE',
+      message: 'One or more verification documents are invalid.',
     };
   }
 
@@ -231,6 +241,7 @@ export async function registerEmailAccount(input: RegisterEmailAccountInput): Pr
       website: input.website?.trim() || null,
       taxId: input.taxId?.trim() || null,
       companySize: input.companySize?.trim() || null,
+      verificationDocuments: normalizeRegistrationDocuments(documents),
       role: 'customer',
       status: 'active',
     })

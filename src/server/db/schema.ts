@@ -103,6 +103,7 @@ import type { ProductCoverageBoard } from '@/lib/product-boards';
 import type { SurgeonMetric } from '@/lib/surgeon-content';
 import type { AcademyStat } from '@/lib/academy-content-shared';
 import type { AcademyLessonMaterial } from '@/lib/academy-lesson-content';
+import type { AcademyQuestionContent } from '@/lib/academy-question-content';
 import {
   defaultEditorialAutomationConfig,
   type EditorialAiTemplate,
@@ -149,6 +150,7 @@ export const couponScopeEnum = pgEnum('coupon_scope', ['all', 'category', 'brand
 export const couponDiscountTypeEnum = pgEnum('coupon_discount_type', ['direct_amount', 'percent', 'fixed_amount', 'special_price']);
 export const couponGrantSourceEnum = pgEnum('coupon_grant_source', ['admin_send', 'registration', 'self_claim']);
 export const couponDistributionTargetModeEnum = pgEnum('coupon_distribution_target_mode', ['all_customers', 'selected_customers']);
+export const academyQuestionTypeEnum = pgEnum('academy_question_type', ['single_choice', 'multiple_choice', 'true_false', 'fill_blank']);
 
 export const users = pgTable(
   'users',
@@ -2072,5 +2074,146 @@ export const academyLessonTranslations = pgTable(
   (table) => ({
     lessonLocaleUnique: uniqueIndex('academy_lessons_i18n_lesson_locale_unique').on(table.lessonId, table.locale),
     lessonIdIdx: index('academy_lessons_i18n_lesson_id_idx').on(table.lessonId),
+  }),
+);
+
+export const academyLessonCompletions = pgTable(
+  'academy_lesson_completions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    lessonId: uuid('lesson_id').notNull().references(() => academyLessons.id, { onDelete: 'cascade' }),
+    completedAt: timestamp('completed_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userLessonUnique: uniqueIndex('academy_lesson_completions_user_lesson_unique').on(table.userId, table.lessonId),
+    userIdIdx: index('academy_lesson_completions_user_id_idx').on(table.userId),
+    lessonIdIdx: index('academy_lesson_completions_lesson_id_idx').on(table.lessonId),
+  }),
+);
+
+export const academyQuestionBanks = pgTable(
+  'academy_question_banks',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    timeLimitMinutes: integer('time_limit_minutes'),
+    maxRetakes: integer('max_retakes'),
+    passScorePercent: integer('pass_score_percent').notNull().default(60),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+);
+
+export const academyQuestionBankTranslations = pgTable(
+  'academy_question_banks_i18n',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    questionBankId: uuid('question_bank_id').notNull().references(() => academyQuestionBanks.id, { onDelete: 'cascade' }),
+    locale: varchar('locale', { length: 16 }).notNull(),
+    title: varchar('title', { length: 255 }).notNull().default(''),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    bankLocaleUnique: uniqueIndex('academy_question_banks_i18n_bank_locale_unique').on(table.questionBankId, table.locale),
+    bankIdIdx: index('academy_question_banks_i18n_bank_id_idx').on(table.questionBankId),
+  }),
+);
+
+export const academyQuestions = pgTable(
+  'academy_questions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    questionBankId: uuid('question_bank_id').notNull().references(() => academyQuestionBanks.id, { onDelete: 'cascade' }),
+    sortOrder: integer('sort_order').notNull().default(0),
+    questionType: academyQuestionTypeEnum('question_type').notNull(),
+    score: integer('score').notNull().default(1),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    bankSortIdx: index('academy_questions_bank_sort_idx').on(table.questionBankId, table.sortOrder),
+  }),
+);
+
+export const academyQuestionTranslations = pgTable(
+  'academy_questions_i18n',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    questionId: uuid('question_id').notNull().references(() => academyQuestions.id, { onDelete: 'cascade' }),
+    locale: varchar('locale', { length: 16 }).notNull(),
+    content: jsonb('content').$type<AcademyQuestionContent>().notNull().default({} as AcademyQuestionContent),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    questionLocaleUnique: uniqueIndex('academy_questions_i18n_question_locale_unique').on(table.questionId, table.locale),
+    questionIdIdx: index('academy_questions_i18n_question_id_idx').on(table.questionId),
+  }),
+);
+
+export const academyCourseQuestionBanks = pgTable(
+  'academy_course_question_banks',
+  {
+    courseId: uuid('course_id').notNull().references(() => academyCourses.id, { onDelete: 'cascade' }),
+    questionBankId: uuid('question_bank_id').notNull().references(() => academyQuestionBanks.id, { onDelete: 'cascade' }),
+    sortOrder: integer('sort_order').notNull().default(0),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.courseId, table.questionBankId] }),
+    courseIdIdx: index('academy_course_question_banks_course_id_idx').on(table.courseId),
+    questionBankIdIdx: index('academy_course_question_banks_bank_id_idx').on(table.questionBankId),
+  }),
+);
+
+export const academyExamAttempts = pgTable(
+  'academy_exam_attempts',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    courseId: uuid('course_id').notNull().references(() => academyCourses.id, { onDelete: 'cascade' }),
+    questionBankId: uuid('question_bank_id').notNull().references(() => academyQuestionBanks.id, { onDelete: 'cascade' }),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+    submittedAt: timestamp('submitted_at', { withTimezone: true }),
+    score: integer('score'),
+    totalScore: integer('total_score'),
+    passed: boolean('passed'),
+    answers: jsonb('answers').$type<Record<string, number | number[] | boolean | string>>().notNull().default({}),
+    certificateMailStatus: varchar('certificate_mail_status', { length: 16 }).notNull().default('unsent'),
+    certificateMailFile: text('certificate_mail_file'),
+    certificateMailUpdatedAt: timestamp('certificate_mail_updated_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userCourseIdx: index('academy_exam_attempts_user_course_idx').on(table.userId, table.courseId),
+    userIdIdx: index('academy_exam_attempts_user_id_idx').on(table.userId),
+  }),
+);
+
+export const academyUserCertificates = pgTable(
+  'academy_user_certificates',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    courseId: uuid('course_id').notNull().references(() => academyCourses.id, { onDelete: 'cascade' }),
+    attemptId: uuid('attempt_id')
+      .notNull()
+      .references(() => academyExamAttempts.id, { onDelete: 'cascade' }),
+    certificateNumber: varchar('certificate_number', { length: 64 }).notNull(),
+    recipientName: varchar('recipient_name', { length: 255 }).notNull().default(''),
+    title: varchar('title', { length: 255 }).notNull().default(''),
+    issuerName: varchar('issuer_name', { length: 255 }).notNull().default('上海竑宇医疗'),
+    issuedAt: timestamp('issued_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    attemptIdUnique: uniqueIndex('academy_user_certificates_attempt_id_unique').on(table.attemptId),
+    certificateNumberUnique: uniqueIndex('academy_user_certificates_number_unique').on(table.certificateNumber),
+    userIdIdx: index('academy_user_certificates_user_id_idx').on(table.userId),
+    courseIdIdx: index('academy_user_certificates_course_id_idx').on(table.courseId),
   }),
 );

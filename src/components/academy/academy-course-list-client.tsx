@@ -1,10 +1,11 @@
 'use client';
 
-import { EyeInvisibleOutlined, PlusOutlined, ShoppingOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import { EyeInvisibleOutlined, FileTextOutlined, PlusOutlined, ShoppingOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import { Button, Card, Input, Space, Table, Tag, message } from 'antd';
 import { useMemo, useState, useTransition } from 'react';
 
 import { AcademyEditorModal } from '@/components/academy/academy-editor-modal';
+import { ExamManagerModal } from '@/components/academy/exam-manager-modal';
 import { UnitManagerModal } from '@/components/academy/unit-manager-modal';
 import {
   ADMIN_TABLE_ENTITY_ACTIONS_WIDTH,
@@ -50,6 +51,7 @@ export function AcademyCourseListClient({ initialList, activeLanguages }: Props)
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingDetail, setEditingDetail] = useState<AdminAcademyCourseDetail | null>(null);
   const [unitManagerCourse, setUnitManagerCourse] = useState<AdminAcademyCourseListItem | null>(null);
+  const [examManagerCourse, setExamManagerCourse] = useState<AdminAcademyCourseListItem | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -113,8 +115,8 @@ export function AcademyCourseListClient({ initialList, activeLanguages }: Props)
       },
     },
     {
-      title: '课时单元管理',
-      width: 140,
+      title: '课时单元',
+      width: 110,
       onHeaderCell: adminTableNowrapHeader,
       render: (_: unknown, record: AdminAcademyCourseListItem) => (
         <Button
@@ -122,7 +124,21 @@ export function AcademyCourseListClient({ initialList, activeLanguages }: Props)
           icon={<UnorderedListOutlined />}
           onClick={() => setUnitManagerCourse(record)}
         >
-          课时单元管理
+          管理
+        </Button>
+      ),
+    },
+    {
+      title: '考试',
+      width: 90,
+      onHeaderCell: adminTableNowrapHeader,
+      render: (_: unknown, record: AdminAcademyCourseListItem) => (
+        <Button
+          type="link"
+          icon={<FileTextOutlined />}
+          onClick={() => setExamManagerCourse(record)}
+        >
+          管理
         </Button>
       ),
     },
@@ -199,6 +215,15 @@ export function AcademyCourseListClient({ initialList, activeLanguages }: Props)
           courseTitle={unitManagerCourse.title}
           activeLanguages={activeLanguages}
           onClose={() => setUnitManagerCourse(null)}
+        />
+      ) : null}
+      {examManagerCourse ? (
+        <ExamManagerModal
+          open={Boolean(examManagerCourse)}
+          courseId={examManagerCourse.id}
+          courseTitle={examManagerCourse.title}
+          activeLanguages={activeLanguages}
+          onClose={() => setExamManagerCourse(null)}
         />
       ) : null}
     </Space>
