@@ -2094,6 +2094,26 @@ export const academyLessonCompletions = pgTable(
   }),
 );
 
+export const academyLessonNotes = pgTable(
+  'academy_lesson_notes',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    lessonId: uuid('lesson_id').notNull().references(() => academyLessons.id, { onDelete: 'cascade' }),
+    content: text('content').notNull(),
+    videoPositionSeconds: integer('video_position_seconds').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userLessonCreatedIdx: index('academy_lesson_notes_user_lesson_created_idx').on(
+      table.userId,
+      table.lessonId,
+      table.createdAt,
+    ),
+  }),
+);
+
 export const academyQuestionBanks = pgTable(
   'academy_question_banks',
   {
