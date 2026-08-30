@@ -8,6 +8,7 @@ import { gradeQuestion } from '@/lib/academy-question-content';
 import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
+import { getCertificateCourseMetaByIds } from '@/server/storefront/academy-certificate-courses';
 import { db } from '@/server/db';
 import {
   academyCourseTranslations,
@@ -58,6 +59,7 @@ export async function getAdminExamRecordList(filters?: {
       id: academyExamAttempts.id,
       userId: academyExamAttempts.userId,
       courseId: academyExamAttempts.courseId,
+      certificateCourseId: academyExamAttempts.certificateCourseId,
       score: academyExamAttempts.score,
       totalScore: academyExamAttempts.totalScore,
       passed: academyExamAttempts.passed,
@@ -93,6 +95,11 @@ export async function getAdminExamRecordList(filters?: {
     .where(inArray(academyUserCertificates.attemptId, attemptIds));
   const certAttemptIds = new Set(certRows.map((r) => r.attemptId));
 
+  const certMeta = await getCertificateCourseMetaByIds(
+    rows.map((r) => r.certificateCourseId),
+    defaultLocale,
+  );
+
   const items: AdminExamRecordListItem[] = rows.map((row) => {
     const score = row.score ?? 0;
     const totalScore = row.totalScore ?? 0;
@@ -103,6 +110,7 @@ export async function getAdminExamRecordList(filters?: {
       userEmail: row.email,
       courseId: row.courseId,
       courseTitle: titleByCourse.get(row.courseId) ?? '',
+      certificateTitle: certMeta.get(row.certificateCourseId)?.certificateTitle ?? '',
       score,
       totalScore,
       scorePercent: totalScore > 0 ? Math.round((score / totalScore) * 100) : 0,
@@ -124,6 +132,7 @@ export async function getAdminExamRecordDetail(attemptId: string) {
       id: academyExamAttempts.id,
       userId: academyExamAttempts.userId,
       courseId: academyExamAttempts.courseId,
+      certificateCourseId: academyExamAttempts.certificateCourseId,
       questionBankId: academyExamAttempts.questionBankId,
       score: academyExamAttempts.score,
       totalScore: academyExamAttempts.totalScore,
@@ -152,6 +161,8 @@ export async function getAdminExamRecordDetail(attemptId: string) {
     .from(academyCourseTranslations)
     .where(eq(academyCourseTranslations.courseId, row.courseId));
   const courseTitle = pickTranslationForDisplay(courseTranslations, defaultLocale)?.title?.trim() ?? '';
+  const certMeta = (await getCertificateCourseMetaByIds([row.certificateCourseId], defaultLocale))
+    .get(row.certificateCourseId);
 
   const bankTranslations = await db
     .select()
@@ -218,6 +229,7 @@ export async function getAdminExamRecordDetail(attemptId: string) {
     courseId: row.courseId,
     courseSlug: row.courseSlug,
     courseTitle,
+    certificateTitle: certMeta?.certificateTitle ?? '',
     examTitle,
     score,
     totalScore,

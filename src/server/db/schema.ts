@@ -2258,6 +2258,9 @@ export const academyExamAttempts = pgTable(
     id: uuid('id').defaultRandom().primaryKey(),
     userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
     courseId: uuid('course_id').notNull().references(() => academyCourses.id, { onDelete: 'cascade' }),
+    certificateCourseId: uuid('certificate_course_id')
+      .notNull()
+      .references(() => academyCertificateCourses.id, { onDelete: 'cascade' }),
     questionBankId: uuid('question_bank_id').notNull().references(() => academyQuestionBanks.id, { onDelete: 'cascade' }),
     startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
     submittedAt: timestamp('submitted_at', { withTimezone: true }),
@@ -2273,6 +2276,7 @@ export const academyExamAttempts = pgTable(
   },
   (table) => ({
     userCourseIdx: index('academy_exam_attempts_user_course_idx').on(table.userId, table.courseId),
+    userLinkIdx: index('academy_exam_attempts_user_link_idx').on(table.userId, table.certificateCourseId),
     userIdIdx: index('academy_exam_attempts_user_id_idx').on(table.userId),
   }),
 );
@@ -2283,6 +2287,9 @@ export const academyUserCertificates = pgTable(
     id: uuid('id').defaultRandom().primaryKey(),
     userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
     courseId: uuid('course_id').notNull().references(() => academyCourses.id, { onDelete: 'cascade' }),
+    certificateCourseId: uuid('certificate_course_id')
+      .notNull()
+      .references(() => academyCertificateCourses.id, { onDelete: 'cascade' }),
     attemptId: uuid('attempt_id')
       .notNull()
       .references(() => academyExamAttempts.id, { onDelete: 'cascade' }),
@@ -2299,5 +2306,6 @@ export const academyUserCertificates = pgTable(
     certificateNumberUnique: uniqueIndex('academy_user_certificates_number_unique').on(table.certificateNumber),
     userIdIdx: index('academy_user_certificates_user_id_idx').on(table.userId),
     courseIdIdx: index('academy_user_certificates_course_id_idx').on(table.courseId),
+    linkIdx: index('academy_user_certificates_link_idx').on(table.certificateCourseId),
   }),
 );

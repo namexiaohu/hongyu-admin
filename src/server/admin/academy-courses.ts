@@ -6,7 +6,6 @@ import {
   normalizeAcademyListingStatus,
   normalizeAcademyStats,
   normalizeStringTags,
-  resolveAcademyDisplayTitle,
 } from '@/lib/academy-content-shared';
 import {
   type AdminAcademyCourseDetail,
@@ -116,7 +115,7 @@ function mapDetail(
 ): AdminAcademyCourseDetail {
   const display = pickTranslationForDisplay(translations, defaultLocale);
   return {
-    ...mapListItem(row, resolveAcademyDisplayTitle(display, row.slug), translations.length),
+    ...mapListItem(row, display?.title?.trim() ?? '', translations.length),
     translations: translations.map(mapTranslation),
   };
 }
@@ -137,7 +136,7 @@ export async function getAdminAcademyCourseList() {
   const items = rows.map((row) => {
     const rowTranslations = byId.get(row.id) ?? [];
     const display = pickTranslationForDisplay(rowTranslations, defaultLocale);
-    return mapListItem(row, resolveAcademyDisplayTitle(display, row.slug), rowTranslations.length);
+    return mapListItem(row, display?.title?.trim() ?? '', rowTranslations.length);
   });
   return { items, total: items.length };
 }
@@ -174,14 +173,14 @@ export async function getAdminAcademyCoursePickerItems(ids: string[]) {
     return {
       id: row.id,
       slug: row.slug,
-      title: resolveAcademyDisplayTitle(display, row.slug),
+      title: display?.title?.trim() ?? '',
       coverPreviewUrl: cover.previewUrl,
       status: normalizeAcademyListingStatus(row.status),
     };
   });
 }
 
-function assertSlugAvailable(slug: AcademyCourseSlug, excludeId?: string) {
+function assertSlugAvailable(slug: AcademyCourseSlug) {
   if (reservedAcademyCourseSlugs.includes(slug as (typeof reservedAcademyCourseSlugs)[number])) {
     throw new Error('SLUG_RESERVED');
   }

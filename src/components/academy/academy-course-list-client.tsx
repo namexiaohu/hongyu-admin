@@ -20,6 +20,7 @@ import {
   type AcademyStatus,
   academyStatusColors,
   academyStatusLabels,
+  normalizeAcademyListingStatus,
 } from '@/lib/academy-content-shared';
 import type { AdminAcademyCourseDetail, AdminAcademyCourseListItem } from '@/lib/academy-course-content';
 import { confirmAcademyListingChange } from '@/lib/confirm-academy-listing';
@@ -39,10 +40,6 @@ async function fetchDetail(id: string): Promise<AdminAcademyCourseDetail> {
 function toListItem(detail: AdminAcademyCourseDetail): AdminAcademyCourseListItem {
   const { translations: _translations, ...item } = detail;
   return item;
-}
-
-function listingStatus(status: string): AcademyStatus {
-  return status === 'published' ? 'published' : 'draft';
 }
 
 export function AcademyCourseListClient({ initialList, activeLanguages }: Props) {
@@ -110,7 +107,7 @@ export function AcademyCourseListClient({ initialList, activeLanguages }: Props)
       dataIndex: 'status',
       width: 90,
       render: (value: string) => {
-        const status = listingStatus(value);
+        const status = normalizeAcademyListingStatus(value);
         return <Tag color={academyStatusColors[status]}>{academyStatusLabels[status]}</Tag>;
       },
     },
@@ -151,7 +148,7 @@ export function AcademyCourseListClient({ initialList, activeLanguages }: Props)
         <AdminEntityRowActions
           loading={pendingId === record.id}
           entityName="课程"
-          isActive={listingStatus(record.status) === 'published'}
+          isActive={normalizeAcademyListingStatus(record.status) === 'published'}
           toggleUsePopconfirm={false}
           onEdit={() => {
             startTransition(async () => {
@@ -165,7 +162,7 @@ export function AcademyCourseListClient({ initialList, activeLanguages }: Props)
             });
           }}
           onToggleActive={() => {
-            const nextStatus: AcademyStatus = listingStatus(record.status) === 'published' ? 'draft' : 'published';
+            const nextStatus: AcademyStatus = normalizeAcademyListingStatus(record.status) === 'published' ? 'draft' : 'published';
             confirmAcademyListingChange('课程', nextStatus, () => patchStatus(record, nextStatus));
           }}
           onDelete={() => deleteCourse(record)}

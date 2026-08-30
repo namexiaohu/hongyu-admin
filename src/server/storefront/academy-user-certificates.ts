@@ -19,6 +19,7 @@ import {
   academyUserCertificates,
   users,
 } from '@/server/db/schema';
+import { getCertificateCourseMetaByIds } from '@/server/storefront/academy-certificate-courses';
 
 function resolveCover(row: { coverMode: string; coverValue: string; coverImage: string }) {
   return resolveStorefrontCoverUrl({
@@ -82,10 +83,11 @@ export async function issueUserCertificateForAttempt(attemptId: string, locale?:
         .values({
           userId: attempt.userId,
           courseId: attempt.courseId,
+          certificateCourseId: attempt.certificateCourseId,
           attemptId: attempt.id,
           certificateNumber,
           recipientName,
-          title: title || 'Course Certificate',
+          title,
           issuerName: ACADEMY_CERTIFICATE_ISSUER,
           issuedAt,
         })
@@ -111,8 +113,8 @@ export async function getCertificateNumberForAttempt(attemptId: string) {
   return row?.certificateNumber ?? null;
 }
 
-/** Latest certificate the user earned for a course, if any. */
-export async function getUserCertificateForCourse(userId: string, courseId: string) {
+/** Latest certificate the user earned for a certificate-course link, if any. */
+export async function getUserCertificateForCertificateCourse(userId: string, certificateCourseId: string) {
   const [row] = await db
     .select({
       certificateNumber: academyUserCertificates.certificateNumber,
@@ -122,7 +124,7 @@ export async function getUserCertificateForCourse(userId: string, courseId: stri
     .where(
       and(
         eq(academyUserCertificates.userId, userId),
-        eq(academyUserCertificates.courseId, courseId),
+        eq(academyUserCertificates.certificateCourseId, certificateCourseId),
       ),
     )
     .orderBy(desc(academyUserCertificates.issuedAt))
@@ -142,6 +144,7 @@ export async function listMyExamRecords(userId: string, locale?: string) {
     .select({
       attemptId: academyExamAttempts.id,
       courseId: academyExamAttempts.courseId,
+      certificateCourseId: academyExamAttempts.certificateCourseId,
       questionBankId: academyExamAttempts.questionBankId,
       score: academyExamAttempts.score,
       totalScore: academyExamAttempts.totalScore,
@@ -182,15 +185,24 @@ export async function listMyExamRecords(userId: string, locale?: string) {
     examTitleByBankId.set(bankId, display?.title?.trim() ?? '');
   }
 
+  const certMeta = await getCertificateCourseMetaByIds(
+    rows.map((row) => row.certificateCourseId),
+    defaultLocale,
+  );
+
   return {
     items: rows.map((row) => {
       const score = row.score ?? 0;
       const totalScore = row.totalScore ?? 0;
+      const meta = certMeta.get(row.certificateCourseId);
       return {
         attemptId: row.attemptId,
         courseSlug: row.courseSlug,
         courseTitle: courseTitleById.get(row.courseId) ?? '',
         examTitle: examTitleByBankId.get(row.questionBankId) ?? '',
+        certificateCourseId: row.certificateCourseId,
+        certificateTitle: meta?.certificateTitle ?? '',
+        certificateSlug: meta?.certificateSlug ?? '',
         score,
         totalScore,
         scorePercent: totalScore > 0 ? Math.round((score / totalScore) * 100) : 0,

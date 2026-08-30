@@ -76,9 +76,9 @@ export async function getCertificateCourseContext(
     certificateId: link.certificateId,
     courseId: link.courseId,
     certificateSlug: link.certificateSlug,
-    certificateTitle: certDisplay?.title?.trim() || link.certificateSlug,
+    certificateTitle: certDisplay?.title?.trim() ?? '',
     courseSlug: link.courseSlug,
-    courseTitle: courseDisplay?.title?.trim() || link.courseSlug,
+    courseTitle: courseDisplay?.title?.trim() ?? '',
     sortOrder: link.sortOrder,
   };
 }
@@ -121,9 +121,60 @@ export async function listPublishedLinksForCourse(courseId: string, locale?: str
     return {
       certificateCourseId: row.id,
       certificateSlug: row.certificateSlug,
-      certificateTitle: display?.title?.trim() || row.certificateSlug,
+      certificateTitle: display?.title?.trim() ?? '',
       href: `/certificates/${row.certificateSlug}`,
       sortOrder: row.sortOrder,
     };
   });
 }
+
+export type CertificateCourseMeta = {
+  certificateCourseId: string;
+  certificateSlug: string;
+  certificateTitle: string;
+};
+
+export async function getCertificateCourseMetaByIds(
+  certificateCourseIds: string[],
+  locale?: string,
+): Promise<Map<string, CertificateCourseMeta>> {
+  const ids = [...new Set(certificateCourseIds.filter(Boolean))];
+  const result = new Map<string, CertificateCourseMeta>();
+  if (!ids.length) return result;
+
+  const resolvedLocale = locale?.trim() || await getDefaultSiteLanguageCode();
+  const rows = await db
+    .select({
+      id: academyCertificateCourses.id,
+      certificateId: academyCertificateCourses.certificateId,
+      certificateSlug: academyCertificates.slug,
+    })
+    .from(academyCertificateCourses)
+    .innerJoin(academyCertificates, eq(academyCertificates.id, academyCertificateCourses.certificateId))
+    .where(inArray(academyCertificateCourses.id, ids));
+
+  if (!rows.length) return result;
+
+  const certIds = [...new Set(rows.map((row) => row.certificateId))];
+  const translations = await db
+    .select()
+    .from(academyCertificateTranslations)
+    .where(inArray(academyCertificateTranslations.certificateId, certIds));
+  const byCert = new Map<string, typeof translations>();
+  for (const row of translations) {
+    const list = byCert.get(row.certificateId) ?? [];
+    list.push(row);
+    byCert.set(row.certificateId, list);
+  }
+
+  for (const row of rows) {
+    const display = pickTranslationForDisplay(byCert.get(row.certificateId) ?? [], resolvedLocale);
+    result.set(row.id, {
+      certificateCourseId: row.id,
+      certificateSlug: row.certificateSlug,
+      certificateTitle: display?.title?.trim() ?? '',
+    });
+  }
+  return result;
+}
+

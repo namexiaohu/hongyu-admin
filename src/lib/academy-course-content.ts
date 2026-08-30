@@ -2,9 +2,7 @@ import { z } from 'zod';
 
 import {
   academySharedFieldsSchema,
-  academyStatuses,
   academyTranslationFieldsSchema,
-  academyTranslationPatchSchema,
   type AcademyStat,
   type AcademyStatus,
 } from '@/lib/academy-content-shared';
@@ -78,5 +76,3 @@ export const adminAcademyCourseCreateSchema = academySharedFieldsSchema.extend({
 });
 
 export const adminAcademyCoursePatchSchema = academySharedFieldsSchema.partial();
-
-export { academyStatuses, academyTranslationPatchSchema };

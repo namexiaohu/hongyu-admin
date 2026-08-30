@@ -13,7 +13,7 @@ import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
 import { listCompletedLessonIdsForCourse } from '@/server/storefront/academy-progress';
 import {
   getCertificateNumberForAttempt,
-  getUserCertificateForCourse,
+  getUserCertificateForCertificateCourse,
   issueUserCertificateForAttempt,
 } from '@/server/storefront/academy-user-certificates';
 import { db } from '@/server/db';
@@ -28,15 +28,10 @@ import {
   academyQuestionTranslations,
   academyUnits,
 } from '@/server/db/schema';
-
-async function getCourseBySlug(slug: string) {
-  const [course] = await db
-    .select({ id: academyCourses.id, slug: academyCourses.slug })
-    .from(academyCourses)
-    .where(eq(academyCourses.slug, slug))
-    .limit(1);
-  return course ?? null;
-}
+import {
+  getCertificateCourseContext,
+  getCertificateCourseMetaByIds,
+} from '@/server/storefront/academy-certificate-courses';
 
 async function getAllLessonIdsForCourse(courseId: string) {
   const unitRows = await db
@@ -62,14 +57,14 @@ async function isCourseComplete(userId: string, courseSlug: string) {
   return { complete: allLessonIds.every((id) => completed.has(id)), courseId };
 }
 
-async function countSubmittedAttempts(userId: string, courseId: string) {
+async function countSubmittedAttempts(userId: string, certificateCourseId: string) {
   const [{ count = 0 } = { count: 0 }] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(academyExamAttempts)
     .where(
       and(
         eq(academyExamAttempts.userId, userId),
-        eq(academyExamAttempts.courseId, courseId),
+        eq(academyExamAttempts.certificateCourseId, certificateCourseId),
         isNotNull(academyExamAttempts.submittedAt),
       ),
     );
@@ -87,14 +82,21 @@ async function getLinkedBanks(courseId: string) {
     .orderBy(asc(academyCourseQuestionBanks.sortOrder));
 }
 
-export async function getExamEligibility(userId: string, courseSlug: string, locale?: string) {
-  const course = await getCourseBySlug(courseSlug);
-  if (!course) return { ok: false as const, code: 'NOT_FOUND' as const };
+export async function getExamEligibility(
+  userId: string,
+  courseSlug: string,
+  certificateCourseId: string,
+  locale?: string,
+) {
+  const context = await getCertificateCourseContext(certificateCourseId, locale);
+  if (!context || context.courseSlug !== courseSlug) {
+    return { ok: false as const, code: 'NOT_FOUND' as const };
+  }
 
   const { complete, courseId } = await isCourseComplete(userId, courseSlug);
   const banks = courseId ? await getLinkedBanks(courseId) : [];
 
-  const submittedCount = courseId ? await countSubmittedAttempts(userId, courseId) : 0;
+  const submittedCount = await countSubmittedAttempts(userId, certificateCourseId);
 
   let remainingRetakes: number | null = null;
   let canRetake = banks.length > 0;
@@ -121,13 +123,14 @@ export async function getExamEligibility(userId: string, courseSlug: string, loc
     examTitle = display?.title?.trim() ?? '';
   }
 
-  const certificate = await getUserCertificateForCourse(userId, course.id);
+  const certificate = await getUserCertificateForCertificateCourse(userId, certificateCourseId);
   const hasCertificate = Boolean(certificate?.certificateNumber);
 
   return {
     ok: true as const,
     courseSlug,
-    courseId: course.id,
+    courseId: context.courseId,
+    certificateCourseId: context.certificateCourseId,
     isCourseComplete: complete,
     hasQuestionBanks: banks.length > 0,
     submittedAttempts: submittedCount,
@@ -175,8 +178,13 @@ async function loadQuestionsForBank(questionBankId: string, locale: string, incl
   });
 }
 
-export async function startExamAttempt(userId: string, courseSlug: string, locale?: string) {
-  const eligibility = await getExamEligibility(userId, courseSlug, locale);
+export async function startExamAttempt(
+  userId: string,
+  courseSlug: string,
+  certificateCourseId: string,
+  locale?: string,
+) {
+  const eligibility = await getExamEligibility(userId, courseSlug, certificateCourseId, locale);
   if (!eligibility.ok) return eligibility;
   if (!eligibility.isCourseComplete) return { ok: false as const, code: 'COURSE_INCOMPLETE' as const };
   if (!eligibility.hasQuestionBanks) return { ok: false as const, code: 'NO_EXAM' as const };
@@ -207,6 +215,7 @@ export async function startExamAttempt(userId: string, courseSlug: string, local
     .values({
       userId,
       courseId: eligibility.courseId,
+      certificateCourseId: eligibility.certificateCourseId,
       questionBankId: picked.questionBankId,
       startedAt: new Date(),
     })
@@ -218,8 +227,9 @@ export async function startExamAttempt(userId: string, courseSlug: string, local
     ok: true as const,
     attemptId: attempt.id,
     courseSlug,
+    certificateCourseId: eligibility.certificateCourseId,
     questionBankId: picked.questionBankId,
-    title: display?.title?.trim() || 'Exam',
+    title: display?.title?.trim() ?? '',
     passScorePercent: bank.passScorePercent,
     timeLimitMinutes: bank.timeLimitMinutes,
     totalScore,
@@ -306,7 +316,12 @@ export async function submitExamAttempt(
   };
 }
 
-export async function getExamAttemptResult(userId: string, attemptId: string, locale?: string) {
+export async function getExamAttemptResult(
+  userId: string,
+  attemptId: string,
+  certificateCourseId: string,
+  locale?: string,
+) {
   const [attempt] = await db
     .select()
     .from(academyExamAttempts)
@@ -314,6 +329,9 @@ export async function getExamAttemptResult(userId: string, attemptId: string, lo
     .limit(1);
 
   if (!attempt || !attempt.submittedAt) return { ok: false as const, code: 'NOT_FOUND' as const };
+  if (attempt.certificateCourseId !== certificateCourseId) {
+    return { ok: false as const, code: 'NOT_FOUND' as const };
+  }
 
   const [course] = await db
     .select({ slug: academyCourses.slug })
@@ -354,7 +372,7 @@ export async function getExamAttemptResult(userId: string, attemptId: string, lo
     };
   });
 
-  const eligibility = await getExamEligibility(userId, course.slug, defaultLocale);
+  const eligibility = await getExamEligibility(userId, course.slug, certificateCourseId, defaultLocale);
   const certificateNumber = attempt.passed
     ? await getCertificateNumberForAttempt(attempt.id)
     : null;
@@ -362,12 +380,17 @@ export async function getExamAttemptResult(userId: string, attemptId: string, lo
     0,
     Math.round((attempt.submittedAt.getTime() - attempt.startedAt.getTime()) / 1000),
   );
+  const certMeta = (await getCertificateCourseMetaByIds([certificateCourseId], defaultLocale))
+    .get(certificateCourseId);
 
   return {
     ok: true as const,
     attemptId: attempt.id,
     courseSlug: course.slug,
-    title: display?.title?.trim() || 'Exam',
+    certificateCourseId,
+    certificateTitle: certMeta?.certificateTitle ?? '',
+    certificateSlug: certMeta?.certificateSlug ?? '',
+    title: display?.title?.trim() ?? '',
     score: attempt.score ?? 0,
     totalScore: attempt.totalScore ?? 0,
     scorePercent: attempt.totalScore ? Math.round(((attempt.score ?? 0) / attempt.totalScore) * 100) : 0,
@@ -377,8 +400,8 @@ export async function getExamAttemptResult(userId: string, attemptId: string, lo
     totalQuestions: review.length,
     submittedAt: attempt.submittedAt.toISOString(),
     durationSeconds,
-    canRetake: eligibility.canStartExam,
-    remainingRetakes: eligibility.remainingRetakes,
+    canRetake: eligibility.ok ? eligibility.canStartExam : false,
+    remainingRetakes: eligibility.ok ? eligibility.remainingRetakes : null,
     certificateNumber,
     review,
   };

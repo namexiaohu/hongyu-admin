@@ -8,7 +8,7 @@ export type AcademyCoursePickerItem = {
 
 export function formatAcademyCourseSelectedDisplay(item: AcademyCoursePickerItem) {
   return {
-    name: item.title || item.slug,
+    name: item.title,
     meta: item.slug,
   };
 }

@@ -247,7 +247,7 @@ export async function getStorefrontAcademyCertificateBySlug(
     const bucket = unitsByCourse.get(unit.courseId) ?? [];
     bucket.push({
       id: unit.id,
-      title: ut?.title?.trim() || 'Unit',
+      title: ut?.title?.trim() ?? '',
       sortOrder: unit.sortOrder,
     });
     unitsByCourse.set(unit.courseId, bucket);
@@ -262,7 +262,7 @@ export async function getStorefrontAcademyCertificateBySlug(
         certificateCourseId: link.id,
         slug: course.slug,
         href: academyCourseDetailPath(course.slug, link.id),
-        title: ct?.title || course.slug,
+        title: ct?.title?.trim() ?? '',
         summary: ct?.summary || '',
         coverImage: resolveCover(course),
         sortOrder: link.sortOrder,

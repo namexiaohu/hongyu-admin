@@ -34,6 +34,7 @@ export function ExamRecordListClient({ initialList }: Props) {
         item.userName.toLowerCase().includes(kw)
         || item.userEmail.toLowerCase().includes(kw)
         || item.courseTitle.toLowerCase().includes(kw)
+        || item.certificateTitle.toLowerCase().includes(kw)
       );
     });
   }, [initialList.items, keyword, mailStatus, passed]);
@@ -43,7 +44,7 @@ export function ExamRecordListClient({ initialList }: Props) {
       <Space wrap style={{ marginBottom: 16 }}>
         <Input.Search
           allowClear
-          placeholder="姓名 / 邮箱 / 课程"
+          placeholder="姓名 / 邮箱 / 课程 / 证书"
           style={{ width: 260 }}
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
@@ -92,6 +93,7 @@ export function ExamRecordListClient({ initialList }: Props) {
             ),
           },
           { title: '课程', dataIndex: 'courseTitle', onHeaderCell: adminTableNowrapHeader },
+          { title: '证书', dataIndex: 'certificateTitle', onHeaderCell: adminTableNowrapHeader },
           {
             title: '得分',
             onHeaderCell: adminTableNowrapHeader,

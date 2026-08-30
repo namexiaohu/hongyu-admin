@@ -637,7 +637,7 @@ export async function getHomeDashboard(userId: string, locale?: string): Promise
     return {
       slug: row.slug,
       href: `/certificates/${row.slug}`,
-      title: t?.title?.trim() || row.slug,
+      title: t?.title?.trim() ?? '',
       subtitle: t?.subtitle?.trim() || '',
       summary: t?.summary?.trim() || '',
       coverImage: resolveCover(row),

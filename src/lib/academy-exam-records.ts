@@ -5,6 +5,7 @@ export type AdminExamRecordListItem = {
   userEmail: string;
   courseId: string;
   courseTitle: string;
+  certificateTitle: string;
   score: number;
   totalScore: number;
   scorePercent: number;

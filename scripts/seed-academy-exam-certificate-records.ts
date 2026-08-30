@@ -16,6 +16,7 @@ import { gradeQuestion } from '@/lib/academy-question-content';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import { db } from '@/server/db';
 import {
+  academyCertificateCourses,
   academyCourseQuestionBanks,
   academyCourseTranslations,
   academyCourses,
@@ -28,6 +29,17 @@ import {
 } from '@/server/db/schema';
 
 const LOCALE = 'en';
+
+async function firstCertificateCourseId(courseId: string) {
+  const [link] = await db
+    .select({ id: academyCertificateCourses.id })
+    .from(academyCertificateCourses)
+    .where(eq(academyCertificateCourses.courseId, courseId))
+    .orderBy(asc(academyCertificateCourses.sortOrder))
+    .limit(1);
+  return link?.id ?? null;
+}
+
 const SEED_MARKER_PASS = '__seed_pass__';
 const SEED_MARKER_FAIL = '__seed_fail__';
 
@@ -102,7 +114,13 @@ async function loadBankQuestions(questionBankId: string) {
   });
 }
 
-async function ensureCertificate(attemptId: string, userId: string, courseId: string, recipientName: string) {
+async function ensureCertificate(
+  attemptId: string,
+  userId: string,
+  courseId: string,
+  certificateCourseId: string,
+  recipientName: string,
+) {
   const [existing] = await db
     .select({ certificateNumber: academyUserCertificates.certificateNumber })
     .from(academyUserCertificates)
@@ -114,13 +132,14 @@ async function ensureCertificate(attemptId: string, userId: string, courseId: st
     .select()
     .from(academyCourseTranslations)
     .where(eq(academyCourseTranslations.courseId, courseId));
-  const title = pickTranslationForDisplay(translations, LOCALE)?.title?.trim() || 'Course Certificate';
+  const title = pickTranslationForDisplay(translations, LOCALE)?.title?.trim() ?? '';
   const issuedAt = new Date();
   const certificateNumber = generateAcademyCertificateNumber(issuedAt);
 
   await db.insert(academyUserCertificates).values({
     userId,
     courseId,
+    certificateCourseId,
     attemptId,
     certificateNumber,
     recipientName,
@@ -135,6 +154,7 @@ async function upsertAttempt(params: {
   userId: string;
   recipientName: string;
   courseId: string;
+  certificateCourseId: string;
   questionBankId: string;
   passScorePercent: number;
   mode: 'pass' | 'fail';
@@ -196,7 +216,13 @@ async function upsertAttempt(params: {
       `[seed-records] Refreshed ${params.mode} attempt ${already.id} score=${score}/${totalScore} passed=${passed}`,
     );
     if (passed) {
-      const number = await ensureCertificate(already.id, params.userId, params.courseId, params.recipientName);
+      const number = await ensureCertificate(
+        already.id,
+        params.userId,
+        params.courseId,
+        params.certificateCourseId,
+        params.recipientName,
+      );
       console.log(`[seed-records] Certificate ${number}`);
     }
     return already.id;
@@ -209,6 +235,7 @@ async function upsertAttempt(params: {
     .values({
       userId: params.userId,
       courseId: params.courseId,
+      certificateCourseId: params.certificateCourseId,
       questionBankId: params.questionBankId,
       startedAt,
       submittedAt,
@@ -225,7 +252,13 @@ async function upsertAttempt(params: {
   );
 
   if (passed) {
-    const number = await ensureCertificate(attempt.id, params.userId, params.courseId, params.recipientName);
+    const number = await ensureCertificate(
+      attempt.id,
+      params.userId,
+      params.courseId,
+      params.certificateCourseId,
+      params.recipientName,
+    );
     console.log(`[seed-records] Certificate ${number}`);
   }
 
@@ -278,10 +311,17 @@ async function main() {
     .where(eq(academyQuestionBanks.id, failLink.questionBankId))
     .limit(1);
 
+  const passCert = await firstCertificateCourseId(passLink.courseId);
+  const failCert = await firstCertificateCourseId(failLink.courseId);
+  if (!passCert || !failCert) {
+    throw new Error('Course is not linked to a certificate. Attach courses to certificates first.');
+  }
+
   await upsertAttempt({
     userId: user.id,
     recipientName,
     courseId: passLink.courseId,
+    certificateCourseId: passCert,
     questionBankId: passLink.questionBankId,
     passScorePercent: passBank?.passScorePercent ?? 60,
     mode: 'pass',
@@ -291,6 +331,7 @@ async function main() {
     userId: user.id,
     recipientName,
     courseId: failLink.courseId,
+    certificateCourseId: failCert,
     questionBankId: failLink.questionBankId,
     passScorePercent: failBank?.passScorePercent ?? 60,
     mode: 'fail',

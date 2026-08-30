@@ -157,7 +157,7 @@ export async function getStorefrontAcademyCourseList(input: {
     return {
       slug: row.slug,
       href: `/courses/${row.slug}`,
-      title: t?.title || row.slug,
+      title: t?.title?.trim() ?? '',
       summary: t?.summary || '',
       coverImage: resolveCover(row),
       teacherCount: row.teacherCount,
@@ -256,7 +256,7 @@ async function loadCourseUnits(courseId: string, locale: string): Promise<Storef
       const lt = pickTranslationForDisplay(lessonTById.get(lesson.id) ?? [], locale);
       return {
         id: lesson.id,
-        title: lt?.title?.trim() || 'Lesson',
+        title: lt?.title?.trim() ?? '',
         description: lt?.description?.trim() || '',
         videoUrl: lesson.videoUrl?.trim() ? resolveOssAssetUrl(lesson.videoUrl) : '',
         durationSeconds: lesson.durationSeconds,
@@ -267,7 +267,7 @@ async function loadCourseUnits(courseId: string, locale: string): Promise<Storef
     });
     return {
       id: unit.id,
-      title: ut?.title?.trim() || 'Unit',
+      title: ut?.title?.trim() ?? '',
       coverImage: resolveCover(unit),
       sortOrder: unit.sortOrder,
       lessons: unitLessons,

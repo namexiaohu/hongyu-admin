@@ -2,6 +2,7 @@ export type AdminExamRecordDetail = {
   id: string;
   user: { id: string; name: string; email: string };
   courseTitle: string;
+  certificateTitle: string;
   examTitle: string;
   score: number;
   totalScore: number;
