@@ -50,6 +50,8 @@ export type AdminAcademyCourseTranslation = {
   courseId: string;
   locale: string;
   title: string;
+  subtitle: string;
+  badgeLabel: string;
   summary: string;
   description: string;
   seoTitle: string;
@@ -66,7 +68,10 @@ export type AdminAcademyCourseDetail = AdminAcademyCourseListItem & {
   translations: AdminAcademyCourseTranslation[];
 };
 
-export const adminAcademyCourseTranslationSchema = academyTranslationFieldsSchema;
+export const adminAcademyCourseTranslationSchema = academyTranslationFieldsSchema.extend({
+  subtitle: z.string().optional().default(''),
+  badgeLabel: z.string().optional().default(''),
+});
 
 export const adminAcademyCourseCreateSchema = academySharedFieldsSchema.extend({
   translation: adminAcademyCourseTranslationSchema,

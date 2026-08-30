@@ -1,0 +1,129 @@
+import 'server-only';
+
+import { and, asc, eq, inArray } from 'drizzle-orm';
+
+import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
+import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
+import { db } from '@/server/db';
+import {
+  academyCertificateCourses,
+  academyCertificateTranslations,
+  academyCertificates,
+  academyCourseTranslations,
+  academyCourses,
+} from '@/server/db/schema';
+
+export type AcademyCertificateCourseContext = {
+  certificateCourseId: string;
+  certificateId: string;
+  courseId: string;
+  certificateSlug: string;
+  certificateTitle: string;
+  courseSlug: string;
+  courseTitle: string;
+  sortOrder: number;
+};
+
+export function academyCourseDetailPath(courseSlug: string, certificateCourseId: string) {
+  return `/courses/${courseSlug}?certificateCourseId=${encodeURIComponent(certificateCourseId)}`;
+}
+
+export function academyLearnPath(courseSlug: string, certificateCourseId: string) {
+  return `/courses/${courseSlug}/learn?certificateCourseId=${encodeURIComponent(certificateCourseId)}`;
+}
+
+export async function getCertificateCourseContext(
+  certificateCourseId: string,
+  locale?: string,
+): Promise<AcademyCertificateCourseContext | null> {
+  const [link] = await db
+    .select({
+      id: academyCertificateCourses.id,
+      certificateId: academyCertificateCourses.certificateId,
+      courseId: academyCertificateCourses.courseId,
+      sortOrder: academyCertificateCourses.sortOrder,
+      certificateSlug: academyCertificates.slug,
+      certificateStatus: academyCertificates.status,
+      courseSlug: academyCourses.slug,
+      courseStatus: academyCourses.status,
+    })
+    .from(academyCertificateCourses)
+    .innerJoin(academyCertificates, eq(academyCertificates.id, academyCertificateCourses.certificateId))
+    .innerJoin(academyCourses, eq(academyCourses.id, academyCertificateCourses.courseId))
+    .where(eq(academyCertificateCourses.id, certificateCourseId))
+    .limit(1);
+
+  if (!link || link.certificateStatus !== 'published' || link.courseStatus !== 'published') {
+    return null;
+  }
+
+  const resolvedLocale = locale?.trim() || await getDefaultSiteLanguageCode();
+  const [certTranslations, courseTranslations] = await Promise.all([
+    db
+      .select()
+      .from(academyCertificateTranslations)
+      .where(eq(academyCertificateTranslations.certificateId, link.certificateId)),
+    db
+      .select()
+      .from(academyCourseTranslations)
+      .where(eq(academyCourseTranslations.courseId, link.courseId)),
+  ]);
+  const certDisplay = pickTranslationForDisplay(certTranslations, resolvedLocale);
+  const courseDisplay = pickTranslationForDisplay(courseTranslations, resolvedLocale);
+
+  return {
+    certificateCourseId: link.id,
+    certificateId: link.certificateId,
+    courseId: link.courseId,
+    certificateSlug: link.certificateSlug,
+    certificateTitle: certDisplay?.title?.trim() || link.certificateSlug,
+    courseSlug: link.courseSlug,
+    courseTitle: courseDisplay?.title?.trim() || link.courseSlug,
+    sortOrder: link.sortOrder,
+  };
+}
+
+export async function listPublishedLinksForCourse(courseId: string, locale?: string) {
+  const resolvedLocale = locale?.trim() || await getDefaultSiteLanguageCode();
+  const rows = await db
+    .select({
+      id: academyCertificateCourses.id,
+      certificateId: academyCertificateCourses.certificateId,
+      certificateSlug: academyCertificates.slug,
+      sortOrder: academyCertificateCourses.sortOrder,
+    })
+    .from(academyCertificateCourses)
+    .innerJoin(academyCertificates, eq(academyCertificates.id, academyCertificateCourses.certificateId))
+    .where(
+      and(
+        eq(academyCertificateCourses.courseId, courseId),
+        eq(academyCertificates.status, 'published'),
+      ),
+    )
+    .orderBy(asc(academyCertificateCourses.sortOrder), asc(academyCertificates.slug));
+
+  if (!rows.length) return [];
+
+  const ids = rows.map((row) => row.certificateId);
+  const translations = await db
+    .select()
+    .from(academyCertificateTranslations)
+    .where(inArray(academyCertificateTranslations.certificateId, ids));
+  const byCert = new Map<string, typeof translations>();
+  for (const row of translations) {
+    const list = byCert.get(row.certificateId) ?? [];
+    list.push(row);
+    byCert.set(row.certificateId, list);
+  }
+
+  return rows.map((row) => {
+    const display = pickTranslationForDisplay(byCert.get(row.certificateId) ?? [], resolvedLocale);
+    return {
+      certificateCourseId: row.id,
+      certificateSlug: row.certificateSlug,
+      certificateTitle: display?.title?.trim() || row.certificateSlug,
+      href: `/certificates/${row.certificateSlug}`,
+      sortOrder: row.sortOrder,
+    };
+  });
+}

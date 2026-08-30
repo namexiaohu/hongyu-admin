@@ -69,6 +69,8 @@ function mapTranslation(row: typeof academyCertificateTranslations.$inferSelect)
     certificateId: row.certificateId,
     locale: row.locale,
     title: row.title,
+    subtitle: row.subtitle ?? '',
+    badgeLabel: row.badgeLabel ?? '',
     summary: row.summary,
     description: row.description,
     seoTitle: row.seoTitle,
@@ -112,38 +114,66 @@ function mapListItem(
   };
 }
 
-async function loadCourseIds(certificateId: string) {
-  const links = await db
-    .select({ courseId: academyCertificateCourses.courseId })
+async function loadCourseLinks(certificateId: string) {
+  return db
+    .select({
+      id: academyCertificateCourses.id,
+      courseId: academyCertificateCourses.courseId,
+      sortOrder: academyCertificateCourses.sortOrder,
+    })
     .from(academyCertificateCourses)
     .where(eq(academyCertificateCourses.certificateId, certificateId))
     .orderBy(asc(academyCertificateCourses.sortOrder), asc(academyCertificateCourses.courseId));
-  return links.map((link) => link.courseId);
 }
 
 async function syncCertificateCourses(certificateId: string, courseIds: string[]) {
   const uniqueIds = [...new Set(courseIds.filter(Boolean))];
-  await db.delete(academyCertificateCourses).where(eq(academyCertificateCourses.certificateId, certificateId));
-  if (!uniqueIds.length) return;
-  await db.insert(academyCertificateCourses).values(
-    uniqueIds.map((courseId, index) => ({
-      certificateId,
-      courseId,
-      sortOrder: (index + 1) * 10,
-    })),
-  );
+  const existing = await db
+    .select({
+      id: academyCertificateCourses.id,
+      courseId: academyCertificateCourses.courseId,
+      sortOrder: academyCertificateCourses.sortOrder,
+    })
+    .from(academyCertificateCourses)
+    .where(eq(academyCertificateCourses.certificateId, certificateId));
+
+  const keep = new Set(uniqueIds);
+  const existingByCourse = new Map(existing.map((row) => [row.courseId, row]));
+  const toRemove = existing.filter((row) => !keep.has(row.courseId));
+  if (toRemove.length) {
+    await db
+      .delete(academyCertificateCourses)
+      .where(inArray(academyCertificateCourses.id, toRemove.map((row) => row.id)));
+  }
+
+  for (const [index, courseId] of uniqueIds.entries()) {
+    const sortOrder = (index + 1) * 10;
+    const found = existingByCourse.get(courseId);
+    if (found) {
+      if (found.sortOrder !== sortOrder) {
+        await db
+          .update(academyCertificateCourses)
+          .set({ sortOrder })
+          .where(eq(academyCertificateCourses.id, found.id));
+      }
+    } else {
+      await db.insert(academyCertificateCourses).values({ certificateId, courseId, sortOrder });
+    }
+  }
 }
 
 function mapDetail(
   row: typeof academyCertificates.$inferSelect,
   translations: Array<typeof academyCertificateTranslations.$inferSelect>,
-  courseIds: string[],
+  courseLinks: Array<{ id: string; courseId: string; sortOrder: number }>,
   defaultLocale: string,
 ): AdminAcademyCertificateDetail {
   const display = pickTranslationForDisplay(translations, defaultLocale);
+  const courseIds = courseLinks.map((link) => link.courseId);
   return {
     ...mapListItem(row, resolveAcademyDisplayTitle(display, row.slug), translations.length, courseIds.length),
     courseIds,
+    courseLinks,
     translations: translations.map(mapTranslation),
   };
 }
@@ -193,9 +223,9 @@ export async function getAdminAcademyCertificateDetail(id: string): Promise<Admi
     .from(academyCertificateTranslations)
     .where(eq(academyCertificateTranslations.certificateId, id))
     .orderBy(asc(academyCertificateTranslations.locale));
-  const courseIds = await loadCourseIds(id);
+  const courseLinks = await loadCourseLinks(id);
   const defaultLocale = await getDefaultSiteLanguageCode();
-  return mapDetail(row, translations, courseIds, defaultLocale);
+  return mapDetail(row, translations, courseLinks, defaultLocale);
 }
 
 function assertSlugAvailable(slug: string) {
@@ -308,6 +338,8 @@ export async function upsertAdminAcademyCertificateTranslation(certificateId: st
   if (existing) {
     const [updated] = await db.update(academyCertificateTranslations).set({
       title: parsed.title,
+      subtitle: parsed.subtitle ?? '',
+      badgeLabel: parsed.badgeLabel ?? '',
       summary: parsed.summary ?? '',
       description: parsed.description ?? '',
       seoTitle: parsed.seoTitle ?? '',
@@ -325,6 +357,8 @@ export async function upsertAdminAcademyCertificateTranslation(certificateId: st
     certificateId,
     locale: parsed.locale,
     title: parsed.title,
+    subtitle: parsed.subtitle ?? '',
+    badgeLabel: parsed.badgeLabel ?? '',
     summary: parsed.summary ?? '',
     description: parsed.description ?? '',
     seoTitle: parsed.seoTitle ?? '',

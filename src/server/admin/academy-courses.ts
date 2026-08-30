@@ -66,6 +66,8 @@ function mapTranslation(row: typeof academyCourseTranslations.$inferSelect): Adm
     courseId: row.courseId,
     locale: row.locale,
     title: row.title,
+    subtitle: row.subtitle ?? '',
+    badgeLabel: row.badgeLabel ?? '',
     summary: row.summary,
     description: row.description,
     seoTitle: row.seoTitle,
@@ -284,6 +286,8 @@ export async function upsertAdminAcademyCourseTranslation(courseId: string, inpu
   if (existing) {
     const [updated] = await db.update(academyCourseTranslations).set({
       title: parsed.title,
+      subtitle: parsed.subtitle ?? '',
+      badgeLabel: parsed.badgeLabel ?? '',
       summary: parsed.summary ?? '',
       description: parsed.description ?? '',
       seoTitle: parsed.seoTitle ?? '',
@@ -301,6 +305,8 @@ export async function upsertAdminAcademyCourseTranslation(courseId: string, inpu
     courseId,
     locale: parsed.locale,
     title: parsed.title,
+    subtitle: parsed.subtitle ?? '',
+    badgeLabel: parsed.badgeLabel ?? '',
     summary: parsed.summary ?? '',
     description: parsed.description ?? '',
     seoTitle: parsed.seoTitle ?? '',

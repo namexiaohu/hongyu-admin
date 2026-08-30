@@ -49,6 +49,8 @@ export type AdminAcademyCertificateTranslation = {
   certificateId: string;
   locale: string;
   title: string;
+  subtitle: string;
+  badgeLabel: string;
   summary: string;
   description: string;
   seoTitle: string;
@@ -63,10 +65,14 @@ export type AdminAcademyCertificateTranslation = {
 
 export type AdminAcademyCertificateDetail = AdminAcademyCertificateListItem & {
   courseIds: string[];
+  courseLinks: Array<{ id: string; courseId: string; sortOrder: number }>;
   translations: AdminAcademyCertificateTranslation[];
 };
 
-export const adminAcademyCertificateTranslationSchema = academyTranslationFieldsSchema;
+export const adminAcademyCertificateTranslationSchema = academyTranslationFieldsSchema.extend({
+  subtitle: z.string().optional().default(''),
+  badgeLabel: z.string().optional().default(''),
+});
 
 export const adminAcademyCertificateCreateSchema = academySharedFieldsSchema.extend({
   translation: adminAcademyCertificateTranslationSchema,

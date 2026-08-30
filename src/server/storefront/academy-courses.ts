@@ -12,9 +12,6 @@ import type { ProductGalleryImage } from '@/lib/product-content';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
 import { db } from '@/server/db';
 import {
-  academyCertificateCourses,
-  academyCertificateTranslations,
-  academyCertificates,
   academyCourseTranslations,
   academyCourses,
   academyLessonTranslations,
@@ -22,6 +19,7 @@ import {
   academyUnitTranslations,
   academyUnits,
 } from '@/server/db/schema';
+import { listPublishedLinksForCourse } from '@/server/storefront/academy-certificate-courses';
 
 export type StorefrontAcademyCourseListItem = {
   slug: string;
@@ -37,6 +35,14 @@ export type StorefrontAcademyCourseCertificateLink = {
   slug: string;
   href: string;
   title: string;
+};
+
+export type StorefrontAcademyCertificateCourseLink = {
+  certificateCourseId: string;
+  certificateSlug: string;
+  certificateTitle: string;
+  href: string;
+  sortOrder: number;
 };
 
 export type StorefrontAcademyLessonMaterial = {
@@ -85,6 +91,7 @@ export type StorefrontAcademyCourseDetail = {
   tools: string[];
   units: StorefrontAcademyUnitItem[];
   certificates: StorefrontAcademyCourseCertificateLink[];
+  certificateLinks: StorefrontAcademyCertificateCourseLink[];
   seo: { title: string; description: string };
 };
 
@@ -288,35 +295,12 @@ export async function getStorefrontAcademyCourseBySlug(
   if (!t) return null;
   const fields = mapTranslationFields(t);
 
-  const links = await db
-    .select({ certificateId: academyCertificateCourses.certificateId })
-    .from(academyCertificateCourses)
-    .where(eq(academyCertificateCourses.courseId, row.id));
-
-  const certificateIds = links.map((link) => link.certificateId);
-  const certificateRows = certificateIds.length
-    ? await db.select().from(academyCertificates).where(inArray(academyCertificates.id, certificateIds))
-    : [];
-  const certificateTranslations = certificateIds.length
-    ? await db.select().from(academyCertificateTranslations).where(inArray(academyCertificateTranslations.certificateId, certificateIds))
-    : [];
-  const certTById = new Map<string, (typeof academyCertificateTranslations.$inferSelect)[]>();
-  for (const ct of certificateTranslations) {
-    const bucket = certTById.get(ct.certificateId) ?? [];
-    bucket.push(ct);
-    certTById.set(ct.certificateId, bucket);
-  }
-
-  const certificates: StorefrontAcademyCourseCertificateLink[] = certificateRows
-    .filter((cert) => cert.status === 'published')
-    .map((cert) => {
-      const ct = pickTranslationForDisplay(certTById.get(cert.id) ?? [], resolvedLocale);
-      return {
-        slug: cert.slug,
-        href: `/certificates/${cert.slug}`,
-        title: ct?.title || cert.slug,
-      };
-    });
+  const certificateLinks = await listPublishedLinksForCourse(row.id, resolvedLocale);
+  const certificates: StorefrontAcademyCourseCertificateLink[] = certificateLinks.map((link) => ({
+    slug: link.certificateSlug,
+    href: link.href,
+    title: link.certificateTitle,
+  }));
 
   const units = await loadCourseUnits(row.id, resolvedLocale);
 
@@ -344,6 +328,7 @@ export async function getStorefrontAcademyCourseBySlug(
     tools: fields.tools,
     units,
     certificates,
+    certificateLinks,
     seo: {
       title: fields.seoTitle || fields.title,
       description: fields.seoDescription || fields.summary,

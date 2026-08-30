@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 
 import { normalizeAcademyStats, normalizeStringTags } from '@/lib/academy-content-shared';
 import { resolveStorefrontCoverUrl } from '@/lib/cover-presets';
@@ -19,16 +19,20 @@ import {
   academyUnitTranslations,
   academyUnits,
 } from '@/server/db/schema';
+import { academyCourseDetailPath } from '@/server/storefront/academy-certificate-courses';
 
 export type StorefrontAcademyCertificateListItem = {
   slug: string;
   href: string;
   title: string;
+  subtitle: string;
+  badgeLabel: string;
   summary: string;
   coverImage: string;
   teacherCount: number;
   studentCount: number;
   courseCount: number;
+  skills: string[];
 };
 
 export type StorefrontAcademyCertificateUnitItem = {
@@ -38,6 +42,7 @@ export type StorefrontAcademyCertificateUnitItem = {
 };
 
 export type StorefrontAcademyCertificateCourseItem = {
+  certificateCourseId: string;
   slug: string;
   href: string;
   title: string;
@@ -88,6 +93,8 @@ function resolveCover(row: { coverMode: string; coverValue: string; coverImage: 
 function mapTranslationFields(row: typeof academyCertificateTranslations.$inferSelect) {
   return {
     title: row.title,
+    subtitle: row.subtitle ?? '',
+    badgeLabel: row.badgeLabel ?? '',
     summary: row.summary,
     description: row.description,
     seoTitle: row.seoTitle,
@@ -103,6 +110,7 @@ export async function getStorefrontAcademyCertificateList(input: {
   locale?: string;
   page?: number;
   pageSize?: number;
+  q?: string;
 }): Promise<StorefrontAcademyCertificateListResponse> {
   const locale = input.locale?.trim() || await getDefaultSiteLanguageCode();
   const page = Math.max(1, input.page ?? 1);
@@ -112,7 +120,7 @@ export async function getStorefrontAcademyCertificateList(input: {
     .select()
     .from(academyCertificates)
     .where(eq(academyCertificates.status, 'published'))
-    .orderBy(asc(academyCertificates.sortOrder), asc(academyCertificates.slug));
+    .orderBy(desc(academyCertificates.createdAt), asc(academyCertificates.slug));
 
   const ids = rows.map((row) => row.id);
   const translations = ids.length
@@ -134,22 +142,35 @@ export async function getStorefrontAcademyCertificateList(input: {
 
   const allItems = rows.map((row) => {
     const t = pickTranslationForDisplay(byId.get(row.id) ?? [], locale);
-    const fields = t ? mapTranslationFields(t) : { title: row.slug, summary: '', description: '', seoTitle: '', seoDescription: '', stats: [], learnings: [], skills: [], tools: [] };
+    const fields = t ? mapTranslationFields(t) : { title: row.slug, subtitle: '', badgeLabel: '', summary: '', description: '', seoTitle: '', seoDescription: '', stats: [], learnings: [], skills: [], tools: [] };
     return {
       slug: row.slug,
       href: `/certificates/${row.slug}`,
       title: fields.title,
+      subtitle: fields.subtitle,
+      badgeLabel: fields.badgeLabel,
       summary: fields.summary,
       coverImage: resolveCover(row),
       teacherCount: row.teacherCount,
       studentCount: row.studentCount,
       courseCount: countById.get(row.id) ?? 0,
+      skills: fields.skills,
     };
   });
 
-  const total = allItems.length;
+  const needle = input.q?.trim().toLowerCase() ?? '';
+  const matched = needle
+    ? allItems.filter((item) => {
+        const hay = [item.title, item.subtitle, item.summary, ...item.skills]
+          .join('\n')
+          .toLowerCase();
+        return hay.includes(needle);
+      })
+    : allItems;
+
+  const total = matched.length;
   const start = (page - 1) * pageSize;
-  const items = allItems.slice(start, start + pageSize);
+  const items = matched.slice(start, start + pageSize);
   return { locale, page, pageSize, total, items };
 }
 
@@ -175,6 +196,7 @@ export async function getStorefrontAcademyCertificateBySlug(
 
   const links = await db
     .select({
+      id: academyCertificateCourses.id,
       courseId: academyCertificateCourses.courseId,
       sortOrder: academyCertificateCourses.sortOrder,
     })
@@ -237,8 +259,9 @@ export async function getStorefrontAcademyCertificateBySlug(
       if (!course || course.status !== 'published') return null;
       const ct = pickTranslationForDisplay(courseTById.get(course.id) ?? [], resolvedLocale);
       return {
+        certificateCourseId: link.id,
         slug: course.slug,
-        href: `/courses/${course.slug}`,
+        href: academyCourseDetailPath(course.slug, link.id),
         title: ct?.title || course.slug,
         summary: ct?.summary || '',
         coverImage: resolveCover(course),

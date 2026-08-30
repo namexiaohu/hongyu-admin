@@ -25,6 +25,8 @@ import { CoursePickerField } from './course-picker-field';
 
 type LocaleDraft = {
   title: string;
+  subtitle: string;
+  badgeLabel: string;
   summary: string;
   description: string;
   seoTitle: string;
@@ -65,6 +67,8 @@ type EntityDetail = {
   translations: Array<{
     locale: string;
     title: string;
+    subtitle?: string;
+    badgeLabel?: string;
     summary: string;
     description: string;
     seoTitle: string;
@@ -88,6 +92,8 @@ type Props = {
 function emptyDraft(): LocaleDraft {
   return {
     title: '',
+    subtitle: '',
+    badgeLabel: '',
     summary: '',
     description: '',
     seoTitle: '',
@@ -106,6 +112,8 @@ function buildDrafts(detail: EntityDetail | null, languages: AdminSiteLanguageRo
     drafts[language.code] = translation
       ? {
         title: translation.title,
+        subtitle: translation.subtitle ?? '',
+        badgeLabel: translation.badgeLabel ?? '',
         summary: translation.summary,
         description: translation.description,
         seoTitle: translation.seoTitle,
@@ -123,6 +131,8 @@ function buildDrafts(detail: EntityDetail | null, languages: AdminSiteLanguageRo
 function hasDraftContent(draft: LocaleDraft) {
   return Boolean(
     draft.title.trim()
+    || draft.subtitle.trim()
+    || draft.badgeLabel.trim()
     || draft.summary.trim()
     || hasMeaningfulHtmlBody(draft.description)
     || draft.seoTitle.trim()
@@ -159,6 +169,8 @@ export function AcademyEditorModal({ open, entityType, detail, activeLanguages, 
     const values = form.getFieldsValue(true);
     return {
       title: values.title ?? '',
+      subtitle: values.subtitle ?? '',
+      badgeLabel: values.badgeLabel ?? '',
       summary: values.summary ?? '',
       description: values.description ?? '',
       seoTitle: values.seoTitle ?? '',
@@ -422,6 +434,12 @@ export function AcademyEditorModal({ open, entityType, detail, activeLanguages, 
             <div style={{ display: sectionTab === 'content' ? 'block' : 'none' }}>
               <Form.Item name="title" label="标题" rules={[{ required: activeLocale === defaultLocale, message: '请输入标题' }]}>
                 <Input />
+              </Form.Item>
+              <Form.Item name="subtitle" label="副标题">
+                <Input placeholder="显示在标题下方" />
+              </Form.Item>
+              <Form.Item name="badgeLabel" label="角标文案">
+                <Input placeholder="卡片左上角蓝色角标" maxLength={40} />
               </Form.Item>
               <Form.Item name="summary" label="简介">
                 <Input.TextArea rows={3} />
