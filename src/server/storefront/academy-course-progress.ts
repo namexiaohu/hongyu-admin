@@ -24,8 +24,41 @@ export async function syncCourseProgress(userId: string, certificateCourseId: st
 
   if (!link) return null;
 
+  const [existing] = await db
+    .select({
+      completedLessonCount: academyCertificateCourseProgress.completedLessonCount,
+      totalLessonCount: academyCertificateCourseProgress.totalLessonCount,
+      progressPercent: academyCertificateCourseProgress.progressPercent,
+    })
+    .from(academyCertificateCourseProgress)
+    .where(
+      and(
+        eq(academyCertificateCourseProgress.userId, userId),
+        eq(academyCertificateCourseProgress.certificateCourseId, certificateCourseId),
+      ),
+    )
+    .limit(1);
+
   const { totalLessons, completedLessons } = await countLessonProgressForCourse(userId, link.courseId);
-  const progressPercent = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+  const isFullyComplete = Boolean(
+    existing
+    && existing.totalLessonCount > 0
+    && existing.completedLessonCount >= existing.totalLessonCount
+    && existing.progressPercent >= 100,
+  );
+
+  let completedLessonCount = completedLessons;
+  let totalLessonCount = totalLessons;
+  let progressPercent = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+
+  if (isFullyComplete) {
+    completedLessonCount = existing!.completedLessonCount;
+    totalLessonCount = existing!.totalLessonCount;
+    progressPercent = 100;
+  } else if (totalLessonCount > 0 && completedLessonCount >= totalLessonCount) {
+    progressPercent = 100;
+  }
+
   const now = new Date();
 
   await db
@@ -33,24 +66,24 @@ export async function syncCourseProgress(userId: string, certificateCourseId: st
     .values({
       userId,
       certificateCourseId,
-      completedLessonCount: completedLessons,
-      totalLessonCount: totalLessons,
+      completedLessonCount,
+      totalLessonCount,
       progressPercent,
       updatedAt: now,
     })
     .onConflictDoUpdate({
       target: [academyCertificateCourseProgress.userId, academyCertificateCourseProgress.certificateCourseId],
       set: {
-        completedLessonCount: completedLessons,
-        totalLessonCount: totalLessons,
+        completedLessonCount,
+        totalLessonCount,
         progressPercent,
         updatedAt: now,
       },
     });
 
   return {
-    completedLessonCount: completedLessons,
-    totalLessonCount: totalLessons,
+    completedLessonCount,
+    totalLessonCount,
     progressPercent,
   } satisfies CourseProgressSnapshot;
 }

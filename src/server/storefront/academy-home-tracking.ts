@@ -193,6 +193,7 @@ export async function touchCourseProgress(
       .select({
         unitId: academyCertificateCourseProgress.unitId,
         lessonId: academyCertificateCourseProgress.lessonId,
+        positionSeconds: academyCertificateCourseProgress.positionSeconds,
       })
       .from(academyCertificateCourseProgress)
       .where(
@@ -202,7 +203,11 @@ export async function touchCourseProgress(
         ),
       )
       .limit(1);
-    if (!existing?.unitId || !existing.lessonId) {
+    if (existing?.unitId && existing.lessonId) {
+      unitId = existing.unitId;
+      lessonId = existing.lessonId;
+      positionSeconds = Math.max(0, existing.positionSeconds ?? 0);
+    } else {
       const first = await firstLessonOfCourse(link.courseId);
       if (first) {
         unitId = first.unitId;

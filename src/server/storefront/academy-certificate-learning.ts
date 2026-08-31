@@ -48,6 +48,12 @@ export type CertificateLearningState = {
     certificateHref: string;
   } | null;
   continueLearnHref: string | null;
+  continueWatch: {
+    unitTitle: string;
+    lessonTitle: string;
+    positionSeconds: number;
+    durationSeconds: number;
+  } | null;
   courses: Array<{
     certificateCourseId: string;
     slug: string;
@@ -61,6 +67,7 @@ export type CertificateLearningState = {
       id: string;
       title: string;
       sortOrder: number;
+      isComplete: boolean;
       lessons: Array<{
         id: string;
         title: string;
@@ -162,11 +169,7 @@ export async function getCertificateLearningState(
     const units = courseUnits.map((unit) => {
       const ut = pickTranslationForDisplay(unitTById.get(unit.id) ?? [], resolvedLocale);
       const unitLessons = lessonRows.filter((lesson) => lesson.unitId === unit.id);
-      return {
-        id: unit.id,
-        title: ut?.title?.trim() ?? '',
-        sortOrder: unit.sortOrder,
-        lessons: unitLessons.map((lesson) => {
+      const lessons = unitLessons.map((lesson) => {
           const lt = pickTranslationForDisplay(lessonTById.get(lesson.id) ?? [], resolvedLocale);
           return {
             id: lesson.id,
@@ -175,7 +178,13 @@ export async function getCertificateLearningState(
             isComplete: completedLessonSet.has(lesson.id),
             durationSeconds: lesson.durationSeconds,
           };
-        }),
+        });
+      return {
+        id: unit.id,
+        title: ut?.title?.trim() ?? '',
+        sortOrder: unit.sortOrder,
+        isComplete: lessons.length > 0 && lessons.every((lesson) => lesson.isComplete),
+        lessons,
       };
     });
 
@@ -216,6 +225,10 @@ export async function getCertificateLearningState(
     .select({
       certificateCourseId: academyCertificateCourseProgress.certificateCourseId,
       courseSlug: academyCourses.slug,
+      courseId: academyCourses.id,
+      unitId: academyCertificateCourseProgress.unitId,
+      lessonId: academyCertificateCourseProgress.lessonId,
+      positionSeconds: academyCertificateCourseProgress.positionSeconds,
     })
     .from(academyCertificateCourseProgress)
     .innerJoin(
@@ -233,8 +246,25 @@ export async function getCertificateLearningState(
     .limit(1);
 
   let continueLearnHref: string | null = null;
+  let continueWatch: CertificateLearningState['continueWatch'] = null;
   if (latestProgress) {
     continueLearnHref = academyLearnPath(latestProgress.courseSlug, latestProgress.certificateCourseId);
+    if (latestProgress.unitId && latestProgress.lessonId) {
+      const unit = unitRows.find((row) => row.id === latestProgress.unitId);
+      const lesson = lessonRows.find((row) => row.id === latestProgress.lessonId);
+      if (unit && lesson) {
+        const unitTitle = pickTranslationForDisplay(unitTById.get(unit.id) ?? [], resolvedLocale)?.title?.trim() ?? '';
+        const lessonTitle = pickTranslationForDisplay(lessonTById.get(lesson.id) ?? [], resolvedLocale)?.title?.trim() ?? '';
+        if (unitTitle && lessonTitle) {
+          continueWatch = {
+            unitTitle,
+            lessonTitle,
+            positionSeconds: Math.max(0, latestProgress.positionSeconds ?? 0),
+            durationSeconds: lesson.durationSeconds,
+          };
+        }
+      }
+    }
   } else if (courses[0]) {
     continueLearnHref = courses[0].learnHref;
   }
@@ -266,6 +296,7 @@ export async function getCertificateLearningState(
         }
       : null,
     continueLearnHref,
+    continueWatch,
     courses,
   };
 }

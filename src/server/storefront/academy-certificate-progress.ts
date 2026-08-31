@@ -15,12 +15,14 @@ export type CertificateProgressSnapshot = {
 };
 
 export async function syncCertificateProgress(userId: string, certificateId: string) {
-  const { totalLessons, completedLessons } = await countLessonProgressForCertificate(userId, certificateId);
-  const progressPercent = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
-  const now = new Date();
-
   const [existing] = await db
-    .select({ id: academyCertificateProgress.id, startedAt: academyCertificateProgress.startedAt })
+    .select({
+      id: academyCertificateProgress.id,
+      startedAt: academyCertificateProgress.startedAt,
+      completedLessonCount: academyCertificateProgress.completedLessonCount,
+      totalLessonCount: academyCertificateProgress.totalLessonCount,
+      progressPercent: academyCertificateProgress.progressPercent,
+    })
     .from(academyCertificateProgress)
     .where(
       and(
@@ -30,7 +32,29 @@ export async function syncCertificateProgress(userId: string, certificateId: str
     )
     .limit(1);
 
-  if (!existing && completedLessons === 0 && totalLessons === 0) {
+  const { totalLessons, completedLessons } = await countLessonProgressForCertificate(userId, certificateId);
+  const isFullyComplete = Boolean(
+    existing
+    && existing.totalLessonCount > 0
+    && existing.completedLessonCount >= existing.totalLessonCount
+    && existing.progressPercent >= 100,
+  );
+
+  let completedLessonCount = completedLessons;
+  let totalLessonCount = totalLessons;
+  let progressPercent = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+
+  if (isFullyComplete) {
+    completedLessonCount = existing!.completedLessonCount;
+    totalLessonCount = existing!.totalLessonCount;
+    progressPercent = 100;
+  } else if (totalLessonCount > 0 && completedLessonCount >= totalLessonCount) {
+    progressPercent = 100;
+  }
+
+  const now = new Date();
+
+  if (!existing && completedLessonCount === 0 && totalLessonCount === 0) {
     return null;
   }
 
@@ -39,8 +63,8 @@ export async function syncCertificateProgress(userId: string, certificateId: str
     .values({
       userId,
       certificateId,
-      completedLessonCount: completedLessons,
-      totalLessonCount: totalLessons,
+      completedLessonCount,
+      totalLessonCount,
       progressPercent,
       startedAt: now,
       updatedAt: now,
@@ -48,8 +72,8 @@ export async function syncCertificateProgress(userId: string, certificateId: str
     .onConflictDoUpdate({
       target: [academyCertificateProgress.userId, academyCertificateProgress.certificateId],
       set: {
-        completedLessonCount: completedLessons,
-        totalLessonCount: totalLessons,
+        completedLessonCount,
+        totalLessonCount,
         progressPercent,
         updatedAt: now,
       },
