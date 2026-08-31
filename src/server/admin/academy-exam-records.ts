@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { and, asc, desc, eq, ilike, inArray, or, sql, type SQL } from 'drizzle-orm';
+import { and, desc, eq, ilike, inArray, or, sql, type SQL } from 'drizzle-orm';
 
 import type { AdminExamRecordListItem } from '@/lib/academy-exam-records';
 import type { AcademyQuestionContent, AcademyQuestionType } from '@/lib/academy-question-content';
@@ -8,11 +8,10 @@ import { gradeQuestion } from '@/lib/academy-question-content';
 import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
-import { getCertificateCourseMetaByIds } from '@/server/storefront/academy-certificate-courses';
 import { db } from '@/server/db';
 import {
-  academyCourseTranslations,
-  academyCourses,
+  academyCertificateTranslations,
+  academyCertificates,
   academyExamAttempts,
   academyQuestionBankTranslations,
   academyQuestions,
@@ -25,6 +24,15 @@ export type { AdminExamRecordListItem };
 
 function recipientDisplayName(firstName: string, lastName: string) {
   return `${firstName} ${lastName}`.trim() || firstName || lastName;
+}
+
+function extractQuestionPrompt(content: AcademyQuestionContent): string {
+  if ('prompt' in content && typeof content.prompt === 'string') return content.prompt;
+  if ('promptBefore' in content && typeof content.promptBefore === 'string') {
+    const after = 'promptAfter' in content && typeof content.promptAfter === 'string' ? content.promptAfter : '';
+    return `${content.promptBefore}${after ? ` ___ ${after}` : ''}`;
+  }
+  return '';
 }
 
 export async function getAdminExamRecordList(filters?: {
@@ -58,8 +66,7 @@ export async function getAdminExamRecordList(filters?: {
     .select({
       id: academyExamAttempts.id,
       userId: academyExamAttempts.userId,
-      courseId: academyExamAttempts.courseId,
-      certificateCourseId: academyExamAttempts.certificateCourseId,
+      certificateId: academyExamAttempts.certificateId,
       score: academyExamAttempts.score,
       totalScore: academyExamAttempts.totalScore,
       passed: academyExamAttempts.passed,
@@ -76,17 +83,17 @@ export async function getAdminExamRecordList(filters?: {
 
   if (!rows.length) return { items: [] as AdminExamRecordListItem[], total: 0 };
 
-  const courseIds = [...new Set(rows.map((r) => r.courseId))];
+  const certificateIds = [...new Set(rows.map((r) => r.certificateId))];
   const attemptIds = rows.map((r) => r.id);
 
-  const courseTranslations = await db
+  const certTranslations = await db
     .select()
-    .from(academyCourseTranslations)
-    .where(inArray(academyCourseTranslations.courseId, courseIds));
-  const titleByCourse = new Map<string, string>();
-  for (const courseId of courseIds) {
-    const list = courseTranslations.filter((t) => t.courseId === courseId);
-    titleByCourse.set(courseId, pickTranslationForDisplay(list, defaultLocale)?.title?.trim() ?? '');
+    .from(academyCertificateTranslations)
+    .where(inArray(academyCertificateTranslations.certificateId, certificateIds));
+  const titleByCertificate = new Map<string, string>();
+  for (const certificateId of certificateIds) {
+    const list = certTranslations.filter((t) => t.certificateId === certificateId);
+    titleByCertificate.set(certificateId, pickTranslationForDisplay(list, defaultLocale)?.title?.trim() ?? '');
   }
 
   const certRows = await db
@@ -94,11 +101,6 @@ export async function getAdminExamRecordList(filters?: {
     .from(academyUserCertificates)
     .where(inArray(academyUserCertificates.attemptId, attemptIds));
   const certAttemptIds = new Set(certRows.map((r) => r.attemptId));
-
-  const certMeta = await getCertificateCourseMetaByIds(
-    rows.map((r) => r.certificateCourseId),
-    defaultLocale,
-  );
 
   const items: AdminExamRecordListItem[] = rows.map((row) => {
     const score = row.score ?? 0;
@@ -108,9 +110,9 @@ export async function getAdminExamRecordList(filters?: {
       userId: row.userId,
       userName: recipientDisplayName(row.firstName, row.lastName),
       userEmail: row.email,
-      courseId: row.courseId,
-      courseTitle: titleByCourse.get(row.courseId) ?? '',
-      certificateTitle: certMeta.get(row.certificateCourseId)?.certificateTitle ?? '',
+      courseId: row.certificateId,
+      courseTitle: titleByCertificate.get(row.certificateId) ?? '',
+      certificateTitle: titleByCertificate.get(row.certificateId) ?? '',
       score,
       totalScore,
       scorePercent: totalScore > 0 ? Math.round((score / totalScore) * 100) : 0,
@@ -126,43 +128,39 @@ export async function getAdminExamRecordList(filters?: {
 
 export async function getAdminExamRecordDetail(attemptId: string) {
   const defaultLocale = await getDefaultSiteLanguageCode();
-
   const [row] = await db
     .select({
       id: academyExamAttempts.id,
       userId: academyExamAttempts.userId,
-      courseId: academyExamAttempts.courseId,
-      certificateCourseId: academyExamAttempts.certificateCourseId,
+      certificateId: academyExamAttempts.certificateId,
       questionBankId: academyExamAttempts.questionBankId,
       score: academyExamAttempts.score,
       totalScore: academyExamAttempts.totalScore,
       passed: academyExamAttempts.passed,
-      answers: academyExamAttempts.answers,
-      startedAt: academyExamAttempts.startedAt,
       submittedAt: academyExamAttempts.submittedAt,
+      startedAt: academyExamAttempts.startedAt,
+      answers: academyExamAttempts.answers,
       certificateMailStatus: academyExamAttempts.certificateMailStatus,
       certificateMailFile: academyExamAttempts.certificateMailFile,
       certificateMailUpdatedAt: academyExamAttempts.certificateMailUpdatedAt,
       firstName: users.firstName,
       lastName: users.lastName,
       email: users.email,
-      courseSlug: academyCourses.slug,
+      certificateSlug: academyCertificates.slug,
     })
     .from(academyExamAttempts)
     .innerJoin(users, eq(users.id, academyExamAttempts.userId))
-    .innerJoin(academyCourses, eq(academyCourses.id, academyExamAttempts.courseId))
+    .innerJoin(academyCertificates, eq(academyCertificates.id, academyExamAttempts.certificateId))
     .where(eq(academyExamAttempts.id, attemptId))
     .limit(1);
 
-  if (!row || !row.submittedAt) return null;
+  if (!row?.submittedAt) return null;
 
-  const courseTranslations = await db
+  const certTranslations = await db
     .select()
-    .from(academyCourseTranslations)
-    .where(eq(academyCourseTranslations.courseId, row.courseId));
-  const courseTitle = pickTranslationForDisplay(courseTranslations, defaultLocale)?.title?.trim() ?? '';
-  const certMeta = (await getCertificateCourseMetaByIds([row.certificateCourseId], defaultLocale))
-    .get(row.certificateCourseId);
+    .from(academyCertificateTranslations)
+    .where(eq(academyCertificateTranslations.certificateId, row.certificateId));
+  const certTitle = pickTranslationForDisplay(certTranslations, defaultLocale)?.title?.trim() ?? '';
 
   const bankTranslations = await db
     .select()
@@ -170,23 +168,14 @@ export async function getAdminExamRecordDetail(attemptId: string) {
     .where(eq(academyQuestionBankTranslations.questionBankId, row.questionBankId));
   const examTitle = pickTranslationForDisplay(bankTranslations, defaultLocale)?.title?.trim() ?? '';
 
-  const [cert] = await db
-    .select({
-      certificateNumber: academyUserCertificates.certificateNumber,
-      issuedAt: academyUserCertificates.issuedAt,
-    })
-    .from(academyUserCertificates)
-    .where(eq(academyUserCertificates.attemptId, attemptId))
-    .limit(1);
-
   const questions = await db
     .select()
     .from(academyQuestions)
     .where(eq(academyQuestions.questionBankId, row.questionBankId))
-    .orderBy(asc(academyQuestions.sortOrder), asc(academyQuestions.createdAt));
+    .orderBy(academyQuestions.sortOrder);
 
   const questionIds = questions.map((q) => q.id);
-  const translations = questionIds.length
+  const questionTranslations = questionIds.length
     ? await db
         .select()
         .from(academyQuestionTranslations)
@@ -195,7 +184,7 @@ export async function getAdminExamRecordDetail(attemptId: string) {
 
   const answers = row.answers ?? {};
   const review = questions.map((question, index) => {
-    const list = translations.filter((t) => t.questionId === question.id);
+    const list = questionTranslations.filter((t) => t.questionId === question.id);
     const display = pickTranslationForDisplay(list, defaultLocale);
     const content = (display?.content ?? { prompt: '' }) as AcademyQuestionContent;
     const type = question.questionType as AcademyQuestionType;
@@ -206,18 +195,22 @@ export async function getAdminExamRecordDetail(attemptId: string) {
       index: index + 1,
       questionType: type,
       score: question.score,
-      prompt:
-        type === 'fill_blank'
-          ? `${(content as { promptBefore?: string }).promptBefore ?? ''} ___ ${(content as { promptAfter?: string }).promptAfter ?? ''}`
-          : ((content as { prompt?: string }).prompt ?? ''),
+      prompt: extractQuestionPrompt(content),
       userAnswer: userAnswer ?? null,
       isCorrect,
     };
   });
 
-  const score = row.score ?? 0;
-  const totalScore = row.totalScore ?? 0;
-  const mailFile = row.certificateMailFile?.trim() || null;
+  const [userCert] = await db
+    .select({
+      certificateNumber: academyUserCertificates.certificateNumber,
+      issuedAt: academyUserCertificates.issuedAt,
+    })
+    .from(academyUserCertificates)
+    .where(eq(academyUserCertificates.attemptId, row.id))
+    .limit(1);
+
+  const mailFileKey = row.certificateMailFile?.trim() || null;
 
   return {
     id: row.id,
@@ -226,30 +219,28 @@ export async function getAdminExamRecordDetail(attemptId: string) {
       name: recipientDisplayName(row.firstName, row.lastName),
       email: row.email,
     },
-    courseId: row.courseId,
-    courseSlug: row.courseSlug,
-    courseTitle,
-    certificateTitle: certMeta?.certificateTitle ?? '',
+    courseTitle: certTitle,
+    certificateTitle: certTitle,
     examTitle,
-    score,
-    totalScore,
-    scorePercent: totalScore > 0 ? Math.round((score / totalScore) * 100) : 0,
+    score: row.score ?? 0,
+    totalScore: row.totalScore ?? 0,
+    scorePercent: row.totalScore ? Math.round(((row.score ?? 0) / row.totalScore) * 100) : 0,
     passed: row.passed ?? false,
-    startedAt: row.startedAt.toISOString(),
     submittedAt: row.submittedAt.toISOString(),
-    certificateMailStatus: (row.certificateMailStatus === 'sent' ? 'sent' : 'unsent') as 'unsent' | 'sent',
-    certificateMailFile: mailFile,
-    certificateMailFileUrl: mailFile ? resolveOssAssetUrl(mailFile) || mailFile : null,
+    startedAt: row.startedAt.toISOString(),
+    certificateMailStatus: row.certificateMailStatus === 'sent' ? 'sent' as const : 'unsent' as const,
+    certificateMailFile: mailFileKey,
+    certificateMailFileUrl: mailFileKey ? resolveOssAssetUrl(mailFileKey) : null,
     certificateMailUpdatedAt: row.certificateMailUpdatedAt?.toISOString() ?? null,
-    certificateNumber: cert?.certificateNumber ?? null,
-    certificateIssuedAt: cert?.issuedAt?.toISOString() ?? null,
+    certificateNumber: userCert?.certificateNumber ?? null,
+    certificateIssuedAt: userCert?.issuedAt?.toISOString() ?? null,
     review,
   };
 }
 
 export async function updateAdminExamRecordMail(
   attemptId: string,
-  patch: { certificateMailStatus?: 'unsent' | 'sent'; certificateMailFile?: string | null },
+  input: { certificateMailStatus?: 'unsent' | 'sent'; certificateMailFile?: string | null },
 ) {
   const [existing] = await db
     .select({ id: academyExamAttempts.id })
@@ -258,17 +249,15 @@ export async function updateAdminExamRecordMail(
     .limit(1);
   if (!existing) return null;
 
-  const updates: Partial<typeof academyExamAttempts.$inferInsert> = {
-    updatedAt: new Date(),
-    certificateMailUpdatedAt: new Date(),
-  };
-  if (patch.certificateMailStatus) {
-    updates.certificateMailStatus = patch.certificateMailStatus;
-  }
-  if (patch.certificateMailFile !== undefined) {
-    updates.certificateMailFile = patch.certificateMailFile;
-  }
+  await db
+    .update(academyExamAttempts)
+    .set({
+      ...(input.certificateMailStatus ? { certificateMailStatus: input.certificateMailStatus } : {}),
+      ...(input.certificateMailFile !== undefined ? { certificateMailFile: input.certificateMailFile } : {}),
+      certificateMailUpdatedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(academyExamAttempts.id, attemptId));
 
-  await db.update(academyExamAttempts).set(updates).where(eq(academyExamAttempts.id, attemptId));
   return getAdminExamRecordDetail(attemptId);
 }

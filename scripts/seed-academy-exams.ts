@@ -1,5 +1,5 @@
 /**
- * Seed academy question banks and link them to courses.
+ * Seed academy question banks and link them to certificates.
  *
  * Usage: pnpm exec tsx scripts/seed-academy-exams.ts
  */
@@ -9,9 +9,9 @@ import { and, eq } from 'drizzle-orm';
 
 import { db } from '@/server/db';
 import {
-  academyCourseQuestionBanks,
-  academyCourseTranslations,
-  academyCourses,
+  academyCertificateQuestionBanks,
+  academyCertificateTranslations,
+  academyCertificates,
   academyQuestionBankTranslations,
   academyQuestionBanks,
   academyQuestionTranslations,
@@ -73,16 +73,16 @@ const DEFAULT_QUESTIONS: QuestionSeed[] = [
   },
 ];
 
-async function upsertBankForCourse(courseId: string, courseTitle: string) {
-  const bankTitle = `${courseTitle} — Final Exam`;
+async function upsertBankForCertificate(certificateId: string, certificateTitle: string) {
+  const bankTitle = `${certificateTitle} — Comprehensive Exam`;
 
   const existingLinks = await db
-    .select({ questionBankId: academyCourseQuestionBanks.questionBankId })
-    .from(academyCourseQuestionBanks)
-    .where(eq(academyCourseQuestionBanks.courseId, courseId));
+    .select({ questionBankId: academyCertificateQuestionBanks.questionBankId })
+    .from(academyCertificateQuestionBanks)
+    .where(eq(academyCertificateQuestionBanks.certificateId, certificateId));
 
   if (existingLinks.length) {
-    console.log(`[seed-exams] Skip ${courseTitle}: already linked`);
+    console.log(`[seed-exams] Skip ${certificateTitle}: already linked`);
     return;
   }
 
@@ -120,34 +120,34 @@ async function upsertBankForCourse(courseId: string, courseTitle: string) {
     });
   }
 
-  await db.insert(academyCourseQuestionBanks).values({
-    courseId,
+  await db.insert(academyCertificateQuestionBanks).values({
+    certificateId,
     questionBankId: bank.id,
     sortOrder: 10,
   });
 
-  console.log(`[seed-exams] Linked bank to course: ${courseTitle}`);
+  console.log(`[seed-exams] Linked bank to certificate: ${certificateTitle}`);
 }
 
 async function main() {
-  const courses = await db
-    .select({ id: academyCourses.id, slug: academyCourses.slug })
-    .from(academyCourses);
+  const certificates = await db
+    .select({ id: academyCertificates.id, slug: academyCertificates.slug })
+    .from(academyCertificates);
 
-  if (!courses.length) {
-    console.log('[seed-exams] No courses found. Run seed-academy.ts first.');
+  if (!certificates.length) {
+    console.log('[seed-exams] No certificates found. Run seed-academy.ts first.');
     return;
   }
 
-  for (const course of courses) {
+  for (const certificate of certificates) {
     const [translation] = await db
-      .select({ title: academyCourseTranslations.title })
-      .from(academyCourseTranslations)
-      .where(and(eq(academyCourseTranslations.courseId, course.id), eq(academyCourseTranslations.locale, LOCALE)))
+      .select({ title: academyCertificateTranslations.title })
+      .from(academyCertificateTranslations)
+      .where(and(eq(academyCertificateTranslations.certificateId, certificate.id), eq(academyCertificateTranslations.locale, LOCALE)))
       .limit(1);
 
-    const title = translation?.title?.trim() || course.slug;
-    await upsertBankForCourse(course.id, title);
+    const title = translation?.title?.trim() || certificate.slug;
+    await upsertBankForCertificate(certificate.id, title);
   }
 
   console.log('[seed-exams] Done.');

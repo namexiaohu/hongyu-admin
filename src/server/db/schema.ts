@@ -2062,6 +2062,9 @@ export const academyCertificateCourseProgress = pgTable(
     unitId: uuid('unit_id'),
     lessonId: uuid('lesson_id'),
     positionSeconds: integer('position_seconds').notNull().default(0),
+    completedLessonCount: integer('completed_lesson_count').notNull().default(0),
+    totalLessonCount: integer('total_lesson_count').notNull().default(0),
+    progressPercent: integer('progress_percent').notNull().default(0),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -2238,17 +2241,39 @@ export const academyQuestionTranslations = pgTable(
   }),
 );
 
-export const academyCourseQuestionBanks = pgTable(
-  'academy_course_question_banks',
+export const academyCertificateQuestionBanks = pgTable(
+  'academy_certificate_question_banks',
   {
-    courseId: uuid('course_id').notNull().references(() => academyCourses.id, { onDelete: 'cascade' }),
+    certificateId: uuid('certificate_id').notNull().references(() => academyCertificates.id, { onDelete: 'cascade' }),
     questionBankId: uuid('question_bank_id').notNull().references(() => academyQuestionBanks.id, { onDelete: 'cascade' }),
     sortOrder: integer('sort_order').notNull().default(0),
   },
   (table) => ({
-    pk: primaryKey({ columns: [table.courseId, table.questionBankId] }),
-    courseIdIdx: index('academy_course_question_banks_course_id_idx').on(table.courseId),
-    questionBankIdIdx: index('academy_course_question_banks_bank_id_idx').on(table.questionBankId),
+    pk: primaryKey({ columns: [table.certificateId, table.questionBankId] }),
+    certificateIdIdx: index('academy_certificate_question_banks_certificate_id_idx').on(table.certificateId),
+    questionBankIdIdx: index('academy_certificate_question_banks_bank_id_idx').on(table.questionBankId),
+  }),
+);
+
+export const academyCertificateProgress = pgTable(
+  'academy_certificate_progress',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    certificateId: uuid('certificate_id').notNull().references(() => academyCertificates.id, { onDelete: 'cascade' }),
+    completedLessonCount: integer('completed_course_count').notNull().default(0),
+    totalLessonCount: integer('total_course_count').notNull().default(0),
+    progressPercent: integer('progress_percent').notNull().default(0),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userCertificateUnique: uniqueIndex('academy_certificate_progress_user_certificate_unique').on(
+      table.userId,
+      table.certificateId,
+    ),
+    userUpdatedIdx: index('academy_certificate_progress_user_updated_idx').on(table.userId, table.updatedAt),
   }),
 );
 
@@ -2257,10 +2282,7 @@ export const academyExamAttempts = pgTable(
   {
     id: uuid('id').defaultRandom().primaryKey(),
     userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-    courseId: uuid('course_id').notNull().references(() => academyCourses.id, { onDelete: 'cascade' }),
-    certificateCourseId: uuid('certificate_course_id')
-      .notNull()
-      .references(() => academyCertificateCourses.id, { onDelete: 'cascade' }),
+    certificateId: uuid('certificate_id').notNull().references(() => academyCertificates.id, { onDelete: 'cascade' }),
     questionBankId: uuid('question_bank_id').notNull().references(() => academyQuestionBanks.id, { onDelete: 'cascade' }),
     startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
     submittedAt: timestamp('submitted_at', { withTimezone: true }),
@@ -2275,8 +2297,7 @@ export const academyExamAttempts = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    userCourseIdx: index('academy_exam_attempts_user_course_idx').on(table.userId, table.courseId),
-    userLinkIdx: index('academy_exam_attempts_user_link_idx').on(table.userId, table.certificateCourseId),
+    userCertificateIdx: index('academy_exam_attempts_user_certificate_idx').on(table.userId, table.certificateId),
     userIdIdx: index('academy_exam_attempts_user_id_idx').on(table.userId),
   }),
 );
@@ -2286,10 +2307,7 @@ export const academyUserCertificates = pgTable(
   {
     id: uuid('id').defaultRandom().primaryKey(),
     userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-    courseId: uuid('course_id').notNull().references(() => academyCourses.id, { onDelete: 'cascade' }),
-    certificateCourseId: uuid('certificate_course_id')
-      .notNull()
-      .references(() => academyCertificateCourses.id, { onDelete: 'cascade' }),
+    certificateId: uuid('certificate_id').notNull().references(() => academyCertificates.id, { onDelete: 'cascade' }),
     attemptId: uuid('attempt_id')
       .notNull()
       .references(() => academyExamAttempts.id, { onDelete: 'cascade' }),
@@ -2304,8 +2322,11 @@ export const academyUserCertificates = pgTable(
   (table) => ({
     attemptIdUnique: uniqueIndex('academy_user_certificates_attempt_id_unique').on(table.attemptId),
     certificateNumberUnique: uniqueIndex('academy_user_certificates_number_unique').on(table.certificateNumber),
+    userCertificateUnique: uniqueIndex('academy_user_certificates_user_certificate_unique').on(
+      table.userId,
+      table.certificateId,
+    ),
     userIdIdx: index('academy_user_certificates_user_id_idx').on(table.userId),
-    courseIdIdx: index('academy_user_certificates_course_id_idx').on(table.courseId),
-    linkIdx: index('academy_user_certificates_link_idx').on(table.certificateCourseId),
+    certificateIdIdx: index('academy_user_certificates_certificate_id_idx').on(table.certificateId),
   }),
 );

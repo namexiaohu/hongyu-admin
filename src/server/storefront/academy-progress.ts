@@ -76,5 +76,14 @@ export async function markLessonCompleted(userId: string, lessonId: string) {
     })
     .onConflictDoNothing();
 
+  const { getCourseIdForLessonId } = await import('@/server/storefront/academy-course-completion');
+  const { syncCertificateProgressForCourse } = await import('@/server/storefront/academy-certificate-progress');
+  const { syncCourseProgressForCourseId } = await import('@/server/storefront/academy-course-progress');
+  const courseId = await getCourseIdForLessonId(lessonId);
+  if (courseId) {
+    await syncCertificateProgressForCourse(userId, courseId);
+    await syncCourseProgressForCourseId(userId, courseId);
+  }
+
   return { ok: true as const };
 }

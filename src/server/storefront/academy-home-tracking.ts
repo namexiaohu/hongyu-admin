@@ -67,6 +67,8 @@ export type AcademyHomeDashboard = {
   courseIndex: number;
   courseTotal: number;
   progressPercent: number;
+  completedLessonCount: number;
+  totalLessonCount: number;
   learnHref: string;
 };
 
@@ -152,6 +154,7 @@ export async function touchCourseProgress(
     .select({
       id: academyCertificateCourses.id,
       courseId: academyCertificateCourses.courseId,
+      certificateId: academyCertificateCourses.certificateId,
       certificateStatus: academyCertificates.status,
       courseStatus: academyCourses.status,
     })
@@ -229,6 +232,12 @@ export async function touchCourseProgress(
           : {}),
       },
     });
+
+  const { ensureCertificateProgressStarted, syncCertificateProgress } = await import('@/server/storefront/academy-certificate-progress');
+  const { syncCourseProgress } = await import('@/server/storefront/academy-course-progress');
+  await ensureCertificateProgressStarted(userId, link.certificateId);
+  await syncCertificateProgress(userId, link.certificateId);
+  await syncCourseProgress(userId, certificateCourseId);
   return { ok: true as const };
 }
 
@@ -590,29 +599,15 @@ export async function getHomeDashboard(userId: string, locale?: string): Promise
     const certificateTitle = certT?.title?.trim() || '';
 
     if (certificateTitle && published.length) {
-      const lessonMap = await lessonIdsByCourseIds(publishedCourseIds);
-      const allLessonIds = publishedCourseIds.flatMap((courseId) => lessonMap.get(courseId) ?? []);
-      const completedSet = new Set<string>();
-      if (allLessonIds.length) {
-        const completed = await db
-          .select({ lessonId: academyLessonCompletions.lessonId })
-          .from(academyLessonCompletions)
-          .where(
-            and(
-              eq(academyLessonCompletions.userId, userId),
-              inArray(academyLessonCompletions.lessonId, allLessonIds),
-            ),
-          );
-        for (const row of completed) completedSet.add(row.lessonId);
-      }
-
       const courseIndex = published.findIndex((row) => row.id === latest.certificateCourseId) + 1;
       const courseT = pickTranslationForDisplay(courseTById.get(latest.courseId) ?? [], resolvedLocale);
       const courseTitle = courseT?.title?.trim() || '';
-      const completedLessons = allLessonIds.filter((id) => completedSet.has(id)).length;
-      const progressPercent = allLessonIds.length > 0
-        ? Math.round((completedLessons / allLessonIds.length) * 100)
-        : 0;
+
+      const { syncCertificateProgress } = await import('@/server/storefront/academy-certificate-progress');
+      const certProgress = await syncCertificateProgress(userId, latest.certificateId);
+      const progressPercent = certProgress?.progressPercent ?? 0;
+      const completedLessonCount = certProgress?.completedLessonCount ?? 0;
+      const totalLessonCount = certProgress?.totalLessonCount ?? 0;
 
       if (courseIndex > 0 && courseTitle) {
         dashboard = {
@@ -625,6 +620,8 @@ export async function getHomeDashboard(userId: string, locale?: string): Promise
           courseIndex,
           courseTotal: published.length,
           progressPercent,
+          completedLessonCount,
+          totalLessonCount,
           learnHref: academyLearnPath(latest.courseSlug, latest.certificateCourseId),
         };
       }

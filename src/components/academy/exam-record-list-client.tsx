@@ -33,7 +33,7 @@ export function ExamRecordListClient({ initialList }: Props) {
       return (
         item.userName.toLowerCase().includes(kw)
         || item.userEmail.toLowerCase().includes(kw)
-        || item.courseTitle.toLowerCase().includes(kw)
+        || item.certificateTitle.toLowerCase().includes(kw)
         || item.certificateTitle.toLowerCase().includes(kw)
       );
     });
@@ -92,7 +92,7 @@ export function ExamRecordListClient({ initialList }: Props) {
               </div>
             ),
           },
-          { title: '课程', dataIndex: 'courseTitle', onHeaderCell: adminTableNowrapHeader },
+          { title: '证书', dataIndex: 'certificateTitle', onHeaderCell: adminTableNowrapHeader },
           { title: '证书', dataIndex: 'certificateTitle', onHeaderCell: adminTableNowrapHeader },
           {
             title: '得分',

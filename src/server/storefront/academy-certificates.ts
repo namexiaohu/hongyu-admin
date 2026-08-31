@@ -70,6 +70,12 @@ export type StorefrontAcademyCertificateDetail = {
   skills: string[];
   tools: string[];
   courses: StorefrontAcademyCertificateCourseItem[];
+  examHint: {
+    hasExam: boolean;
+    questionCount?: number;
+    passScorePercent?: number;
+    totalCourses?: number;
+  };
   seo: { title: string; description: string };
 };
 
@@ -271,6 +277,17 @@ export async function getStorefrontAcademyCertificateBySlug(
     })
     .filter((item): item is StorefrontAcademyCertificateCourseItem => Boolean(item));
 
+  const { getPublicCertificateExamHint } = await import('@/server/storefront/academy-certificate-learning');
+  const examHintRaw = await getPublicCertificateExamHint(slug, resolvedLocale);
+  const examHint = examHintRaw?.hasExam
+    ? {
+        hasExam: true as const,
+        questionCount: examHintRaw.questionCount,
+        passScorePercent: examHintRaw.passScorePercent,
+        totalCourses: examHintRaw.totalCourses,
+      }
+    : { hasExam: false as const };
+
   return {
     slug: row.slug,
     locale: resolvedLocale,
@@ -294,6 +311,7 @@ export async function getStorefrontAcademyCertificateBySlug(
     skills: fields.skills,
     tools: fields.tools,
     courses,
+    examHint,
     seo: {
       title: fields.seoTitle || fields.title,
       description: fields.seoDescription || fields.summary,

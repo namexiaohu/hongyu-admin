@@ -49,8 +49,7 @@ export function ExamRecordDetailClient({ initialDetail }: Props) {
         <Descriptions column={2} bordered size="small">
           <Descriptions.Item label="学员">{detail.user.name}</Descriptions.Item>
           <Descriptions.Item label="邮箱">{detail.user.email}</Descriptions.Item>
-          <Descriptions.Item label="课程">{detail.courseTitle}</Descriptions.Item>
-          <Descriptions.Item label="证书">{detail.certificateTitle || '—'}</Descriptions.Item>
+          <Descriptions.Item label="证书">{detail.certificateTitle || detail.courseTitle || '—'}</Descriptions.Item>
           <Descriptions.Item label="考试">{detail.examTitle || '—'}</Descriptions.Item>
           <Descriptions.Item label="得分">
             {detail.score} / {detail.totalScore} ({detail.scorePercent}%)

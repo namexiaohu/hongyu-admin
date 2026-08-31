@@ -3,12 +3,11 @@ import { z } from 'zod';
 
 import { frontCorsHeaders } from '@/lib/front-cors';
 import { getCurrentUserId } from '@/server/auth/session';
-import { startExamAttempt } from '@/server/storefront/academy-exams';
+import { startCertificateExamAttempt } from '@/server/storefront/academy-exams';
 
-type RouteContext = { params: Promise<{ courseSlug: string }> };
+type RouteContext = { params: Promise<{ certificateSlug: string }> };
 
 const bodySchema = z.object({
-  certificateCourseId: z.string().uuid(),
   locale: z.string().trim().optional(),
 });
 
@@ -21,17 +20,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
     );
   }
 
-  const { courseSlug } = await context.params;
+  const { certificateSlug } = await context.params;
   const parsed = bodySchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) {
     return NextResponse.json(
-      { code: 'VALIDATION_ERROR', message: 'certificateCourseId is required' },
+      { code: 'VALIDATION_ERROR', message: 'Invalid request body' },
       { status: 400, headers: frontCorsHeaders() },
     );
   }
 
   const locale = parsed.data.locale || request.nextUrl.searchParams.get('locale')?.trim() || undefined;
-  const result = await startExamAttempt(userId, courseSlug, parsed.data.certificateCourseId, locale);
+  const result = await startCertificateExamAttempt(userId, certificateSlug, locale);
 
   if (!result.ok) {
     const status = result.code === 'NOT_FOUND' ? 404 : 403;

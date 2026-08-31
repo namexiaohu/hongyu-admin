@@ -8,14 +8,14 @@ import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
 import { db } from '@/server/db';
 import {
-  academyCourseQuestionBanks,
-  academyCourses,
+  academyCertificateQuestionBanks,
+  academyCertificates,
   academyQuestionBankTranslations,
   academyQuestionBanks,
   academyQuestions,
 } from '@/server/db/schema';
 
-export type AdminAcademyCourseQuestionBankItem = {
+export type AdminAcademyCertificateQuestionBankItem = {
   questionBankId: string;
   sortOrder: number;
   title: string;
@@ -26,26 +26,28 @@ export type AdminAcademyCourseQuestionBankItem = {
   maxRetakes: number | null;
 };
 
-async function syncCourseQuestionBanks(courseId: string, questionBankIds: string[]) {
+async function syncCertificateQuestionBanks(certificateId: string, questionBankIds: string[]) {
   const uniqueIds = [...new Set(questionBankIds.filter(Boolean))];
-  await db.delete(academyCourseQuestionBanks).where(eq(academyCourseQuestionBanks.courseId, courseId));
+  await db.delete(academyCertificateQuestionBanks).where(eq(academyCertificateQuestionBanks.certificateId, certificateId));
   if (!uniqueIds.length) return;
-  await db.insert(academyCourseQuestionBanks).values(
+  await db.insert(academyCertificateQuestionBanks).values(
     uniqueIds.map((questionBankId, index) => ({
-      courseId,
+      certificateId,
       questionBankId,
       sortOrder: (index + 1) * 10,
     })),
   );
 }
 
-export async function listAdminAcademyCourseQuestionBanks(courseId: string): Promise<AdminAcademyCourseQuestionBankItem[]> {
+export async function listAdminAcademyCertificateQuestionBanks(
+  certificateId: string,
+): Promise<AdminAcademyCertificateQuestionBankItem[]> {
   const defaultLocale = await getDefaultSiteLanguageCode();
   const links = await db
     .select()
-    .from(academyCourseQuestionBanks)
-    .where(eq(academyCourseQuestionBanks.courseId, courseId))
-    .orderBy(asc(academyCourseQuestionBanks.sortOrder));
+    .from(academyCertificateQuestionBanks)
+    .where(eq(academyCertificateQuestionBanks.certificateId, certificateId))
+    .orderBy(asc(academyCertificateQuestionBanks.sortOrder));
 
   if (!links.length) return [];
 
@@ -93,10 +95,14 @@ export async function listAdminAcademyCourseQuestionBanks(courseId: string): Pro
   });
 }
 
-export async function updateAdminAcademyCourseQuestionBanks(courseId: string, input: unknown) {
+export async function updateAdminAcademyCertificateQuestionBanks(certificateId: string, input: unknown) {
   const parsed = adminAcademyCourseQuestionBanksPatchSchema.parse(input);
-  const [course] = await db.select({ id: academyCourses.id }).from(academyCourses).where(eq(academyCourses.id, courseId)).limit(1);
-  if (!course) return null;
+  const [certificate] = await db
+    .select({ id: academyCertificates.id })
+    .from(academyCertificates)
+    .where(eq(academyCertificates.id, certificateId))
+    .limit(1);
+  if (!certificate) return null;
 
   if (parsed.questionBankIds.length) {
     const banks = await db
@@ -108,12 +114,20 @@ export async function updateAdminAcademyCourseQuestionBanks(courseId: string, in
     }
   }
 
-  await syncCourseQuestionBanks(courseId, parsed.questionBankIds);
-  return listAdminAcademyCourseQuestionBanks(courseId);
+  await syncCertificateQuestionBanks(certificateId, parsed.questionBankIds);
+  return listAdminAcademyCertificateQuestionBanks(certificateId);
 }
 
-export async function listQuestionBanksForCoursePicker(): Promise<AdminAcademyQuestionBankListItem[]> {
+export async function listQuestionBanksForCertificatePicker(): Promise<AdminAcademyQuestionBankListItem[]> {
   const { getAdminAcademyQuestionBankList } = await import('@/server/admin/academy-question-banks');
   const { items } = await getAdminAcademyQuestionBankList();
   return items;
+}
+
+export async function countCertificateQuestionBanks(certificateId: string) {
+  const [{ count = 0 } = { count: 0 }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(academyCertificateQuestionBanks)
+    .where(eq(academyCertificateQuestionBanks.certificateId, certificateId));
+  return count;
 }

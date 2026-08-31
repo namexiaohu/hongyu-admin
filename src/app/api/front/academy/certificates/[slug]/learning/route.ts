@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { frontCorsHeaders } from '@/lib/front-cors';
 import { getCurrentUserId } from '@/server/auth/session';
-import { getCertificateExamAttemptResult } from '@/server/storefront/academy-exams';
+import { getCertificateLearningState } from '@/server/storefront/academy-certificate-learning';
 
-type RouteContext = { params: Promise<{ attemptId: string }> };
+type RouteContext = { params: Promise<{ slug: string }> };
 
 export async function GET(request: NextRequest, context: RouteContext) {
   const userId = await getCurrentUserId(request);
@@ -15,26 +15,18 @@ export async function GET(request: NextRequest, context: RouteContext) {
     );
   }
 
-  const { attemptId } = await context.params;
-  const certificateSlug = request.nextUrl.searchParams.get('certificateSlug')?.trim() ?? '';
-  if (!certificateSlug) {
-    return NextResponse.json(
-      { code: 'VALIDATION_ERROR', message: 'certificateSlug is required' },
-      { status: 400, headers: frontCorsHeaders() },
-    );
-  }
-
+  const { slug } = await context.params;
   const locale = request.nextUrl.searchParams.get('locale')?.trim() || undefined;
-  const result = await getCertificateExamAttemptResult(userId, attemptId, certificateSlug, locale);
+  const state = await getCertificateLearningState(userId, slug, locale);
 
-  if (!result.ok) {
+  if (!state) {
     return NextResponse.json(
-      { code: result.code, message: 'Attempt not found' },
+      { code: 'NOT_FOUND', message: 'Certificate not found' },
       { status: 404, headers: frontCorsHeaders() },
     );
   }
 
-  return NextResponse.json(result, { headers: frontCorsHeaders() });
+  return NextResponse.json(state, { headers: frontCorsHeaders() });
 }
 
 export async function OPTIONS() {

@@ -12,14 +12,13 @@ import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
 import { db } from '@/server/db';
 import {
-  academyCourseTranslations,
-  academyCourses,
+  academyCertificates,
+  academyCertificateTranslations,
   academyExamAttempts,
   academyQuestionBankTranslations,
   academyUserCertificates,
   users,
 } from '@/server/db/schema';
-import { getCertificateCourseMetaByIds } from '@/server/storefront/academy-certificate-courses';
 
 function resolveCover(row: { coverMode: string; coverValue: string; coverImage: string }) {
   return resolveStorefrontCoverUrl({
@@ -34,11 +33,11 @@ function recipientDisplayName(firstName: string, lastName: string) {
   return `${firstName} ${lastName}`.trim() || firstName || lastName;
 }
 
-async function getCourseTitle(courseId: string, locale: string) {
+async function getCertificateTitle(certificateId: string, locale: string) {
   const translations = await db
     .select()
-    .from(academyCourseTranslations)
-    .where(eq(academyCourseTranslations.courseId, courseId));
+    .from(academyCertificateTranslations)
+    .where(eq(academyCertificateTranslations.certificateId, certificateId));
   const display = pickTranslationForDisplay(translations, locale);
   return display?.title?.trim() ?? '';
 }
@@ -53,7 +52,7 @@ export async function issueUserCertificateForAttempt(attemptId: string, locale?:
 
   if (!attempt?.submittedAt || !attempt.passed) return null;
 
-  const [existing] = await db
+  const [existingByAttempt] = await db
     .select({
       id: academyUserCertificates.id,
       certificateNumber: academyUserCertificates.certificateNumber,
@@ -61,7 +60,22 @@ export async function issueUserCertificateForAttempt(attemptId: string, locale?:
     .from(academyUserCertificates)
     .where(eq(academyUserCertificates.attemptId, attemptId))
     .limit(1);
-  if (existing) return existing;
+  if (existingByAttempt) return existingByAttempt;
+
+  const [existingByUserCert] = await db
+    .select({
+      id: academyUserCertificates.id,
+      certificateNumber: academyUserCertificates.certificateNumber,
+    })
+    .from(academyUserCertificates)
+    .where(
+      and(
+        eq(academyUserCertificates.userId, attempt.userId),
+        eq(academyUserCertificates.certificateId, attempt.certificateId),
+      ),
+    )
+    .limit(1);
+  if (existingByUserCert) return existingByUserCert;
 
   const defaultLocale = locale ?? (await getDefaultSiteLanguageCode());
   const [user] = await db
@@ -71,7 +85,7 @@ export async function issueUserCertificateForAttempt(attemptId: string, locale?:
     .limit(1);
   if (!user) return null;
 
-  const title = await getCourseTitle(attempt.courseId, defaultLocale);
+  const title = await getCertificateTitle(attempt.certificateId, defaultLocale);
   const recipientName = recipientDisplayName(user.firstName, user.lastName);
   const issuedAt = new Date();
 
@@ -82,8 +96,7 @@ export async function issueUserCertificateForAttempt(attemptId: string, locale?:
         .insert(academyUserCertificates)
         .values({
           userId: attempt.userId,
-          courseId: attempt.courseId,
-          certificateCourseId: attempt.certificateCourseId,
+          certificateId: attempt.certificateId,
           attemptId: attempt.id,
           certificateNumber,
           recipientName,
@@ -113,27 +126,37 @@ export async function getCertificateNumberForAttempt(attemptId: string) {
   return row?.certificateNumber ?? null;
 }
 
-/** Latest certificate the user earned for a certificate-course link, if any. */
-export async function getUserCertificateForCertificateCourse(userId: string, certificateCourseId: string) {
+export async function getUserCertificateForCertificate(userId: string, certificateId: string) {
   const [row] = await db
     .select({
       certificateNumber: academyUserCertificates.certificateNumber,
       issuedAt: academyUserCertificates.issuedAt,
+      attemptId: academyUserCertificates.attemptId,
     })
     .from(academyUserCertificates)
     .where(
       and(
         eq(academyUserCertificates.userId, userId),
-        eq(academyUserCertificates.certificateCourseId, certificateCourseId),
+        eq(academyUserCertificates.certificateId, certificateId),
       ),
     )
     .orderBy(desc(academyUserCertificates.issuedAt))
     .limit(1);
 
   if (!row) return null;
+
+  const [attempt] = await db
+    .select({ score: academyExamAttempts.score, totalScore: academyExamAttempts.totalScore, passed: academyExamAttempts.passed })
+    .from(academyExamAttempts)
+    .where(eq(academyExamAttempts.id, row.attemptId))
+    .limit(1);
+
   return {
     certificateNumber: row.certificateNumber,
     issuedAt: row.issuedAt.toISOString(),
+    score: attempt?.score ?? null,
+    totalScore: attempt?.totalScore ?? null,
+    passed: attempt?.passed ?? false,
   };
 }
 
@@ -143,35 +166,34 @@ export async function listMyExamRecords(userId: string, locale?: string) {
   const rows = await db
     .select({
       attemptId: academyExamAttempts.id,
-      courseId: academyExamAttempts.courseId,
-      certificateCourseId: academyExamAttempts.certificateCourseId,
+      certificateId: academyExamAttempts.certificateId,
       questionBankId: academyExamAttempts.questionBankId,
       score: academyExamAttempts.score,
       totalScore: academyExamAttempts.totalScore,
       passed: academyExamAttempts.passed,
       submittedAt: academyExamAttempts.submittedAt,
-      courseSlug: academyCourses.slug,
+      certificateSlug: academyCertificates.slug,
     })
     .from(academyExamAttempts)
-    .innerJoin(academyCourses, eq(academyCourses.id, academyExamAttempts.courseId))
+    .innerJoin(academyCertificates, eq(academyCertificates.id, academyExamAttempts.certificateId))
     .where(and(eq(academyExamAttempts.userId, userId), isNotNull(academyExamAttempts.submittedAt)))
     .orderBy(desc(academyExamAttempts.submittedAt));
 
   if (!rows.length) return { items: [] as const };
 
-  const courseIds = [...new Set(rows.map((row) => row.courseId))];
+  const certificateIds = [...new Set(rows.map((row) => row.certificateId))];
   const bankIds = [...new Set(rows.map((row) => row.questionBankId))];
 
-  const allCourseTranslations = await db
+  const allCertTranslations = await db
     .select()
-    .from(academyCourseTranslations)
-    .where(inArray(academyCourseTranslations.courseId, courseIds));
+    .from(academyCertificateTranslations)
+    .where(inArray(academyCertificateTranslations.certificateId, certificateIds));
 
-  const courseTitleById = new Map<string, string>();
-  for (const courseId of courseIds) {
-    const list = allCourseTranslations.filter((t) => t.courseId === courseId);
+  const certTitleById = new Map<string, string>();
+  for (const certificateId of certificateIds) {
+    const list = allCertTranslations.filter((t) => t.certificateId === certificateId);
     const display = pickTranslationForDisplay(list, defaultLocale);
-    courseTitleById.set(courseId, display?.title?.trim() ?? '');
+    certTitleById.set(certificateId, display?.title?.trim() ?? '');
   }
 
   const allBankTranslations = await db
@@ -185,24 +207,15 @@ export async function listMyExamRecords(userId: string, locale?: string) {
     examTitleByBankId.set(bankId, display?.title?.trim() ?? '');
   }
 
-  const certMeta = await getCertificateCourseMetaByIds(
-    rows.map((row) => row.certificateCourseId),
-    defaultLocale,
-  );
-
   return {
     items: rows.map((row) => {
       const score = row.score ?? 0;
       const totalScore = row.totalScore ?? 0;
-      const meta = certMeta.get(row.certificateCourseId);
       return {
         attemptId: row.attemptId,
-        courseSlug: row.courseSlug,
-        courseTitle: courseTitleById.get(row.courseId) ?? '',
+        certificateSlug: row.certificateSlug,
+        certificateTitle: certTitleById.get(row.certificateId) ?? '',
         examTitle: examTitleByBankId.get(row.questionBankId) ?? '',
-        certificateCourseId: row.certificateCourseId,
-        certificateTitle: meta?.certificateTitle ?? '',
-        certificateSlug: meta?.certificateSlug ?? '',
         score,
         totalScore,
         scorePercent: totalScore > 0 ? Math.round((score / totalScore) * 100) : 0,
@@ -224,14 +237,13 @@ export async function listMyCertificates(userId: string, locale?: string) {
       issuerName: academyUserCertificates.issuerName,
       recipientName: academyUserCertificates.recipientName,
       issuedAt: academyUserCertificates.issuedAt,
-      courseId: academyUserCertificates.courseId,
-      courseSlug: academyCourses.slug,
-      coverImage: academyCourses.coverImage,
-      coverMode: academyCourses.coverMode,
-      coverValue: academyCourses.coverValue,
+      certificateSlug: academyCertificates.slug,
+      coverImage: academyCertificates.coverImage,
+      coverMode: academyCertificates.coverMode,
+      coverValue: academyCertificates.coverValue,
     })
     .from(academyUserCertificates)
-    .innerJoin(academyCourses, eq(academyCourses.id, academyUserCertificates.courseId))
+    .innerJoin(academyCertificates, eq(academyCertificates.id, academyUserCertificates.certificateId))
     .where(eq(academyUserCertificates.userId, userId))
     .orderBy(desc(academyUserCertificates.issuedAt));
 
@@ -243,9 +255,8 @@ export async function listMyCertificates(userId: string, locale?: string) {
       issuerName: row.issuerName,
       recipientName: row.recipientName,
       issuedAt: row.issuedAt.toISOString(),
-      courseSlug: row.courseSlug,
+      certificateSlug: row.certificateSlug,
       coverPreviewUrl: resolveCover(row),
-      courseCount: 1,
       locale: defaultLocale,
     })),
   };
@@ -259,10 +270,10 @@ export async function getPublicCertificateByNumber(certificateNumber: string) {
       issuerName: academyUserCertificates.issuerName,
       recipientName: academyUserCertificates.recipientName,
       issuedAt: academyUserCertificates.issuedAt,
-      courseSlug: academyCourses.slug,
+      certificateSlug: academyCertificates.slug,
     })
     .from(academyUserCertificates)
-    .innerJoin(academyCourses, eq(academyCourses.id, academyUserCertificates.courseId))
+    .innerJoin(academyCertificates, eq(academyCertificates.id, academyUserCertificates.certificateId))
     .where(eq(academyUserCertificates.certificateNumber, certificateNumber))
     .limit(1);
 
@@ -275,6 +286,6 @@ export async function getPublicCertificateByNumber(certificateNumber: string) {
     issuerName: row.issuerName,
     recipientName: row.recipientName,
     issuedAt: row.issuedAt.toISOString(),
-    courseSlug: row.courseSlug,
+    certificateSlug: row.certificateSlug,
   };
 }
