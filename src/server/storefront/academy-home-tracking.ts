@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { and, asc, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
 
 import { normalizeStringTags } from '@/lib/academy-content-shared';
 import { resolveStorefrontCoverUrl } from '@/lib/cover-presets';
@@ -11,23 +11,32 @@ import { db } from '@/server/db';
 import {
   academyCertificateCourseProgress,
   academyCertificateCourses,
+  academyCertificateProgress,
   academyCertificateTranslations,
   academyCertificateViews,
   academyCertificates,
   academyCourseTranslations,
   academyCourseViews,
   academyCourses,
-  academyLessonCompletions,
   academyLessonTranslations,
   academyLessons,
   academyUnitTranslations,
   academyUnits,
+  academyUserCertificates,
   users,
 } from '@/server/db/schema';
 import {
   academyCourseDetailPath,
   academyLearnPath,
 } from '@/server/storefront/academy-certificate-courses';
+import { syncCertificateProgress } from '@/server/storefront/academy-certificate-progress';
+import {
+  academyCertificateExamPath,
+  isActiveHomeCertificateStatus,
+  resolveCertificateLearningStatus,
+  type ActiveCertificateLearningStatus,
+} from '@/server/storefront/academy-certificate-learning-shared';
+import { getCertificateExamMeta } from '@/server/storefront/academy-exams';
 
 function resolveCover(row: { coverMode: string; coverValue: string; coverImage: string }) {
   return resolveStorefrontCoverUrl({
@@ -55,6 +64,14 @@ export type AcademyHomeProgressItem = {
   positionSeconds: number;
   href: string;
   certificateHref: string;
+  status: ActiveCertificateLearningStatus;
+  progressPercent: number;
+  completedLessonCount: number;
+  totalLessonCount: number;
+  courseIndex: number;
+  courseTotal: number;
+  continueLearnHref: string;
+  exam: { hasExam: boolean; examHref: string | null } | null;
 };
 
 export type AcademyHomeDashboard = {
@@ -362,40 +379,28 @@ export async function getHomeDashboard(userId: string, locale?: string): Promise
     .where(eq(users.id, userId))
     .limit(1);
 
-  const progressRows = await db
+  const certProgressRows = await db
     .select({
-      certificateCourseId: academyCertificateCourseProgress.certificateCourseId,
-      updatedAt: academyCertificateCourseProgress.updatedAt,
-      unitId: academyCertificateCourseProgress.unitId,
-      lessonId: academyCertificateCourseProgress.lessonId,
-      positionSeconds: academyCertificateCourseProgress.positionSeconds,
-      certificateId: academyCertificateCourses.certificateId,
-      courseId: academyCertificateCourses.courseId,
-      sortOrder: academyCertificateCourses.sortOrder,
+      certificateId: academyCertificateProgress.certificateId,
       certificateSlug: academyCertificates.slug,
-      certificateCoverImage: academyCertificates.coverImage,
-      certificateCoverMode: academyCertificates.coverMode,
-      certificateCoverValue: academyCertificates.coverValue,
-      courseSlug: academyCourses.slug,
-      courseCoverImage: academyCourses.coverImage,
-      courseCoverMode: academyCourses.coverMode,
-      courseCoverValue: academyCourses.coverValue,
     })
-    .from(academyCertificateCourseProgress)
-    .innerJoin(
-      academyCertificateCourses,
-      eq(academyCertificateCourses.id, academyCertificateCourseProgress.certificateCourseId),
-    )
-    .innerJoin(academyCertificates, eq(academyCertificates.id, academyCertificateCourses.certificateId))
-    .innerJoin(academyCourses, eq(academyCourses.id, academyCertificateCourses.courseId))
-    .where(
+    .from(academyCertificateProgress)
+    .innerJoin(academyCertificates, eq(academyCertificates.id, academyCertificateProgress.certificateId))
+    .leftJoin(
+      academyUserCertificates,
       and(
-        eq(academyCertificateCourseProgress.userId, userId),
-        eq(academyCertificates.status, 'published'),
-        eq(academyCourses.status, 'published'),
+        eq(academyUserCertificates.userId, userId),
+        eq(academyUserCertificates.certificateId, academyCertificateProgress.certificateId),
       ),
     )
-    .orderBy(desc(academyCertificateCourseProgress.updatedAt))
+    .where(
+      and(
+        eq(academyCertificateProgress.userId, userId),
+        eq(academyCertificates.status, 'published'),
+        isNull(academyUserCertificates.id),
+      ),
+    )
+    .orderBy(desc(academyCertificateProgress.updatedAt))
     .limit(3);
 
   const certViewRows = await db
@@ -454,14 +459,77 @@ export async function getHomeDashboard(userId: string, locale?: string): Promise
 
   const certificateIds = [
     ...new Set([
-      ...progressRows.map((row) => row.certificateId),
+      ...certProgressRows.map((row) => row.certificateId),
       ...certViewRows.map((row) => row.certificateId),
       ...[...firstLinkByCourse.values()].map((link) => link.certificateId),
     ]),
   ];
+
+  const certCourseLinks = certProgressRows.length
+    ? await db
+        .select({
+          id: academyCertificateCourses.id,
+          certificateId: academyCertificateCourses.certificateId,
+          courseId: academyCertificateCourses.courseId,
+          sortOrder: academyCertificateCourses.sortOrder,
+          courseSlug: academyCourses.slug,
+          courseStatus: academyCourses.status,
+        })
+        .from(academyCertificateCourses)
+        .innerJoin(academyCourses, eq(academyCourses.id, academyCertificateCourses.courseId))
+        .where(
+          and(
+            inArray(academyCertificateCourses.certificateId, certProgressRows.map((row) => row.certificateId)),
+            eq(academyCourses.status, 'published'),
+          ),
+        )
+        .orderBy(asc(academyCertificateCourses.sortOrder))
+    : [];
+
+  const publishedLinksByCert = new Map<string, typeof certCourseLinks>();
+  for (const link of certCourseLinks) {
+    if (link.courseStatus !== 'published') continue;
+    const bucket = publishedLinksByCert.get(link.certificateId) ?? [];
+    bucket.push(link);
+    publishedLinksByCert.set(link.certificateId, bucket);
+  }
+
+  const touchRows = certProgressRows.length
+    ? await db
+        .select({
+          certificateId: academyCertificateCourses.certificateId,
+          certificateCourseId: academyCertificateCourseProgress.certificateCourseId,
+          courseId: academyCertificateCourses.courseId,
+          courseSlug: academyCourses.slug,
+          unitId: academyCertificateCourseProgress.unitId,
+          lessonId: academyCertificateCourseProgress.lessonId,
+          positionSeconds: academyCertificateCourseProgress.positionSeconds,
+          updatedAt: academyCertificateCourseProgress.updatedAt,
+        })
+        .from(academyCertificateCourseProgress)
+        .innerJoin(
+          academyCertificateCourses,
+          eq(academyCertificateCourses.id, academyCertificateCourseProgress.certificateCourseId),
+        )
+        .innerJoin(academyCourses, eq(academyCourses.id, academyCertificateCourses.courseId))
+        .where(
+          and(
+            eq(academyCertificateCourseProgress.userId, userId),
+            inArray(academyCertificateCourses.certificateId, certProgressRows.map((row) => row.certificateId)),
+            eq(academyCourses.status, 'published'),
+          ),
+        )
+        .orderBy(desc(academyCertificateCourseProgress.updatedAt))
+    : [];
+
+  const latestTouchByCert = new Map<string, (typeof touchRows)[number]>();
+  for (const row of touchRows) {
+    if (!latestTouchByCert.has(row.certificateId)) latestTouchByCert.set(row.certificateId, row);
+  }
+
   const courseIds = [
     ...new Set([
-      ...progressRows.map((row) => row.courseId),
+      ...certCourseLinks.map((link) => link.courseId),
       ...courseViewRows.map((row) => row.courseId),
     ]),
   ];
@@ -489,23 +557,44 @@ export async function getHomeDashboard(userId: string, locale?: string): Promise
   }
 
   const firstLessonByCourseId = await firstLessonsByCourseIds(
-    [...new Set(progressRows.filter((row) => !row.unitId || !row.lessonId).map((row) => row.courseId))],
+    [...new Set(
+      certProgressRows.flatMap((row) => {
+        const touch = latestTouchByCert.get(row.certificateId);
+        const published = publishedLinksByCert.get(row.certificateId) ?? [];
+        const courseIdsForFallback: string[] = [];
+        if (touch && (!touch.unitId || !touch.lessonId)) courseIdsForFallback.push(touch.courseId);
+        if (!touch && published[0]) courseIdsForFallback.push(published[0].courseId);
+        return courseIdsForFallback;
+      }),
+    )],
   );
 
   const watchLessonIds = [...new Set(
-    progressRows.flatMap((row) => {
+    certProgressRows.flatMap((row) => {
+      const touch = latestTouchByCert.get(row.certificateId);
+      const published = publishedLinksByCert.get(row.certificateId) ?? [];
       const ids: string[] = [];
-      if (row.lessonId) ids.push(row.lessonId);
-      const seeded = firstLessonByCourseId.get(row.courseId);
+      if (touch?.lessonId) ids.push(touch.lessonId);
+      const seeded = touch
+        ? firstLessonByCourseId.get(touch.courseId)
+        : published[0]
+          ? firstLessonByCourseId.get(published[0].courseId)
+          : undefined;
       if (seeded) ids.push(seeded.lessonId);
       return ids;
     }),
   )];
   const watchUnitIds = [...new Set(
-    progressRows.flatMap((row) => {
+    certProgressRows.flatMap((row) => {
+      const touch = latestTouchByCert.get(row.certificateId);
+      const published = publishedLinksByCert.get(row.certificateId) ?? [];
       const ids: string[] = [];
-      if (row.unitId) ids.push(row.unitId);
-      const seeded = firstLessonByCourseId.get(row.courseId);
+      if (touch?.unitId) ids.push(touch.unitId);
+      const seeded = touch
+        ? firstLessonByCourseId.get(touch.courseId)
+        : published[0]
+          ? firstLessonByCourseId.get(published[0].courseId)
+          : undefined;
       if (seeded) ids.push(seeded.unitId);
       return ids;
     }),
@@ -545,92 +634,93 @@ export async function getHomeDashboard(userId: string, locale?: string): Promise
     unitTById.set(row.unitId, bucket);
   }
 
-  const progressItems = progressRows.flatMap((row) => {
-    const seeded = firstLessonByCourseId.get(row.courseId);
-    const unitId = row.unitId || seeded?.unitId || '';
-    const lessonId = row.lessonId || seeded?.lessonId || '';
-    if (!unitId || !lessonId) return [];
+  const progressItems: AcademyHomeProgressItem[] = [];
+
+  for (const certRow of certProgressRows) {
+    const published = publishedLinksByCert.get(certRow.certificateId) ?? [];
+    if (!published.length) continue;
+
+    const certT = pickTranslationForDisplay(certTById.get(certRow.certificateId) ?? [], resolvedLocale);
+    const certificateTitle = certT?.title?.trim() || '';
+    if (!certificateTitle) continue;
+
+    const progressSnapshot = await syncCertificateProgress(userId, certRow.certificateId);
+    const status = resolveCertificateLearningStatus(progressSnapshot, false);
+    if (!isActiveHomeCertificateStatus(status)) continue;
+
+    const touch = latestTouchByCert.get(certRow.certificateId);
+    const fallbackLink = published[0]!;
+    const activeLink = touch
+      ? published.find((link) => link.id === touch.certificateCourseId) ?? fallbackLink
+      : fallbackLink;
+    const courseIndex = published.findIndex((link) => link.id === activeLink.id) + 1;
+    if (courseIndex <= 0) continue;
+
+    const seeded = firstLessonByCourseId.get(activeLink.courseId);
+    const unitId = touch?.unitId || seeded?.unitId || '';
+    const lessonId = touch?.lessonId || seeded?.lessonId || '';
+    if (!unitId || !lessonId) continue;
+
     const lesson = lessonById.get(lessonId);
-    if (!lesson || lesson.unitId !== unitId) return [];
+    if (!lesson || lesson.unitId !== unitId) continue;
+
     const videoUrl = lesson.videoUrl?.trim() ? resolveOssAssetUrl(lesson.videoUrl) : '';
-    if (!videoUrl) return [];
-    const certT = pickTranslationForDisplay(certTById.get(row.certificateId) ?? [], resolvedLocale);
-    const courseT = pickTranslationForDisplay(courseTById.get(row.courseId) ?? [], resolvedLocale);
+    if (!videoUrl) continue;
+
+    const courseT = pickTranslationForDisplay(courseTById.get(activeLink.courseId) ?? [], resolvedLocale);
     const unitT = pickTranslationForDisplay(unitTById.get(unitId) ?? [], resolvedLocale);
     const lessonT = pickTranslationForDisplay(lessonTById.get(lessonId) ?? [], resolvedLocale);
-    const certificateTitle = certT?.title?.trim() || '';
     const courseTitle = courseT?.title?.trim() || '';
     const unitTitle = unitT?.title?.trim() || '';
     const lessonTitle = lessonT?.title?.trim() || '';
-    if (!certificateTitle || !courseTitle || !unitTitle || !lessonTitle) return [];
-    return [{
-      certificateCourseId: row.certificateCourseId,
-      certificateSlug: row.certificateSlug,
+    if (!courseTitle || !unitTitle || !lessonTitle) continue;
+
+    const learnHref = academyLearnPath(activeLink.courseSlug, activeLink.id);
+    const examMeta = await getCertificateExamMeta(certRow.certificateId, resolvedLocale);
+
+    progressItems.push({
+      certificateCourseId: activeLink.id,
+      certificateSlug: certRow.certificateSlug,
       certificateTitle,
-      courseSlug: row.courseSlug,
+      courseSlug: activeLink.courseSlug,
       courseTitle,
       unitTitle,
       lessonTitle,
       videoUrl,
       durationSeconds: lesson.durationSeconds,
-      positionSeconds: Math.max(0, row.positionSeconds ?? 0),
-      href: academyLearnPath(row.courseSlug, row.certificateCourseId),
-      certificateHref: `/certificates/${row.certificateSlug}`,
-    }];
-  });
+      positionSeconds: Math.max(0, touch?.positionSeconds ?? 0),
+      href: learnHref,
+      certificateHref: `/certificates/${certRow.certificateSlug}`,
+      status,
+      progressPercent: progressSnapshot?.progressPercent ?? 0,
+      completedLessonCount: progressSnapshot?.completedLessonCount ?? 0,
+      totalLessonCount: progressSnapshot?.totalLessonCount ?? 0,
+      courseIndex,
+      courseTotal: published.length,
+      continueLearnHref: learnHref,
+      exam: examMeta.hasExam
+        ? { hasExam: true, examHref: academyCertificateExamPath(certRow.certificateSlug) }
+        : { hasExam: false, examHref: null },
+    });
+  }
 
   let dashboard: AcademyHomeDashboard | null = null;
-
-  // Dashboard mirrors the first Continue-learning record (updatedAt desc).
-  const latest = progressRows[0];
-  if (latest) {
-    const certCourses = await db
-      .select({
-        id: academyCertificateCourses.id,
-        courseId: academyCertificateCourses.courseId,
-        sortOrder: academyCertificateCourses.sortOrder,
-        courseStatus: academyCourses.status,
-        courseSlug: academyCourses.slug,
-      })
-      .from(academyCertificateCourses)
-      .innerJoin(academyCourses, eq(academyCourses.id, academyCertificateCourses.courseId))
-      .where(eq(academyCertificateCourses.certificateId, latest.certificateId))
-      .orderBy(academyCertificateCourses.sortOrder);
-
-    const published = certCourses.filter((row) => row.courseStatus === 'published');
-    const publishedCourseIds = published.map((row) => row.courseId);
-
-    const certT = pickTranslationForDisplay(certTById.get(latest.certificateId) ?? [], resolvedLocale);
-    const certificateTitle = certT?.title?.trim() || '';
-
-    if (certificateTitle && published.length) {
-      const courseIndex = published.findIndex((row) => row.id === latest.certificateCourseId) + 1;
-      const courseT = pickTranslationForDisplay(courseTById.get(latest.courseId) ?? [], resolvedLocale);
-      const courseTitle = courseT?.title?.trim() || '';
-
-      const { syncCertificateProgress } = await import('@/server/storefront/academy-certificate-progress');
-      const certProgress = await syncCertificateProgress(userId, latest.certificateId);
-      const progressPercent = certProgress?.progressPercent ?? 0;
-      const completedLessonCount = certProgress?.completedLessonCount ?? 0;
-      const totalLessonCount = certProgress?.totalLessonCount ?? 0;
-
-      if (courseIndex > 0 && courseTitle) {
-        dashboard = {
-          displayName: user ? displayName(user.firstName, user.lastName) : '',
-          certificateSlug: latest.certificateSlug,
-          certificateTitle,
-          certificateHref: `/certificates/${latest.certificateSlug}`,
-          courseSlug: latest.courseSlug,
-          courseTitle,
-          courseIndex,
-          courseTotal: published.length,
-          progressPercent,
-          completedLessonCount,
-          totalLessonCount,
-          learnHref: academyLearnPath(latest.courseSlug, latest.certificateCourseId),
-        };
-      }
-    }
+  const featured = progressItems[0];
+  if (featured) {
+    dashboard = {
+      displayName: user ? displayName(user.firstName, user.lastName) : '',
+      certificateSlug: featured.certificateSlug,
+      certificateTitle: featured.certificateTitle,
+      certificateHref: featured.certificateHref,
+      courseSlug: featured.courseSlug,
+      courseTitle: featured.courseTitle,
+      courseIndex: featured.courseIndex,
+      courseTotal: featured.courseTotal,
+      progressPercent: featured.progressPercent,
+      completedLessonCount: featured.completedLessonCount,
+      totalLessonCount: featured.totalLessonCount,
+      learnHref: featured.continueLearnHref,
+    };
   }
 
   const recentCertificates = certViewRows.map((row) => {

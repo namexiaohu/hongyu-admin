@@ -90,7 +90,7 @@ async function upsertBankForCertificate(certificateId: string, certificateTitle:
     .insert(academyQuestionBanks)
     .values({
       timeLimitMinutes: 45,
-      maxRetakes: 3,
+      maxRetakes: null,
       passScorePercent: 60,
     })
     .returning();

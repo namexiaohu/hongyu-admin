@@ -34,7 +34,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
   const result = await submitExamAttempt(userId, attemptId, parsed.data.answers, parsed.data.locale);
 
   if (!result.ok) {
-    const status = result.code === 'NOT_FOUND' ? 404 : 403;
+    const status = result.code === 'NOT_FOUND' ? 404 : result.code === 'ALREADY_SUBMITTED' ? 409 : 403;
     return NextResponse.json(
       { code: result.code, message: result.code },
       { status, headers: frontCorsHeaders() },

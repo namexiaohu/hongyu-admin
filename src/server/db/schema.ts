@@ -2185,12 +2185,17 @@ export const academyQuestionBanks = pgTable(
   'academy_question_banks',
   {
     id: uuid('id').defaultRandom().primaryKey(),
+    status: cmsStatusEnum('status').notNull().default('draft'),
+    publishedAt: timestamp('published_at', { withTimezone: true }),
     timeLimitMinutes: integer('time_limit_minutes'),
     maxRetakes: integer('max_retakes'),
     passScorePercent: integer('pass_score_percent').notNull().default(60),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
+  (table) => ({
+    statusIdx: index('academy_question_banks_status_idx').on(table.status),
+  }),
 );
 
 export const academyQuestionBankTranslations = pgTable(

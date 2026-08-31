@@ -9,6 +9,10 @@ import {
   isCourseCompleteForUser,
 } from '@/server/storefront/academy-course-completion';
 import { getCertificateProgress, syncCertificateProgress } from '@/server/storefront/academy-certificate-progress';
+import {
+  type CertificateLearningStatus,
+  resolveCertificateLearningStatus,
+} from '@/server/storefront/academy-certificate-learning-shared';
 import { academyLearnPath } from '@/server/storefront/academy-certificate-courses';
 import { getCertificateExamMeta } from '@/server/storefront/academy-exams';
 import { getUserCertificateForCertificate } from '@/server/storefront/academy-user-certificates';
@@ -25,7 +29,7 @@ import {
   academyUnitTranslations,
 } from '@/server/db/schema';
 
-export type CertificateLearningStatus = 'not_started' | 'learning' | 'courses_complete' | 'exam_passed';
+export type { CertificateLearningStatus } from '@/server/storefront/academy-certificate-learning-shared';
 
 export type CertificateLearningState = {
   status: CertificateLearningStatus;
@@ -208,18 +212,7 @@ export async function getCertificateLearningState(
   const earned = await getUserCertificateForCertificate(userId, certificate.id);
   const examMeta = await getCertificateExamMeta(certificate.id, resolvedLocale);
 
-  let status: CertificateLearningStatus = 'not_started';
-  if (earned?.passed) {
-    status = 'exam_passed';
-  } else if (
-    progressSnapshot
-    && progressSnapshot.totalLessonCount > 0
-    && progressSnapshot.completedLessonCount === progressSnapshot.totalLessonCount
-  ) {
-    status = 'courses_complete';
-  } else if (progressSnapshot) {
-    status = 'learning';
-  }
+  const status = resolveCertificateLearningStatus(progressSnapshot, Boolean(earned?.passed));
 
   const [latestProgress] = await db
     .select({
@@ -292,7 +285,7 @@ export async function getCertificateLearningState(
           score: earned.score,
           totalScore: earned.totalScore,
           certificateNumber: earned.certificateNumber,
-          certificateHref: `/certificates/view/${encodeURIComponent(earned.certificateNumber)}`,
+          certificateHref: `/cert/${encodeURIComponent(earned.certificateNumber)}`,
         }
       : null,
     continueLearnHref,

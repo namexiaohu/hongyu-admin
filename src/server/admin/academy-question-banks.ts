@@ -12,6 +12,7 @@ import {
   adminAcademyQuestionBankCreateSchema,
   adminAcademyQuestionBankPatchSchema,
 } from '@/lib/academy-question-bank-content';
+import { normalizeAcademyListingStatus } from '@/lib/academy-content-shared';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
 import { db } from '@/server/db';
@@ -47,12 +48,14 @@ function mapListItem(
   return {
     id: row.id,
     title,
+    status: normalizeAcademyListingStatus(row.status),
     questionCount,
     totalScore,
     passScorePercent: row.passScorePercent,
     timeLimitMinutes: row.timeLimitMinutes,
     maxRetakes: row.maxRetakes,
     localeCount,
+    publishedAt: row.publishedAt ? toIso(row.publishedAt) : null,
     updatedAt: toIso(row.updatedAt),
   };
 }
@@ -135,9 +138,12 @@ export async function createAdminAcademyQuestionBank(
   input: z.infer<typeof adminAcademyQuestionBankCreateSchema>,
 ): Promise<AdminAcademyQuestionBankDetail> {
   const parsed = adminAcademyQuestionBankCreateSchema.parse(input);
+  const status = parsed.status ?? 'published';
   const [inserted] = await db
     .insert(academyQuestionBanks)
     .values({
+      status,
+      publishedAt: status === 'published' ? new Date() : null,
       timeLimitMinutes: parsed.timeLimitMinutes ?? null,
       maxRetakes: parsed.maxRetakes ?? null,
       passScorePercent: parsed.passScorePercent,
@@ -163,12 +169,18 @@ export async function updateAdminAcademyQuestionBank(
   const [current] = await db.select().from(academyQuestionBanks).where(eq(academyQuestionBanks.id, id)).limit(1);
   if (!current) return null;
 
+  const nextStatus = parsed.status !== undefined
+    ? normalizeAcademyListingStatus(parsed.status)
+    : normalizeAcademyListingStatus(current.status);
+
   await db
     .update(academyQuestionBanks)
     .set({
+      ...(parsed.status !== undefined ? { status: nextStatus } : {}),
       ...(parsed.timeLimitMinutes !== undefined ? { timeLimitMinutes: parsed.timeLimitMinutes } : {}),
       ...(parsed.maxRetakes !== undefined ? { maxRetakes: parsed.maxRetakes } : {}),
       ...(parsed.passScorePercent !== undefined ? { passScorePercent: parsed.passScorePercent } : {}),
+      ...(nextStatus === 'published' && !current.publishedAt ? { publishedAt: new Date() } : {}),
       updatedAt: new Date(),
     })
     .where(eq(academyQuestionBanks.id, id));
@@ -263,6 +275,7 @@ export async function lookupAdminAcademyQuestionBanks(ids: string[]): Promise<Ac
         title: display?.title?.trim() || 'Untitled question bank',
         questionCount: stats?.count ?? 0,
         totalScore: stats?.totalScore ?? 0,
+        passScorePercent: row.passScorePercent ?? 60,
       } satisfies AcademyQuestionBankPickerItem;
     })
     .filter((item): item is AcademyQuestionBankPickerItem => item !== null);

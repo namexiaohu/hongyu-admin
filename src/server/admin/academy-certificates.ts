@@ -126,7 +126,7 @@ async function loadCourseLinks(certificateId: string) {
     .orderBy(asc(academyCertificateCourses.sortOrder), asc(academyCertificateCourses.courseId));
 }
 
-async function syncCertificateCourses(certificateId: string, courseIds: string[]) {
+export async function syncCertificateCourses(certificateId: string, courseIds: string[]) {
   const uniqueIds = [...new Set(courseIds.filter(Boolean))];
   const existing = await db
     .select({

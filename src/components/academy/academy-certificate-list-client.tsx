@@ -1,10 +1,11 @@
 'use client';
 
-import { EyeInvisibleOutlined, FileTextOutlined, PlusOutlined, ShoppingOutlined } from '@ant-design/icons';
+import { EyeInvisibleOutlined, FileTextOutlined, PlusOutlined, ReadOutlined, ShoppingOutlined } from '@ant-design/icons';
 import { Button, Card, Input, Space, Table, Tag, message } from 'antd';
 import { useMemo, useState, useTransition } from 'react';
 
 import { AcademyEditorModal } from '@/components/academy/academy-editor-modal';
+import { CourseManagerModal } from '@/components/academy/course-manager-modal';
 import { ExamManagerModal } from '@/components/academy/exam-manager-modal';
 import {
   ADMIN_TABLE_ENTITY_ACTIONS_WIDTH,
@@ -49,6 +50,7 @@ export function AcademyCertificateListClient({ initialList, activeLanguages }: P
   const [keyword, setKeyword] = useState('');
   const [editorOpen, setEditorOpen] = useState(false);
   const [examManagerCertificate, setExamManagerCertificate] = useState<AdminAcademyCertificateListItem | null>(null);
+  const [courseManagerCertificate, setCourseManagerCertificate] = useState<AdminAcademyCertificateListItem | null>(null);
   const [editingDetail, setEditingDetail] = useState<AdminAcademyCertificateDetail | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -103,7 +105,20 @@ export function AcademyCertificateListClient({ initialList, activeLanguages }: P
     buildAdminListRowIndexColumn(1, filtered.length || 1),
     { title: '标题', dataIndex: 'title', ellipsis: true, onHeaderCell: adminTableNowrapHeader },
     { title: 'Slug', dataIndex: 'slug', width: 180, onHeaderCell: adminTableNowrapHeader },
-    { title: '课程数', dataIndex: 'courseCount', width: 90 },
+    {
+      title: '课程',
+      width: 110,
+      onHeaderCell: adminTableNowrapHeader,
+      render: (_: unknown, record: AdminAcademyCertificateListItem) => (
+        <Button
+          type="link"
+          icon={<ReadOutlined />}
+          onClick={() => setCourseManagerCertificate(record)}
+        >
+          管理（{record.courseCount}）
+        </Button>
+      ),
+    },
     {
       title: '考试',
       width: 90,
@@ -193,6 +208,20 @@ export function AcademyCertificateListClient({ initialList, activeLanguages }: P
           setEditingDetail(saved as AdminAcademyCertificateDetail);
         }}
       />
+      {courseManagerCertificate ? (
+        <CourseManagerModal
+          open={Boolean(courseManagerCertificate)}
+          certificateId={courseManagerCertificate.id}
+          certificateTitle={courseManagerCertificate.title}
+          activeLanguages={activeLanguages}
+          onClose={() => setCourseManagerCertificate(null)}
+          onSaved={(courseCount) => {
+            setItems((current) => current.map((item) => (
+              item.id === courseManagerCertificate.id ? { ...item, courseCount } : item
+            )));
+          }}
+        />
+      ) : null}
       {examManagerCertificate ? (
         <ExamManagerModal
           open={Boolean(examManagerCertificate)}

@@ -1,14 +1,18 @@
 import { z } from 'zod';
 
+import { academyStatuses, type AcademyStatus } from '@/lib/academy-content-shared';
+
 export type AdminAcademyQuestionBankListItem = {
   id: string;
   title: string;
+  status: AcademyStatus;
   questionCount: number;
   totalScore: number;
   passScorePercent: number;
   timeLimitMinutes: number | null;
   maxRetakes: number | null;
   localeCount: number;
+  publishedAt: string | null;
   updatedAt: string;
 };
 
@@ -31,6 +35,7 @@ export const adminAcademyQuestionBankTranslationSchema = z.object({
 });
 
 export const adminAcademyQuestionBankCreateSchema = z.object({
+  status: z.enum(academyStatuses).optional().default('published'),
   timeLimitMinutes: z.number().int().min(1).nullable().optional(),
   maxRetakes: z.number().int().min(0).nullable().optional(),
   passScorePercent: z.number().int().min(1).max(100).optional().default(60),
@@ -38,6 +43,7 @@ export const adminAcademyQuestionBankCreateSchema = z.object({
 });
 
 export const adminAcademyQuestionBankPatchSchema = z.object({
+  status: z.enum(academyStatuses).optional(),
   timeLimitMinutes: z.number().int().min(1).nullable().optional(),
   maxRetakes: z.number().int().min(0).nullable().optional(),
   passScorePercent: z.number().int().min(1).max(100).optional(),
@@ -48,12 +54,13 @@ export type AcademyQuestionBankPickerItem = {
   title: string;
   questionCount: number;
   totalScore: number;
+  passScorePercent: number;
 };
 
 export function formatAcademyQuestionBankSelectedDisplay(item: AcademyQuestionBankPickerItem) {
   return {
     name: item.title,
-    meta: `${item.questionCount} 题 · 总分 ${item.totalScore}`,
+    meta: `${item.questionCount} 题 · 总分 ${item.totalScore} · 及格线 ${item.passScorePercent}%`,
   };
 }
 

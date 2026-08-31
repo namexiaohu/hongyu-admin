@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { and, asc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 
 import type { AcademyQuestionType, ExamUserAnswer } from '@/lib/academy-question-content';
 import {
@@ -58,7 +58,16 @@ async function getLinkedBanks(certificateId: string) {
       sortOrder: academyCertificateQuestionBanks.sortOrder,
     })
     .from(academyCertificateQuestionBanks)
-    .where(eq(academyCertificateQuestionBanks.certificateId, certificateId))
+    .innerJoin(
+      academyQuestionBanks,
+      eq(academyCertificateQuestionBanks.questionBankId, academyQuestionBanks.id),
+    )
+    .where(
+      and(
+        eq(academyCertificateQuestionBanks.certificateId, certificateId),
+        eq(academyQuestionBanks.status, 'published'),
+      ),
+    )
     .orderBy(asc(academyCertificateQuestionBanks.sortOrder));
 }
 
@@ -230,6 +239,7 @@ export async function startCertificateExamAttempt(
     attemptId: attempt.id,
     certificateSlug,
     certificateId: eligibility.certificateId,
+    certificateTitle: await getCertificateTitle(eligibility.certificateId, defaultLocale),
     questionBankId: picked.questionBankId,
     title: display?.title?.trim() ?? '',
     passScorePercent: bank.passScorePercent,
@@ -286,7 +296,7 @@ export async function submitExamAttempt(
   const percent = totalScore > 0 ? (score / totalScore) * 100 : 0;
   const passed = percent >= bank.passScorePercent;
 
-  await db
+  const [updated] = await db
     .update(academyExamAttempts)
     .set({
       submittedAt: new Date(),
@@ -296,7 +306,10 @@ export async function submitExamAttempt(
       answers,
       updatedAt: new Date(),
     })
-    .where(eq(academyExamAttempts.id, attemptId));
+    .where(and(eq(academyExamAttempts.id, attemptId), isNull(academyExamAttempts.submittedAt)))
+    .returning({ id: academyExamAttempts.id });
+
+  if (!updated) return { ok: false as const, code: 'ALREADY_SUBMITTED' as const };
 
   let certificateNumber: string | null = null;
   if (passed) {

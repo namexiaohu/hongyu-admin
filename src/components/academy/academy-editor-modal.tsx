@@ -21,8 +21,6 @@ import type { ProductGalleryImage } from '@/lib/product-content';
 import { resolveSlugForSave, textToSlug, validateSourceThenAutoSlug } from '@/lib/slug';
 import type { AdminSiteLanguageRow } from '@/server/admin/languages';
 
-import { CoursePickerField } from './course-picker-field';
-
 type LocaleDraft = {
   title: string;
   subtitle: string;
@@ -46,7 +44,6 @@ type SharedFormValues = {
   coverDisplay: HeroCoverDisplay;
   teacherCount: number;
   studentCount: number;
-  courseIds: string[];
 };
 
 type EntityDetail = {
@@ -213,7 +210,6 @@ export function AcademyEditorModal({ open, entityType, detail, activeLanguages, 
       coverDisplay: detail?.coverDisplay ?? defaultHeroCoverDisplay(true),
       teacherCount: detail?.teacherCount ?? 0,
       studentCount: detail?.studentCount ?? 0,
-      courseIds: detail?.courseIds ?? [],
     });
   }, [open, detail, activeLanguages, defaultLocale, sharedForm]);
 
@@ -273,7 +269,6 @@ export function AcademyEditorModal({ open, entityType, detail, activeLanguages, 
               ...mergedDrafts[defaultLocale],
               title: mergedDrafts[defaultLocale]?.title?.trim() || sourceTitle,
             },
-            ...(entityType === 'certificate' ? { courseIds: shared.courseIds ?? [] } : {}),
           };
           const response = await fetch(apiBase, {
             method: 'POST',
@@ -315,7 +310,6 @@ export function AcademyEditorModal({ open, entityType, detail, activeLanguages, 
           coverDisplay,
           teacherCount: shared.teacherCount ?? 0,
           studentCount: shared.studentCount ?? 0,
-          ...(entityType === 'certificate' ? { courseIds: shared.courseIds ?? [] } : {}),
         };
         const patchResponse = await fetch(`${apiBase}/${entityId}`, {
           method: 'PATCH',
@@ -394,11 +388,6 @@ export function AcademyEditorModal({ open, entityType, detail, activeLanguages, 
         >
           <HeroCoverDisplayField />
         </Form.Item>
-        {entityType === 'certificate' ? (
-          <Form.Item name="courseIds" label="关联课程" getValueFromEvent={(value: string[] | undefined) => value ?? []}>
-            <CoursePickerField />
-          </Form.Item>
-        ) : null}
       </Form>
 
       <div className="content-editor-layout">
@@ -505,11 +494,6 @@ export function AcademyEditorModal({ open, entityType, detail, activeLanguages, 
           </Form>
         </div>
       </div>
-      {entityType === 'certificate' ? (
-        <Typography.Paragraph type="secondary" style={{ marginTop: 8 }}>
-          使用上下箭头在证书中调整课程顺序：在关联课程列表中按顺序保存。
-        </Typography.Paragraph>
-      ) : null}
     </Modal>
   );
 }

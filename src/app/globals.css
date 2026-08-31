@@ -9275,6 +9275,26 @@ main {
   align-items: flex-start;
 }
 
+.question-bank-editor-modal .content-editor-layout {
+  min-height: 0;
+  align-items: flex-start;
+}
+
+.question-bank-editor-modal .content-editor-locale-nav {
+  align-self: flex-start;
+}
+
+.question-bank-editor-modal .content-editor-main {
+  flex: 1;
+  min-width: 0;
+  align-self: flex-start;
+  width: 100%;
+}
+
+.question-bank-editor-modal .content-editor-main .ant-form {
+  width: 100%;
+}
+
 .brand-editor-modal .content-editor-main {
   flex: 1;
   min-width: 0;

@@ -83,4 +83,17 @@ export const adminAcademyCertificatePatchSchema = academySharedFieldsSchema.exte
   courseIds: z.array(z.string().uuid()).optional(),
 }).partial();
 
+export type AdminAcademyCertificateCourseItem = {
+  courseId: string;
+  sortOrder: number;
+  title: string;
+  slug: string;
+  status: AcademyStatus;
+  coverPreviewUrl: string;
+};
+
+export const adminAcademyCertificateCoursesPatchSchema = z.object({
+  courseIds: z.array(z.string().uuid()),
+});
+
 export { academyStatuses, academyTranslationPatchSchema };

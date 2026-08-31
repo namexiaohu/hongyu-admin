@@ -57,6 +57,7 @@ export function QuestionBankPickerModal({ open, disabledIds = new Set(), onCance
             title: item.title,
             questionCount: item.questionCount,
             totalScore: item.totalScore,
+            passScorePercent: item.passScorePercent,
           })),
         );
       }}
