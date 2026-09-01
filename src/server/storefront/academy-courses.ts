@@ -7,7 +7,7 @@ import type { AcademyLessonMaterial } from '@/lib/academy-lesson-content';
 import { resolveStorefrontCoverUrl } from '@/lib/cover-presets';
 import { resolveStorefrontHeroCoverDisplay, type HeroCoverDisplay } from '@/lib/hero-cover-display';
 import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
-import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
+import { pickTranslationForLocale } from '@/lib/pick-translation-for-display';
 import type { ProductGalleryImage } from '@/lib/product-content';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
 import { db } from '@/server/db';
@@ -59,7 +59,6 @@ export type StorefrontAcademyLessonItem = {
   description: string;
   videoUrl: string;
   durationSeconds: number;
-  durationLabel: string;
   sortOrder: number;
   materials: StorefrontAcademyLessonMaterial[];
 };
@@ -131,7 +130,8 @@ export async function getStorefrontAcademyCourseList(input: {
   page?: number;
   pageSize?: number;
 }): Promise<StorefrontAcademyCourseListResponse> {
-  const locale = input.locale?.trim() || await getDefaultSiteLanguageCode();
+  const defaultLocale = await getDefaultSiteLanguageCode();
+  const locale = input.locale?.trim() || defaultLocale;
   const page = Math.max(1, input.page ?? 1);
   const pageSize = Math.min(50, Math.max(1, input.pageSize ?? 24));
 
@@ -152,17 +152,18 @@ export async function getStorefrontAcademyCourseList(input: {
     byId.set(row.courseId, bucket);
   }
 
-  const allItems = rows.map((row) => {
-    const t = pickTranslationForDisplay(byId.get(row.id) ?? [], locale);
-    return {
+  const allItems = rows.flatMap((row) => {
+    const t = pickTranslationForLocale(byId.get(row.id) ?? [], locale, defaultLocale);
+    if (!t?.title?.trim()) return [];
+    return [{
       slug: row.slug,
       href: `/courses/${row.slug}`,
-      title: t?.title?.trim() ?? '',
-      summary: t?.summary || '',
+      title: t.title.trim(),
+      summary: t.summary || '',
       coverImage: resolveCover(row),
       teacherCount: row.teacherCount,
       studentCount: row.studentCount,
-    };
+    }];
   });
 
   const total = allItems.length;
@@ -171,34 +172,15 @@ export async function getStorefrontAcademyCourseList(input: {
   return { locale, page, pageSize, total, items };
 }
 
-function formatDurationLabel(seconds: number) {
-  const total = Math.max(0, Math.round(seconds || 0));
-  if (total < 60) return `${total}秒`;
-  const hours = Math.floor(total / 3600);
-  const minutes = Math.floor((total % 3600) / 60);
-  const secs = total % 60;
-  if (hours > 0) {
-    if (minutes > 0) return `${hours}小时${minutes}分钟`;
-    return `${hours}小时`;
-  }
-  if (secs > 0 && minutes < 5) return `${minutes}分钟${secs}秒`;
-  return `${minutes}分钟`;
-}
-
-function formatFileSizeLabel(bytes: number | null | undefined) {
-  if (bytes == null || !Number.isFinite(bytes) || bytes <= 0) return '';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
 function mapLessonMaterials(raw: AcademyLessonMaterial[] | null | undefined): StorefrontAcademyLessonMaterial[] {
   return (raw ?? [])
     .map((item) => {
       const url = item.url?.trim() ? resolveOssAssetUrl(item.url) : '';
       if (!url) return null;
+      const name = item.name?.trim();
+      if (!name) return null;
       return {
-        name: item.name?.trim() || 'Attachment',
+        name,
         url,
         mimeType: item.mimeType?.trim() || 'application/octet-stream',
         size: item.size ?? null,
@@ -208,7 +190,18 @@ function mapLessonMaterials(raw: AcademyLessonMaterial[] | null | undefined): St
     .filter((item): item is StorefrontAcademyLessonMaterial => Boolean(item));
 }
 
-async function loadCourseUnits(courseId: string, locale: string): Promise<StorefrontAcademyUnitItem[]> {
+function formatFileSizeLabel(bytes: number | null | undefined) {
+  if (bytes == null || !Number.isFinite(bytes) || bytes <= 0) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+async function loadCourseUnits(
+  courseId: string,
+  locale: string,
+  fallbackLocale: string,
+): Promise<StorefrontAcademyUnitItem[]> {
   const units = await db
     .select()
     .from(academyUnits)
@@ -250,28 +243,29 @@ async function loadCourseUnits(courseId: string, locale: string): Promise<Storef
     lessonsByUnit.set(lesson.unitId, bucket);
   }
 
-  return units.map((unit) => {
-    const ut = pickTranslationForDisplay(unitTById.get(unit.id) ?? [], locale);
-    const unitLessons = (lessonsByUnit.get(unit.id) ?? []).map((lesson) => {
-      const lt = pickTranslationForDisplay(lessonTById.get(lesson.id) ?? [], locale);
-      return {
+  return units.flatMap((unit) => {
+    const ut = pickTranslationForLocale(unitTById.get(unit.id) ?? [], locale, fallbackLocale);
+    if (!ut?.title?.trim()) return [];
+    const unitLessons = (lessonsByUnit.get(unit.id) ?? []).flatMap((lesson) => {
+      const lt = pickTranslationForLocale(lessonTById.get(lesson.id) ?? [], locale, fallbackLocale);
+      if (!lt?.title?.trim()) return [];
+      return [{
         id: lesson.id,
-        title: lt?.title?.trim() ?? '',
-        description: lt?.description?.trim() || '',
+        title: lt.title.trim(),
+        description: lt.description?.trim() || '',
         videoUrl: lesson.videoUrl?.trim() ? resolveOssAssetUrl(lesson.videoUrl) : '',
         durationSeconds: lesson.durationSeconds,
-        durationLabel: formatDurationLabel(lesson.durationSeconds),
         sortOrder: lesson.sortOrder,
         materials: mapLessonMaterials(lesson.materials as AcademyLessonMaterial[]),
-      };
+      }];
     });
-    return {
+    return [{
       id: unit.id,
-      title: ut?.title?.trim() ?? '',
+      title: ut.title.trim(),
       coverImage: resolveCover(unit),
       sortOrder: unit.sortOrder,
       lessons: unitLessons,
-    };
+    }];
   });
 }
 
@@ -279,7 +273,8 @@ export async function getStorefrontAcademyCourseBySlug(
   slug: string,
   locale?: string,
 ): Promise<StorefrontAcademyCourseDetail | null> {
-  const resolvedLocale = locale?.trim() || await getDefaultSiteLanguageCode();
+  const defaultLocale = await getDefaultSiteLanguageCode();
+  const resolvedLocale = locale?.trim() || defaultLocale;
   const [row] = await db
     .select()
     .from(academyCourses)
@@ -291,7 +286,7 @@ export async function getStorefrontAcademyCourseBySlug(
     .select()
     .from(academyCourseTranslations)
     .where(eq(academyCourseTranslations.courseId, row.id));
-  const t = pickTranslationForDisplay(translations, resolvedLocale);
+  const t = pickTranslationForLocale(translations, resolvedLocale, defaultLocale);
   if (!t) return null;
   const fields = mapTranslationFields(t);
 
@@ -302,7 +297,7 @@ export async function getStorefrontAcademyCourseBySlug(
     title: link.certificateTitle,
   }));
 
-  const units = await loadCourseUnits(row.id, resolvedLocale);
+  const units = await loadCourseUnits(row.id, resolvedLocale, defaultLocale);
 
   return {
     slug: row.slug,

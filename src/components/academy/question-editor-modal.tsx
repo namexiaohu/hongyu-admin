@@ -5,6 +5,7 @@ import { Button, Form, Input, InputNumber, Modal, Select, Space, Tabs, message }
 import { useEffect, useMemo, useState, useTransition } from 'react';
 
 import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
+import { ContentTranslateButton } from '@/components/admin/content-translate-button';
 import type {
   AcademyQuestionContent,
   AcademyQuestionType,
@@ -74,6 +75,17 @@ export function QuestionEditorModal({ open, bankId, detail, activeLanguages, onC
 
   const defaultLocale = activeLanguages.find((item) => item.isDefault)?.code ?? activeLanguages[0]?.code ?? 'en';
   const isEdit = Boolean(detail);
+
+  const translationByLocale = useMemo(() => {
+    const persisted = new Set<string>();
+    for (const translation of detail?.translations ?? []) {
+      if (summarizePrompt(translation.content, detail?.questionType ?? 'single_choice').trim()) {
+        persisted.add(translation.locale);
+      }
+    }
+    return persisted;
+  }, [detail]);
+
   const currentDraft = useMemo(() => drafts[activeLocale] ?? {
     questionType: detail?.questionType ?? 'single_choice',
     score: detail?.score ?? 1,
@@ -110,6 +122,17 @@ export function QuestionEditorModal({ open, bankId, detail, activeLanguages, onC
       }
       return next;
     });
+  }
+
+  function handleTranslated(fields: Record<string, string>) {
+    const contentJson = fields.contentJson?.trim();
+    if (!contentJson) return;
+    try {
+      const content = JSON.parse(contentJson) as AcademyQuestionContent;
+      updateDraft({ content });
+    } catch {
+      message.error('题目翻译结果格式无效，请重试');
+    }
   }
 
   function handleOk() {
@@ -312,16 +335,32 @@ export function QuestionEditorModal({ open, bankId, detail, activeLanguages, onC
           ))}
         </div>
         <div className="content-editor-main">
-          <Tabs
-            activeKey="content"
-            items={[
-              {
-                key: 'content',
-                label: '内容',
-                children: <Form layout="vertical">{renderContentFields()}</Form>,
-              },
-            ]}
-          />
+          <div className="content-editor-section-toolbar">
+            <Tabs
+              activeKey="content"
+              className="content-editor-section-tabs"
+              items={[{ key: 'content', label: '内容' }]}
+            />
+            <ContentTranslateButton
+              contentType="academyQuestion"
+              defaultLocale={defaultLocale}
+              activeLocale={activeLocale}
+              disabled={isPending}
+              getDefaultSourceFields={() => {
+                const defaultDraft = drafts[defaultLocale] ?? currentDraft;
+                return {
+                  questionType: defaultDraft.questionType,
+                  contentJson: JSON.stringify(defaultDraft.content),
+                };
+              }}
+              hasDefaultPersisted={() => Boolean(detail && translationByLocale.has(defaultLocale))}
+              hasTargetContent={() => Boolean(
+                summarizePrompt(currentDraft.content, currentDraft.questionType).trim(),
+              )}
+              onTranslated={handleTranslated}
+            />
+          </div>
+          <Form layout="vertical">{renderContentFields()}</Form>
         </div>
       </div>
     </Modal>

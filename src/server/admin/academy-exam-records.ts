@@ -196,6 +196,7 @@ export async function getAdminExamRecordDetail(attemptId: string) {
       questionType: type,
       score: question.score,
       prompt: extractQuestionPrompt(content),
+      content,
       userAnswer: userAnswer ?? null,
       isCorrect,
     };

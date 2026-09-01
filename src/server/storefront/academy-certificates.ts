@@ -6,7 +6,7 @@ import { normalizeAcademyStats, normalizeStringTags } from '@/lib/academy-conten
 import { resolveStorefrontCoverUrl } from '@/lib/cover-presets';
 import { resolveStorefrontHeroCoverDisplay, type HeroCoverDisplay } from '@/lib/hero-cover-display';
 import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
-import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
+import { pickTranslationForLocale } from '@/lib/pick-translation-for-display';
 import type { ProductGalleryImage } from '@/lib/product-content';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
 import { db } from '@/server/db';
@@ -118,7 +118,8 @@ export async function getStorefrontAcademyCertificateList(input: {
   pageSize?: number;
   q?: string;
 }): Promise<StorefrontAcademyCertificateListResponse> {
-  const locale = input.locale?.trim() || await getDefaultSiteLanguageCode();
+  const defaultLocale = await getDefaultSiteLanguageCode();
+  const locale = input.locale?.trim() || defaultLocale;
   const page = Math.max(1, input.page ?? 1);
   const pageSize = Math.min(50, Math.max(1, input.pageSize ?? 24));
 
@@ -146,10 +147,11 @@ export async function getStorefrontAcademyCertificateList(input: {
     byId.set(row.certificateId, bucket);
   }
 
-  const allItems = rows.map((row) => {
-    const t = pickTranslationForDisplay(byId.get(row.id) ?? [], locale);
-    const fields = t ? mapTranslationFields(t) : { title: row.slug, subtitle: '', badgeLabel: '', summary: '', description: '', seoTitle: '', seoDescription: '', stats: [], learnings: [], skills: [], tools: [] };
-    return {
+  const allItems = rows.flatMap((row) => {
+    const t = pickTranslationForLocale(byId.get(row.id) ?? [], locale, defaultLocale);
+    if (!t?.title?.trim()) return [];
+    const fields = mapTranslationFields(t);
+    return [{
       slug: row.slug,
       href: `/certificates/${row.slug}`,
       title: fields.title,
@@ -161,7 +163,7 @@ export async function getStorefrontAcademyCertificateList(input: {
       studentCount: row.studentCount,
       courseCount: countById.get(row.id) ?? 0,
       skills: fields.skills,
-    };
+    }];
   });
 
   const needle = input.q?.trim().toLowerCase() ?? '';
@@ -184,7 +186,8 @@ export async function getStorefrontAcademyCertificateBySlug(
   slug: string,
   locale?: string,
 ): Promise<StorefrontAcademyCertificateDetail | null> {
-  const resolvedLocale = locale?.trim() || await getDefaultSiteLanguageCode();
+  const defaultLocale = await getDefaultSiteLanguageCode();
+  const resolvedLocale = locale?.trim() || defaultLocale;
   const [row] = await db
     .select()
     .from(academyCertificates)
@@ -196,7 +199,7 @@ export async function getStorefrontAcademyCertificateBySlug(
     .select()
     .from(academyCertificateTranslations)
     .where(eq(academyCertificateTranslations.certificateId, row.id));
-  const t = pickTranslationForDisplay(translations, resolvedLocale);
+  const t = pickTranslationForLocale(translations, resolvedLocale, defaultLocale);
   if (!t) return null;
   const fields = mapTranslationFields(t);
 
@@ -249,11 +252,12 @@ export async function getStorefrontAcademyCertificateBySlug(
   }
   const unitsByCourse = new Map<string, StorefrontAcademyCertificateUnitItem[]>();
   for (const unit of unitRows) {
-    const ut = pickTranslationForDisplay(unitTById.get(unit.id) ?? [], resolvedLocale);
+    const ut = pickTranslationForLocale(unitTById.get(unit.id) ?? [], resolvedLocale, defaultLocale);
+    if (!ut?.title?.trim()) continue;
     const bucket = unitsByCourse.get(unit.courseId) ?? [];
     bucket.push({
       id: unit.id,
-      title: ut?.title?.trim() ?? '',
+      title: ut.title.trim(),
       sortOrder: unit.sortOrder,
     });
     unitsByCourse.set(unit.courseId, bucket);
@@ -263,13 +267,14 @@ export async function getStorefrontAcademyCertificateBySlug(
     .map((link) => {
       const course = courseById.get(link.courseId);
       if (!course || course.status !== 'published') return null;
-      const ct = pickTranslationForDisplay(courseTById.get(course.id) ?? [], resolvedLocale);
+      const ct = pickTranslationForLocale(courseTById.get(course.id) ?? [], resolvedLocale, defaultLocale);
+      if (!ct?.title?.trim()) return null;
       return {
         certificateCourseId: link.id,
         slug: course.slug,
         href: academyCourseDetailPath(course.slug, link.id),
-        title: ct?.title?.trim() ?? '',
-        summary: ct?.summary || '',
+        title: ct.title.trim(),
+        summary: ct.summary || '',
         coverImage: resolveCover(course),
         sortOrder: link.sortOrder,
         units: unitsByCourse.get(course.id) ?? [],

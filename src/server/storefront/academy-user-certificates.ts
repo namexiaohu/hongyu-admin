@@ -8,7 +8,7 @@ import {
 } from '@/lib/academy-certificate-number';
 import { resolveStorefrontCoverUrl } from '@/lib/cover-presets';
 import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
-import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
+import { pickTranslationForLocale } from '@/lib/pick-translation-for-display';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
 import { db } from '@/server/db';
 import {
@@ -34,11 +34,12 @@ function recipientDisplayName(firstName: string, lastName: string) {
 }
 
 async function getCertificateTitle(certificateId: string, locale: string) {
+  const fallbackLocale = await getDefaultSiteLanguageCode();
   const translations = await db
     .select()
     .from(academyCertificateTranslations)
     .where(eq(academyCertificateTranslations.certificateId, certificateId));
-  const display = pickTranslationForDisplay(translations, locale);
+  const display = pickTranslationForLocale(translations, locale, fallbackLocale);
   return display?.title?.trim() ?? '';
 }
 
@@ -162,6 +163,7 @@ export async function getUserCertificateForCertificate(userId: string, certifica
 
 export async function listMyExamRecords(userId: string, locale?: string) {
   const defaultLocale = locale ?? (await getDefaultSiteLanguageCode());
+  const siteDefaultLocale = await getDefaultSiteLanguageCode();
 
   const rows = await db
     .select({
@@ -192,7 +194,7 @@ export async function listMyExamRecords(userId: string, locale?: string) {
   const certTitleById = new Map<string, string>();
   for (const certificateId of certificateIds) {
     const list = allCertTranslations.filter((t) => t.certificateId === certificateId);
-    const display = pickTranslationForDisplay(list, defaultLocale);
+    const display = pickTranslationForLocale(list, defaultLocale, siteDefaultLocale);
     certTitleById.set(certificateId, display?.title?.trim() ?? '');
   }
 
@@ -203,25 +205,28 @@ export async function listMyExamRecords(userId: string, locale?: string) {
   const examTitleByBankId = new Map<string, string>();
   for (const bankId of bankIds) {
     const list = allBankTranslations.filter((t) => t.questionBankId === bankId);
-    const display = pickTranslationForDisplay(list, defaultLocale);
+    const display = pickTranslationForLocale(list, defaultLocale, siteDefaultLocale);
     examTitleByBankId.set(bankId, display?.title?.trim() ?? '');
   }
 
   return {
-    items: rows.map((row) => {
+    items: rows.flatMap((row) => {
+      const certificateTitle = certTitleById.get(row.certificateId) ?? '';
+      const examTitle = examTitleByBankId.get(row.questionBankId) ?? '';
+      if (!certificateTitle || !examTitle) return [];
       const score = row.score ?? 0;
       const totalScore = row.totalScore ?? 0;
-      return {
+      return [{
         attemptId: row.attemptId,
         certificateSlug: row.certificateSlug,
-        certificateTitle: certTitleById.get(row.certificateId) ?? '',
-        examTitle: examTitleByBankId.get(row.questionBankId) ?? '',
+        certificateTitle,
+        examTitle,
         score,
         totalScore,
         scorePercent: totalScore > 0 ? Math.round((score / totalScore) * 100) : 0,
         passed: row.passed ?? false,
         submittedAt: row.submittedAt!.toISOString(),
-      };
+      }];
     }),
   };
 }
@@ -232,8 +237,8 @@ export async function listMyCertificates(userId: string, locale?: string) {
   const rows = await db
     .select({
       id: academyUserCertificates.id,
+      certificateId: academyUserCertificates.certificateId,
       certificateNumber: academyUserCertificates.certificateNumber,
-      title: academyUserCertificates.title,
       issuerName: academyUserCertificates.issuerName,
       recipientName: academyUserCertificates.recipientName,
       issuedAt: academyUserCertificates.issuedAt,
@@ -247,26 +252,33 @@ export async function listMyCertificates(userId: string, locale?: string) {
     .where(eq(academyUserCertificates.userId, userId))
     .orderBy(desc(academyUserCertificates.issuedAt));
 
-  return {
-    items: rows.map((row) => ({
+  const items = await Promise.all(rows.map(async (row) => {
+    const title = await getCertificateTitle(row.certificateId, defaultLocale);
+    if (!title) return null;
+    return {
       id: row.id,
       certificateNumber: row.certificateNumber,
-      title: row.title,
+      title,
       issuerName: row.issuerName,
       recipientName: row.recipientName,
       issuedAt: row.issuedAt.toISOString(),
       certificateSlug: row.certificateSlug,
       coverPreviewUrl: resolveCover(row),
       locale: defaultLocale,
-    })),
+    };
+  }));
+
+  return {
+    items: items.filter((item): item is NonNullable<typeof item> => Boolean(item)),
   };
 }
 
-export async function getPublicCertificateByNumber(certificateNumber: string) {
+export async function getPublicCertificateByNumber(certificateNumber: string, locale?: string) {
+  const resolvedLocale = locale?.trim() || await getDefaultSiteLanguageCode();
   const [row] = await db
     .select({
       certificateNumber: academyUserCertificates.certificateNumber,
-      title: academyUserCertificates.title,
+      certificateId: academyUserCertificates.certificateId,
       issuerName: academyUserCertificates.issuerName,
       recipientName: academyUserCertificates.recipientName,
       issuedAt: academyUserCertificates.issuedAt,
@@ -279,13 +291,18 @@ export async function getPublicCertificateByNumber(certificateNumber: string) {
 
   if (!row) return null;
 
+  const title = await getCertificateTitle(row.certificateId, resolvedLocale);
+  if (!title) return null;
+
+  const company = await import('@/server/storefront/company-profile').then((m) => m.getStorefrontCompanyProfile(resolvedLocale));
+
   return {
     certificateNumber: row.certificateNumber,
-    title: row.title,
-    badge: 'Professional Certificate',
-    issuerName: row.issuerName,
+    title,
+    issuerName: company.companyName.trim() || row.issuerName,
     recipientName: row.recipientName,
     issuedAt: row.issuedAt.toISOString(),
     certificateSlug: row.certificateSlug,
+    locale: resolvedLocale,
   };
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { frontCorsHeaders } from '@/lib/front-cors';
+import { resolveFrontRequestLocale } from '@/lib/front-request-locale';
 import { getCurrentUserId } from '@/server/auth/session';
 import { getCertificateLearningState } from '@/server/storefront/academy-certificate-learning';
 
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
   }
 
   const { slug } = await context.params;
-  const locale = request.nextUrl.searchParams.get('locale')?.trim() || undefined;
+  const locale = await resolveFrontRequestLocale(request);
   const state = await getCertificateLearningState(userId, slug, locale);
 
   if (!state) {

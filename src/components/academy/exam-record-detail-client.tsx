@@ -5,6 +5,11 @@ import { useState } from 'react';
 import { Button, Card, Descriptions, Select, Space, Table, Tag, Upload, message } from 'antd';
 
 import type { AdminExamRecordDetail } from '@/lib/academy-exam-record-detail';
+import {
+  formatExamCorrectAnswer,
+  formatExamQuestionOptions,
+  formatExamUserAnswer,
+} from '@/lib/academy-exam-answer-display';
 import { formatAdminDate } from '@/lib/admin-display';
 import { resolveMediaUploadKind, uploadMediaFile } from '@/lib/media-upload';
 
@@ -12,11 +17,13 @@ type Props = { initialDetail: AdminExamRecordDetail };
 
 const CERTIFICATE_MAIL_ACCEPT = '.pdf,application/pdf,image/jpeg,image/png,image/gif,image/webp,image/svg+xml';
 
-function formatAnswer(value: unknown) {
-  if (value === null || value === undefined) return '—';
-  if (typeof value === 'boolean') return value ? 'True' : 'False';
-  if (Array.isArray(value)) return value.join(', ');
-  return String(value);
+function multilineCell(text: string) {
+  if (!text || text === '—') return '—';
+  return (
+    <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.6 }}>
+      {text}
+    </div>
+  );
 }
 
 function fileNameFromStorageRef(ref: string | null) {
@@ -182,6 +189,7 @@ export function ExamRecordDetailClient({ initialDetail }: Props) {
           rowKey="id"
           size="small"
           pagination={false}
+          scroll={{ x: 1100 }}
           dataSource={detail.review}
           columns={[
             { title: '#', dataIndex: 'index', width: 56 },
@@ -192,11 +200,24 @@ export function ExamRecordDetailClient({ initialDetail }: Props) {
               render: (v: boolean) =>
                 v ? <Tag color="#00b81e">对</Tag> : <Tag color="#ee1d36">错</Tag>,
             },
-            { title: '题干', dataIndex: 'prompt', ellipsis: true },
+            { title: '题干', dataIndex: 'prompt', width: 220, ellipsis: true },
+            {
+              title: '选项',
+              width: 220,
+              render: (_: unknown, row: AdminExamRecordDetail['review'][number]) =>
+                multilineCell(formatExamQuestionOptions(row.questionType, row.content)),
+            },
             {
               title: '学员答案',
-              dataIndex: 'userAnswer',
-              render: (v: unknown) => formatAnswer(v),
+              width: 180,
+              render: (_: unknown, row: AdminExamRecordDetail['review'][number]) =>
+                multilineCell(formatExamUserAnswer(row.questionType, row.content, row.userAnswer as never)),
+            },
+            {
+              title: '正确答案',
+              width: 180,
+              render: (_: unknown, row: AdminExamRecordDetail['review'][number]) =>
+                multilineCell(formatExamCorrectAnswer(row.questionType, row.content)),
             },
             { title: '分值', dataIndex: 'score', width: 64 },
           ]}

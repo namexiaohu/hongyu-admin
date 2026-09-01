@@ -40,6 +40,7 @@ export type AdminAcademyCertificateListItem = {
   title: string;
   localeCount: number;
   courseCount: number;
+  examCount: number;
   publishedAt: string | null;
   updatedAt: string;
 };

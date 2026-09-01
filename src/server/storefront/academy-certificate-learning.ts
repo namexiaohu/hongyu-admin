@@ -2,7 +2,7 @@ import 'server-only';
 
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 
-import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
+import { pickTranslationForLocale } from '@/lib/pick-translation-for-display';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
 import {
   getCompletedLessonIdsForUser,
@@ -88,7 +88,8 @@ export async function getCertificateLearningState(
   certificateSlug: string,
   locale?: string,
 ): Promise<CertificateLearningState | null> {
-  const resolvedLocale = locale?.trim() || (await getDefaultSiteLanguageCode());
+  const defaultLocale = await getDefaultSiteLanguageCode();
+  const resolvedLocale = locale?.trim() || defaultLocale;
 
   const [certificate] = await db
     .select({ id: academyCertificates.id, slug: academyCertificates.slug })
@@ -165,31 +166,35 @@ export async function getCertificateLearningState(
   let courseIndex = 0;
   for (const link of publishedLinks) {
     courseIndex += 1;
-    const ct = pickTranslationForDisplay(courseTById.get(link.courseId) ?? [], resolvedLocale);
+    const ct = pickTranslationForLocale(courseTById.get(link.courseId) ?? [], resolvedLocale, defaultLocale);
     const courseTitle = ct?.title?.trim() ?? '';
     if (!courseTitle) continue;
 
     const courseUnits = unitRows.filter((unit) => unit.courseId === link.courseId);
-    const units = courseUnits.map((unit) => {
-      const ut = pickTranslationForDisplay(unitTById.get(unit.id) ?? [], resolvedLocale);
+    const units = courseUnits.flatMap((unit) => {
+      const ut = pickTranslationForLocale(unitTById.get(unit.id) ?? [], resolvedLocale, defaultLocale);
+      const unitTitle = ut?.title?.trim();
+      if (!unitTitle) return [];
       const unitLessons = lessonRows.filter((lesson) => lesson.unitId === unit.id);
-      const lessons = unitLessons.map((lesson) => {
-          const lt = pickTranslationForDisplay(lessonTById.get(lesson.id) ?? [], resolvedLocale);
-          return {
-            id: lesson.id,
-            title: lt?.title?.trim() ?? '',
-            sortOrder: lesson.sortOrder,
-            isComplete: completedLessonSet.has(lesson.id),
-            durationSeconds: lesson.durationSeconds,
-          };
-        });
-      return {
+      const lessons = unitLessons.flatMap((lesson) => {
+        const lt = pickTranslationForLocale(lessonTById.get(lesson.id) ?? [], resolvedLocale, defaultLocale);
+        const lessonTitle = lt?.title?.trim();
+        if (!lessonTitle) return [];
+        return [{
+          id: lesson.id,
+          title: lessonTitle,
+          sortOrder: lesson.sortOrder,
+          isComplete: completedLessonSet.has(lesson.id),
+          durationSeconds: lesson.durationSeconds,
+        }];
+      });
+      return [{
         id: unit.id,
-        title: ut?.title?.trim() ?? '',
+        title: unitTitle,
         sortOrder: unit.sortOrder,
         isComplete: lessons.length > 0 && lessons.every((lesson) => lesson.isComplete),
         lessons,
-      };
+      }];
     });
 
     const isComplete = await isCourseCompleteForUser(userId, link.courseId);
@@ -246,8 +251,8 @@ export async function getCertificateLearningState(
       const unit = unitRows.find((row) => row.id === latestProgress.unitId);
       const lesson = lessonRows.find((row) => row.id === latestProgress.lessonId);
       if (unit && lesson) {
-        const unitTitle = pickTranslationForDisplay(unitTById.get(unit.id) ?? [], resolvedLocale)?.title?.trim() ?? '';
-        const lessonTitle = pickTranslationForDisplay(lessonTById.get(lesson.id) ?? [], resolvedLocale)?.title?.trim() ?? '';
+        const unitTitle = pickTranslationForLocale(unitTById.get(unit.id) ?? [], resolvedLocale, defaultLocale)?.title?.trim() ?? '';
+        const lessonTitle = pickTranslationForLocale(lessonTById.get(lesson.id) ?? [], resolvedLocale, defaultLocale)?.title?.trim() ?? '';
         if (unitTitle && lessonTitle) {
           continueWatch = {
             unitTitle,

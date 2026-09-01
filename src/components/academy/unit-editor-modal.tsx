@@ -4,8 +4,10 @@ import { Form, Input, Modal, Tabs, message } from 'antd';
 import { useEffect, useMemo, useState, useTransition } from 'react';
 
 import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
+import { ContentTranslateButton } from '@/components/admin/content-translate-button';
 import { CoverOptionField, type CoverOptionValue } from '@/components/shared/cover-option-field';
 import type { AdminAcademyUnitDetail } from '@/lib/academy-unit-content';
+import { applyNonemptyTranslatedFields } from '@/lib/content-translate-config';
 import { shouldPersistLocaleDraft } from '@/lib/locale-draft-persistence';
 import type { AdminSiteLanguageRow } from '@/server/admin/languages';
 
@@ -41,6 +43,14 @@ export function UnitEditorModal({ open, courseId, detail, activeLanguages, onClo
   const defaultLocale = activeLanguages.find((item) => item.isDefault)?.code ?? activeLanguages[0]?.code ?? 'en';
   const isEdit = Boolean(detail);
 
+  const translationByLocale = useMemo(() => {
+    const persisted = new Set<string>();
+    for (const translation of detail?.translations ?? []) {
+      if (translation.title?.trim()) persisted.add(translation.locale);
+    }
+    return persisted;
+  }, [detail]);
+
   const currentDraft = useMemo(() => drafts[activeLocale] ?? emptyDraft(), [drafts, activeLocale]);
 
   useEffect(() => {
@@ -61,6 +71,11 @@ export function UnitEditorModal({ open, courseId, detail, activeLanguages, onClo
       ...current,
       [activeLocale]: { ...(current[activeLocale] ?? emptyDraft()), ...patch },
     }));
+  }
+
+  function handleTranslated(fields: Record<string, string>) {
+    const current = drafts[activeLocale] ?? emptyDraft();
+    updateDraft(applyNonemptyTranslatedFields(current, fields));
   }
 
   function handleOk() {
@@ -157,26 +172,32 @@ export function UnitEditorModal({ open, courseId, detail, activeLanguages, onClo
           ))}
         </div>
         <div className="content-editor-main">
-          <Tabs
-            activeKey="content"
-            items={[
-              {
-                key: 'content',
-                label: '内容',
-                children: (
-                  <Form layout="vertical">
-                    <Form.Item label="标题" required={activeLocale === defaultLocale}>
-                      <Input
-                        value={currentDraft.title}
-                        onChange={(event) => updateDraft({ title: event.target.value })}
-                        maxLength={255}
-                      />
-                    </Form.Item>
-                  </Form>
-                ),
-              },
-            ]}
-          />
+          <div className="content-editor-section-toolbar">
+            <Tabs
+              activeKey="content"
+              className="content-editor-section-tabs"
+              items={[{ key: 'content', label: '内容' }]}
+            />
+            <ContentTranslateButton
+              contentType="academyUnit"
+              defaultLocale={defaultLocale}
+              activeLocale={activeLocale}
+              disabled={isPending}
+              getDefaultSourceFields={() => ({ title: drafts[defaultLocale]?.title ?? '' })}
+              hasDefaultPersisted={() => Boolean(detail && translationByLocale.has(defaultLocale))}
+              hasTargetContent={() => Boolean((drafts[activeLocale]?.title ?? '').trim())}
+              onTranslated={handleTranslated}
+            />
+          </div>
+          <Form layout="vertical">
+            <Form.Item label="标题" required={activeLocale === defaultLocale}>
+              <Input
+                value={currentDraft.title}
+                onChange={(event) => updateDraft({ title: event.target.value })}
+                maxLength={255}
+              />
+            </Form.Item>
+          </Form>
         </div>
       </div>
     </Modal>

@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { and, asc, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 
 import {
   normalizeAcademyListingStatus,
@@ -29,7 +29,7 @@ import { normalizeSlug } from '@/lib/slug';
 import { resolveCoverFieldsForWrite } from '@/server/admin/cover-images';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
 import { db } from '@/server/db';
-import { academyCourseTranslations, academyCourses } from '@/server/db/schema';
+import { academyCourseTranslations, academyCourses, academyUnits } from '@/server/db/schema';
 
 function toIso(value: Date) {
   return value.toISOString();
@@ -84,6 +84,7 @@ function mapListItem(
   row: typeof academyCourses.$inferSelect,
   title: string,
   localeCount: number,
+  unitCount: number,
 ): AdminAcademyCourseListItem {
   const { cover } = resolveAdminRowMediaPreviews(row, resolveOssAssetUrl);
   return {
@@ -103,6 +104,7 @@ function mapListItem(
     studentCount: row.studentCount,
     title,
     localeCount,
+    unitCount,
     publishedAt: row.publishedAt ? toIso(row.publishedAt) : null,
     updatedAt: toIso(row.updatedAt),
   };
@@ -112,10 +114,11 @@ function mapDetail(
   row: typeof academyCourses.$inferSelect,
   translations: Array<typeof academyCourseTranslations.$inferSelect>,
   defaultLocale: string,
+  unitCount: number,
 ): AdminAcademyCourseDetail {
   const display = pickTranslationForDisplay(translations, defaultLocale);
   return {
-    ...mapListItem(row, display?.title?.trim() ?? '', translations.length),
+    ...mapListItem(row, display?.title?.trim() ?? '', translations.length, unitCount),
     translations: translations.map(mapTranslation),
   };
 }
@@ -133,10 +136,26 @@ export async function getAdminAcademyCourseList() {
     bucket.push(row);
     byId.set(row.courseId, bucket);
   }
+  const unitCounts = ids.length
+    ? await db
+      .select({
+        courseId: academyUnits.courseId,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(academyUnits)
+      .where(inArray(academyUnits.courseId, ids))
+      .groupBy(academyUnits.courseId)
+    : [];
+  const unitCountById = new Map(unitCounts.map((row) => [row.courseId, row.count]));
   const items = rows.map((row) => {
     const rowTranslations = byId.get(row.id) ?? [];
     const display = pickTranslationForDisplay(rowTranslations, defaultLocale);
-    return mapListItem(row, display?.title?.trim() ?? '', rowTranslations.length);
+    return mapListItem(
+      row,
+      display?.title?.trim() ?? '',
+      rowTranslations.length,
+      unitCountById.get(row.id) ?? 0,
+    );
   });
   return { items, total: items.length };
 }
@@ -150,7 +169,11 @@ export async function getAdminAcademyCourseDetail(id: string): Promise<AdminAcad
     .where(eq(academyCourseTranslations.courseId, id))
     .orderBy(asc(academyCourseTranslations.locale));
   const defaultLocale = await getDefaultSiteLanguageCode();
-  return mapDetail(row, translations, defaultLocale);
+  const [unitCountRow] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(academyUnits)
+    .where(eq(academyUnits.courseId, id));
+  return mapDetail(row, translations, defaultLocale, unitCountRow?.count ?? 0);
 }
 
 export async function getAdminAcademyCoursePickerItems(ids: string[]) {

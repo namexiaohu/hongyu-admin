@@ -24,7 +24,13 @@ export type ContentTranslateType =
   | 'summitAgendaGroup'
   | 'summitAgendaItem'
   | 'websiteNavColumn'
-  | 'websiteNavItem';
+  | 'websiteNavItem'
+  | 'academyCertificate'
+  | 'academyCourse'
+  | 'academyUnit'
+  | 'academyLesson'
+  | 'academyQuestionBank'
+  | 'academyQuestion';
 
 type ContentTranslateProfile = {
   sourceFields: readonly string[];
@@ -347,6 +353,95 @@ export const CONTENT_TRANSLATE_PROFILES: Record<ContentTranslateType, ContentTra
     serverLabel: 'website navigation item',
     tooltip: '将默认语言已填写的导航条目标题翻译到当前语言，翻译后请校对',
   },
+  academyCertificate: {
+    sourceFields: [
+      'title',
+      'subtitle',
+      'badgeLabel',
+      'summary',
+      'description',
+      'seoTitle',
+      'seoDescription',
+      'statsText',
+      'learningsText',
+      'skillsText',
+      'toolsText',
+    ],
+    plainTextFields: [
+      'title',
+      'subtitle',
+      'badgeLabel',
+      'summary',
+      'seoTitle',
+      'seoDescription',
+      'statsText',
+      'learningsText',
+      'skillsText',
+      'toolsText',
+    ],
+    htmlField: 'description',
+    serverLabel: 'academy certificate',
+    tooltip: '将默认语言已保存的证书文案翻译到当前语言；封面、视频、轮播图等媒体字段各语言共用，不会翻译',
+    translateNotes:
+      'statsText has one metric per line as LABEL|||VALUE. Translate LABEL only. Keep VALUE exactly. learningsText, skillsText, and toolsText have one item per line. Keep the same line count. Do not return a JSON array.',
+  },
+  academyCourse: {
+    sourceFields: [
+      'title',
+      'subtitle',
+      'badgeLabel',
+      'summary',
+      'description',
+      'seoTitle',
+      'seoDescription',
+      'statsText',
+      'learningsText',
+      'skillsText',
+      'toolsText',
+    ],
+    plainTextFields: [
+      'title',
+      'subtitle',
+      'badgeLabel',
+      'summary',
+      'seoTitle',
+      'seoDescription',
+      'statsText',
+      'learningsText',
+      'skillsText',
+      'toolsText',
+    ],
+    htmlField: 'description',
+    serverLabel: 'academy course',
+    tooltip: '将默认语言已保存的课程文案翻译到当前语言；封面、视频、轮播图等媒体字段各语言共用，不会翻译',
+    translateNotes:
+      'statsText has one metric per line as LABEL|||VALUE. Translate LABEL only. Keep VALUE exactly. learningsText, skillsText, and toolsText have one item per line. Keep the same line count. Do not return a JSON array.',
+  },
+  academyUnit: {
+    sourceFields: ['title'],
+    plainTextFields: ['title'],
+    serverLabel: 'academy course unit',
+    tooltip: '将默认语言已保存的单元标题翻译到当前语言；单元封面图各语言共用，不会翻译',
+  },
+  academyLesson: {
+    sourceFields: ['title', 'description'],
+    plainTextFields: ['title', 'description'],
+    serverLabel: 'academy lesson',
+    tooltip: '将默认语言已保存的课时标题与描述翻译到当前语言；视频、时长与资料文件各语言共用，不会翻译',
+  },
+  academyQuestionBank: {
+    sourceFields: ['title'],
+    plainTextFields: ['title'],
+    serverLabel: 'academy question bank',
+    tooltip: '将默认语言已保存的题库标题翻译到当前语言；考试设置（时长、及格线等）各语言共用',
+  },
+  academyQuestion: {
+    sourceFields: ['questionType', 'contentJson'],
+    plainTextFields: [],
+    passthroughFields: ['questionType'],
+    serverLabel: 'academy exam question',
+    tooltip: '将默认语言已保存的题目题干与选项翻译到当前语言；正确答案、分值与题型不会翻译',
+  },
 };
 
 export function pickTranslatePayload(
@@ -495,6 +590,26 @@ export function validateDefaultTranslateSource(
   }
 
   if (
+    contentType === 'academyCertificate'
+    || contentType === 'academyCourse'
+    || contentType === 'academyUnit'
+    || contentType === 'academyLesson'
+    || contentType === 'academyQuestionBank'
+  ) {
+    if (!fields.title?.trim()) {
+      return '默认语言内容不完整，请先完善标题';
+    }
+    return null;
+  }
+
+  if (contentType === 'academyQuestion') {
+    if (!fields.contentJson?.trim()) {
+      return '默认语言内容不完整，请先完善题目内容';
+    }
+    return null;
+  }
+
+  if (
     contentType === 'brandNarrativeBlock'
     || contentType === 'brandNarrativeBlockItem'
     || contentType === 'solutionBlock'
@@ -526,6 +641,9 @@ export function getHtmlContentLabel(contentType: ContentTranslateType): string {
       return 'FAQ answer body';
     case 'product':
       return 'product detail description HTML';
+    case 'academyCertificate':
+    case 'academyCourse':
+      return 'academy certificate or course description HTML';
     default:
       return 'rich text body';
   }

@@ -31,6 +31,7 @@ import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
 import { db } from '@/server/db';
 import {
   academyCertificateCourses,
+  academyCertificateQuestionBanks,
   academyCertificateTranslations,
   academyCertificates,
 } from '@/server/db/schema';
@@ -89,6 +90,7 @@ function mapListItem(
   title: string,
   localeCount: number,
   courseCount: number,
+  examCount: number,
 ): AdminAcademyCertificateListItem {
   const { cover } = resolveAdminRowMediaPreviews(row, resolveOssAssetUrl);
   return {
@@ -109,6 +111,7 @@ function mapListItem(
     title,
     localeCount,
     courseCount,
+    examCount,
     publishedAt: row.publishedAt ? toIso(row.publishedAt) : null,
     updatedAt: toIso(row.updatedAt),
   };
@@ -167,11 +170,12 @@ function mapDetail(
   translations: Array<typeof academyCertificateTranslations.$inferSelect>,
   courseLinks: Array<{ id: string; courseId: string; sortOrder: number }>,
   defaultLocale: string,
+  examCount: number,
 ): AdminAcademyCertificateDetail {
   const display = pickTranslationForDisplay(translations, defaultLocale);
   const courseIds = courseLinks.map((link) => link.courseId);
   return {
-    ...mapListItem(row, resolveAcademyDisplayTitle(display, row.slug), translations.length, courseIds.length),
+    ...mapListItem(row, resolveAcademyDisplayTitle(display, row.slug), translations.length, courseIds.length, examCount),
     courseIds,
     courseLinks,
     translations: translations.map(mapTranslation),
@@ -196,6 +200,17 @@ export async function getAdminAcademyCertificateList() {
       .groupBy(academyCertificateCourses.certificateId)
     : [];
   const countById = new Map(courseCounts.map((row) => [row.certificateId, row.count]));
+  const examCounts = ids.length
+    ? await db
+      .select({
+        certificateId: academyCertificateQuestionBanks.certificateId,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(academyCertificateQuestionBanks)
+      .where(inArray(academyCertificateQuestionBanks.certificateId, ids))
+      .groupBy(academyCertificateQuestionBanks.certificateId)
+    : [];
+  const examCountById = new Map(examCounts.map((row) => [row.certificateId, row.count]));
   const byId = new Map<string, (typeof academyCertificateTranslations.$inferSelect)[]>();
   for (const row of translations) {
     const bucket = byId.get(row.certificateId) ?? [];
@@ -210,6 +225,7 @@ export async function getAdminAcademyCertificateList() {
       resolveAcademyDisplayTitle(display, row.slug),
       rowTranslations.length,
       countById.get(row.id) ?? 0,
+      examCountById.get(row.id) ?? 0,
     );
   });
   return { items, total: items.length };
@@ -224,8 +240,12 @@ export async function getAdminAcademyCertificateDetail(id: string): Promise<Admi
     .where(eq(academyCertificateTranslations.certificateId, id))
     .orderBy(asc(academyCertificateTranslations.locale));
   const courseLinks = await loadCourseLinks(id);
+  const [examCountRow] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(academyCertificateQuestionBanks)
+    .where(eq(academyCertificateQuestionBanks.certificateId, id));
   const defaultLocale = await getDefaultSiteLanguageCode();
-  return mapDetail(row, translations, courseLinks, defaultLocale);
+  return mapDetail(row, translations, courseLinks, defaultLocale, examCountRow?.count ?? 0);
 }
 
 function assertSlugAvailable(slug: string) {

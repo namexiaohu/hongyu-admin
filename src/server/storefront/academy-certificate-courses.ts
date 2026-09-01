@@ -2,7 +2,7 @@ import 'server-only';
 
 import { and, asc, eq, inArray } from 'drizzle-orm';
 
-import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
+import { pickTranslationForLocale } from '@/lib/pick-translation-for-display';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
 import { db } from '@/server/db';
 import {
@@ -57,7 +57,8 @@ export async function getCertificateCourseContext(
     return null;
   }
 
-  const resolvedLocale = locale?.trim() || await getDefaultSiteLanguageCode();
+  const defaultLocale = await getDefaultSiteLanguageCode();
+  const resolvedLocale = locale?.trim() || defaultLocale;
   const [certTranslations, courseTranslations] = await Promise.all([
     db
       .select()
@@ -68,23 +69,27 @@ export async function getCertificateCourseContext(
       .from(academyCourseTranslations)
       .where(eq(academyCourseTranslations.courseId, link.courseId)),
   ]);
-  const certDisplay = pickTranslationForDisplay(certTranslations, resolvedLocale);
-  const courseDisplay = pickTranslationForDisplay(courseTranslations, resolvedLocale);
+  const certDisplay = pickTranslationForLocale(certTranslations, resolvedLocale, defaultLocale);
+  const courseDisplay = pickTranslationForLocale(courseTranslations, resolvedLocale, defaultLocale);
+  if (!certDisplay?.title?.trim() || !courseDisplay?.title?.trim()) {
+    return null;
+  }
 
   return {
     certificateCourseId: link.id,
     certificateId: link.certificateId,
     courseId: link.courseId,
     certificateSlug: link.certificateSlug,
-    certificateTitle: certDisplay?.title?.trim() ?? '',
+    certificateTitle: certDisplay.title.trim(),
     courseSlug: link.courseSlug,
-    courseTitle: courseDisplay?.title?.trim() ?? '',
+    courseTitle: courseDisplay.title.trim(),
     sortOrder: link.sortOrder,
   };
 }
 
 export async function listPublishedLinksForCourse(courseId: string, locale?: string) {
-  const resolvedLocale = locale?.trim() || await getDefaultSiteLanguageCode();
+  const defaultLocale = await getDefaultSiteLanguageCode();
+  const resolvedLocale = locale?.trim() || defaultLocale;
   const rows = await db
     .select({
       id: academyCertificateCourses.id,
@@ -116,15 +121,17 @@ export async function listPublishedLinksForCourse(courseId: string, locale?: str
     byCert.set(row.certificateId, list);
   }
 
-  return rows.map((row) => {
-    const display = pickTranslationForDisplay(byCert.get(row.certificateId) ?? [], resolvedLocale);
-    return {
+  return rows.flatMap((row) => {
+    const display = pickTranslationForLocale(byCert.get(row.certificateId) ?? [], resolvedLocale, defaultLocale);
+    const certificateTitle = display?.title?.trim();
+    if (!certificateTitle) return [];
+    return [{
       certificateCourseId: row.id,
       certificateSlug: row.certificateSlug,
-      certificateTitle: display?.title?.trim() ?? '',
+      certificateTitle,
       href: `/certificates/${row.certificateSlug}`,
       sortOrder: row.sortOrder,
-    };
+    }];
   });
 }
 
@@ -142,7 +149,8 @@ export async function getCertificateCourseMetaByIds(
   const result = new Map<string, CertificateCourseMeta>();
   if (!ids.length) return result;
 
-  const resolvedLocale = locale?.trim() || await getDefaultSiteLanguageCode();
+  const defaultLocale = await getDefaultSiteLanguageCode();
+  const resolvedLocale = locale?.trim() || defaultLocale;
   const rows = await db
     .select({
       id: academyCertificateCourses.id,
@@ -168,11 +176,13 @@ export async function getCertificateCourseMetaByIds(
   }
 
   for (const row of rows) {
-    const display = pickTranslationForDisplay(byCert.get(row.certificateId) ?? [], resolvedLocale);
+    const display = pickTranslationForLocale(byCert.get(row.certificateId) ?? [], resolvedLocale, defaultLocale);
+    const certificateTitle = display?.title?.trim();
+    if (!certificateTitle) continue;
     result.set(row.id, {
       certificateCourseId: row.id,
       certificateSlug: row.certificateSlug,
-      certificateTitle: display?.title?.trim() ?? '',
+      certificateTitle,
     });
   }
   return result;

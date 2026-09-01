@@ -8,7 +8,7 @@ import {
   stripCorrectAnswers,
   type AcademyQuestionContent,
 } from '@/lib/academy-question-content';
-import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
+import { pickTranslationForLocale } from '@/lib/pick-translation-for-display';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
 import { isCertificateLearningComplete } from '@/server/storefront/academy-course-completion';
 import {
@@ -72,11 +72,12 @@ async function getLinkedBanks(certificateId: string) {
 }
 
 async function getCertificateTitle(certificateId: string, locale: string) {
+  const fallbackLocale = await getDefaultSiteLanguageCode();
   const translations = await db
     .select()
     .from(academyCertificateTranslations)
     .where(eq(academyCertificateTranslations.certificateId, certificateId));
-  const display = pickTranslationForDisplay(translations, locale);
+  const display = pickTranslationForLocale(translations, locale, fallbackLocale);
   return display?.title?.trim() ?? '';
 }
 
@@ -109,6 +110,7 @@ export async function getCertificateExamEligibility(
   }
 
   const defaultLocale = locale ?? (await getDefaultSiteLanguageCode());
+  const siteDefaultLocale = await getDefaultSiteLanguageCode();
   let examTitle = '';
   let questionCount = 0;
   let passScorePercent = 60;
@@ -124,7 +126,7 @@ export async function getCertificateExamEligibility(
       .select()
       .from(academyQuestionBankTranslations)
       .where(eq(academyQuestionBankTranslations.questionBankId, banks[0]!.questionBankId));
-    const display = pickTranslationForDisplay(translations, defaultLocale);
+    const display = pickTranslationForLocale(translations, defaultLocale, siteDefaultLocale);
     examTitle = display?.title?.trim() ?? '';
 
     const [{ count = 0 } = { count: 0 }] = await db
@@ -155,6 +157,7 @@ export async function getCertificateExamEligibility(
 }
 
 async function loadQuestionsForBank(questionBankId: string, locale: string, includeAnswers: boolean) {
+  const fallbackLocale = await getDefaultSiteLanguageCode();
   const rows = await db
     .select()
     .from(academyQuestions)
@@ -178,7 +181,7 @@ async function loadQuestionsForBank(questionBankId: string, locale: string, incl
 
   return rows.map((row, index) => {
     const list = tByQuestion.get(row.id) ?? [];
-    const display = pickTranslationForDisplay(list, locale);
+    const display = pickTranslationForLocale(list, locale, fallbackLocale);
     const content = (display?.content ?? { prompt: '' }) as AcademyQuestionContent;
     const type = row.questionType as AcademyQuestionType;
     return {
@@ -205,6 +208,7 @@ export async function startCertificateExamAttempt(
   const banks = await getLinkedBanks(eligibility.certificateId);
   const picked = banks[Math.floor(Math.random() * banks.length)]!;
   const defaultLocale = locale ?? (await getDefaultSiteLanguageCode());
+  const siteDefaultLocale = await getDefaultSiteLanguageCode();
 
   const [bank] = await db
     .select()
@@ -220,7 +224,7 @@ export async function startCertificateExamAttempt(
     .select()
     .from(academyQuestionBankTranslations)
     .where(eq(academyQuestionBankTranslations.questionBankId, picked.questionBankId));
-  const display = pickTranslationForDisplay(translations, defaultLocale);
+  const display = pickTranslationForLocale(translations, defaultLocale, siteDefaultLocale);
 
   const [attempt] = await db
     .insert(academyExamAttempts)
@@ -359,12 +363,13 @@ export async function getCertificateExamAttemptResult(
   if (!bank) return { ok: false as const, code: 'NOT_FOUND' as const };
 
   const defaultLocale = locale ?? (await getDefaultSiteLanguageCode());
+  const siteDefaultLocale = await getDefaultSiteLanguageCode();
   const questions = await loadQuestionsForBank(attempt.questionBankId, defaultLocale, true);
   const translations = await db
     .select()
     .from(academyQuestionBankTranslations)
     .where(eq(academyQuestionBankTranslations.questionBankId, attempt.questionBankId));
-  const display = pickTranslationForDisplay(translations, defaultLocale);
+  const display = pickTranslationForLocale(translations, defaultLocale, siteDefaultLocale);
 
   const answers = attempt.answers ?? {};
   const review = questions.map((question) => {
@@ -422,6 +427,7 @@ export async function getCertificateExamMeta(certificateId: string, locale?: str
   }
 
   const defaultLocale = locale ?? (await getDefaultSiteLanguageCode());
+  const siteDefaultLocale = await getDefaultSiteLanguageCode();
   const bankId = banks[0]!.questionBankId;
   const [bank] = await db
     .select()
@@ -434,7 +440,7 @@ export async function getCertificateExamMeta(certificateId: string, locale?: str
     .select()
     .from(academyQuestionBankTranslations)
     .where(eq(academyQuestionBankTranslations.questionBankId, bankId));
-  const display = pickTranslationForDisplay(translations, defaultLocale);
+  const display = pickTranslationForLocale(translations, defaultLocale, siteDefaultLocale);
 
   const [{ count = 0 } = { count: 0 }] = await db
     .select({ count: sql<number>`count(*)::int` })

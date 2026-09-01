@@ -15,9 +15,10 @@ type Props = {
   courseTitle: string;
   activeLanguages: AdminSiteLanguageRow[];
   onClose: () => void;
+  onSaved?: (unitCount: number) => void;
 };
 
-export function UnitManagerModal({ open, courseId, courseTitle, activeLanguages, onClose }: Props) {
+export function UnitManagerModal({ open, courseId, courseTitle, activeLanguages, onClose, onSaved }: Props) {
   const [items, setItems] = useState<AdminAcademyUnitListItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -26,15 +27,17 @@ export function UnitManagerModal({ open, courseId, courseTitle, activeLanguages,
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const loadItems = useCallback(async () => {
+  const loadItems = useCallback(async (): Promise<number> => {
     setLoading(true);
     try {
       const response = await fetch(`/api/admin/academy/courses/${courseId}/units`);
       if (!response.ok) throw new Error('加载单元失败');
       const payload = (await response.json()) as { items: AdminAcademyUnitListItem[] };
       setItems(payload.items);
+      return payload.items.length;
     } catch (error) {
       message.error(error instanceof Error ? error.message : '加载失败');
+      return 0;
     } finally {
       setLoading(false);
     }
@@ -80,7 +83,11 @@ export function UnitManagerModal({ open, courseId, courseTitle, activeLanguages,
         try {
           const response = await fetch(`/api/admin/academy/units/${record.id}`, { method: 'DELETE' });
           if (!response.ok) throw new Error('删除失败');
-          setItems((current) => current.filter((item) => item.id !== record.id));
+          setItems((current) => {
+            const next = current.filter((item) => item.id !== record.id);
+            onSaved?.(next.length);
+            return next;
+          });
           message.success('已删除');
         } catch (error) {
           message.error(error instanceof Error ? error.message : '删除失败');
@@ -129,7 +136,6 @@ export function UnitManagerModal({ open, courseId, courseTitle, activeLanguages,
             columns={[
               { title: '#', width: 50, render: (_: unknown, __: AdminAcademyUnitListItem, index: number) => index + 1 },
               { title: '标题', dataIndex: 'title', ellipsis: true },
-              { title: '课时数', dataIndex: 'lessonCount', width: 90 },
               {
                 title: '课时管理',
                 width: 120,
@@ -139,7 +145,7 @@ export function UnitManagerModal({ open, courseId, courseTitle, activeLanguages,
                     icon={<UnorderedListOutlined />}
                     onClick={() => setLessonUnit(record)}
                   >
-                    课时管理
+                    管理（{record.lessonCount}）
                   </Button>
                 ),
               },
@@ -207,7 +213,7 @@ export function UnitManagerModal({ open, courseId, courseTitle, activeLanguages,
           setEditingDetail(null);
         }}
         onSaved={() => {
-          void loadItems();
+          void loadItems().then((count) => onSaved?.(count));
         }}
       />
 

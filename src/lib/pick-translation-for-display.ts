@@ -30,3 +30,27 @@ export function pickTranslationForDisplay<T extends TranslationLocaleRow>(
   );
   return sorted[0] ?? null;
 }
+
+/** 优先匹配 locale；缺失时回退到站点默认语言，再回退到最早创建的翻译。 */
+export function pickTranslationForLocale<T extends TranslationLocaleRow>(
+  translations: T[],
+  locale: string,
+  fallbackLocale: string,
+): T | null {
+  const normalized = locale.trim().toLowerCase();
+  if (normalized) {
+    const match = translations.find((item) => item.locale.toLowerCase() === normalized);
+    if (match) return match;
+  }
+  return pickTranslationForDisplay(translations, fallbackLocale);
+}
+
+/** 仅精确匹配 locale，无 fallback。 */
+export function pickTranslationStrict<T extends TranslationLocaleRow>(
+  translations: T[],
+  locale: string,
+): T | null {
+  const normalized = locale.trim().toLowerCase();
+  if (!normalized) return null;
+  return translations.find((item) => item.locale.toLowerCase() === normalized) ?? null;
+}

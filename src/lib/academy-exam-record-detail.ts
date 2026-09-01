@@ -1,3 +1,5 @@
+import type { AcademyQuestionContent, AcademyQuestionType } from '@/lib/academy-question-content';
+
 export type AdminExamRecordDetail = {
   id: string;
   user: { id: string; name: string; email: string };
@@ -19,9 +21,10 @@ export type AdminExamRecordDetail = {
   review: Array<{
     id: string;
     index: number;
-    questionType: string;
+    questionType: AcademyQuestionType;
     score: number;
     prompt: string;
+    content: AcademyQuestionContent;
     userAnswer: unknown;
     isCorrect: boolean;
   }>;

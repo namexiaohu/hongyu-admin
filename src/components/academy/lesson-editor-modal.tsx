@@ -4,9 +4,11 @@ import { Form, Input, InputNumber, Modal, Tabs, message } from 'antd';
 import { useEffect, useMemo, useState, useTransition } from 'react';
 
 import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
+import { ContentTranslateButton } from '@/components/admin/content-translate-button';
 import { ProductVideoField } from '@/components/products/product-video-field';
 import { SolutionMaterialsField } from '@/components/solutions/solution-materials-field';
 import type { AcademyLessonMaterial, AdminAcademyLessonDetail } from '@/lib/academy-lesson-content';
+import { applyNonemptyTranslatedFields } from '@/lib/content-translate-config';
 import { shouldPersistLocaleDraft } from '@/lib/locale-draft-persistence';
 import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
 import type { AdminSiteLanguageRow } from '@/server/admin/languages';
@@ -66,6 +68,14 @@ export function LessonEditorModal({ open, unitId, detail, activeLanguages, onClo
   const defaultLocale = activeLanguages.find((item) => item.isDefault)?.code ?? activeLanguages[0]?.code ?? 'en';
   const isEdit = Boolean(detail);
 
+  const translationByLocale = useMemo(() => {
+    const persisted = new Set<string>();
+    for (const translation of detail?.translations ?? []) {
+      if (translation.title?.trim()) persisted.add(translation.locale);
+    }
+    return persisted;
+  }, [detail]);
+
   const currentDraft = useMemo(() => drafts[activeLocale] ?? emptyDraft(), [drafts, activeLocale]);
 
   const videoUrl = Form.useWatch('videoUrl', sharedForm);
@@ -103,6 +113,11 @@ export function LessonEditorModal({ open, unitId, detail, activeLanguages, onClo
       ...current,
       [activeLocale]: { ...(current[activeLocale] ?? emptyDraft()), ...patch },
     }));
+  }
+
+  function handleTranslated(fields: Record<string, string>) {
+    const current = drafts[activeLocale] ?? emptyDraft();
+    updateDraft(applyNonemptyTranslatedFields(current, fields));
   }
 
   function handleOk() {
@@ -225,33 +240,45 @@ export function LessonEditorModal({ open, unitId, detail, activeLanguages, onClo
           ))}
         </div>
         <div className="content-editor-main">
-          <Tabs
-            activeKey="content"
-            items={[
-              {
-                key: 'content',
-                label: '内容',
-                children: (
-                  <Form layout="vertical">
-                    <Form.Item label="标题" required={activeLocale === defaultLocale}>
-                      <Input
-                        value={currentDraft.title}
-                        onChange={(event) => updateDraft({ title: event.target.value })}
-                        maxLength={255}
-                      />
-                    </Form.Item>
-                    <Form.Item label="描述">
-                      <Input.TextArea
-                        rows={4}
-                        value={currentDraft.description}
-                        onChange={(event) => updateDraft({ description: event.target.value })}
-                      />
-                    </Form.Item>
-                  </Form>
-                ),
-              },
-            ]}
-          />
+          <div className="content-editor-section-toolbar">
+            <Tabs
+              activeKey="content"
+              className="content-editor-section-tabs"
+              items={[{ key: 'content', label: '内容' }]}
+            />
+            <ContentTranslateButton
+              contentType="academyLesson"
+              defaultLocale={defaultLocale}
+              activeLocale={activeLocale}
+              disabled={isPending}
+              getDefaultSourceFields={() => ({
+                title: drafts[defaultLocale]?.title ?? '',
+                description: drafts[defaultLocale]?.description ?? '',
+              })}
+              hasDefaultPersisted={() => Boolean(detail && translationByLocale.has(defaultLocale))}
+              hasTargetContent={() => Boolean(
+                (drafts[activeLocale]?.title ?? '').trim()
+                || (drafts[activeLocale]?.description ?? '').trim(),
+              )}
+              onTranslated={handleTranslated}
+            />
+          </div>
+          <Form layout="vertical">
+            <Form.Item label="标题" required={activeLocale === defaultLocale}>
+              <Input
+                value={currentDraft.title}
+                onChange={(event) => updateDraft({ title: event.target.value })}
+                maxLength={255}
+              />
+            </Form.Item>
+            <Form.Item label="描述">
+              <Input.TextArea
+                rows={4}
+                value={currentDraft.description}
+                onChange={(event) => updateDraft({ description: event.target.value })}
+              />
+            </Form.Item>
+          </Form>
         </div>
       </div>
     </Modal>

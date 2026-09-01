@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { frontCorsHeaders } from '@/lib/front-cors';
+import { resolveFrontRequestLocale } from '@/lib/front-request-locale';
 import { getCurrentUserId } from '@/server/auth/session';
 import { submitExamAttempt } from '@/server/storefront/academy-exams';
 
@@ -31,7 +32,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
     );
   }
 
-  const result = await submitExamAttempt(userId, attemptId, parsed.data.answers, parsed.data.locale);
+  const locale = parsed.data.locale || await resolveFrontRequestLocale(request);
+  const result = await submitExamAttempt(userId, attemptId, parsed.data.answers, locale);
 
   if (!result.ok) {
     const status = result.code === 'NOT_FOUND' ? 404 : result.code === 'ALREADY_SUBMITTED' ? 409 : 403;

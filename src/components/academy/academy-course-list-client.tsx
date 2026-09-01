@@ -98,7 +98,7 @@ export function AcademyCourseListClient({ initialList, activeLanguages }: Props)
 
   const columns = [
     buildAdminListRowIndexColumn(1, filtered.length || 1),
-    { title: '标题', dataIndex: 'title', ellipsis: true, onHeaderCell: adminTableNowrapHeader },
+    { title: '标题', dataIndex: 'title', width: 280, ellipsis: true, onHeaderCell: adminTableNowrapHeader },
     { title: 'Slug', dataIndex: 'slug', width: 180, onHeaderCell: adminTableNowrapHeader },
     {
       title: '状态',
@@ -119,7 +119,7 @@ export function AcademyCourseListClient({ initialList, activeLanguages }: Props)
           icon={<UnorderedListOutlined />}
           onClick={() => setUnitManagerCourse(record)}
         >
-          管理
+          管理（{record.unitCount}）
         </Button>
       ),
     },
@@ -196,6 +196,11 @@ export function AcademyCourseListClient({ initialList, activeLanguages }: Props)
           courseTitle={unitManagerCourse.title}
           activeLanguages={activeLanguages}
           onClose={() => setUnitManagerCourse(null)}
+          onSaved={(unitCount) => {
+            setItems((current) => current.map((item) => (
+              item.id === unitManagerCourse.id ? { ...item, unitCount } : item
+            )));
+          }}
         />
       ) : null}
     </Space>

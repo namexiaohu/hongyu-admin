@@ -14,6 +14,7 @@ type Props = {
   certificateTitle: string;
   activeLanguages: AdminSiteLanguageRow[];
   onClose: () => void;
+  onSaved?: (examCount: number) => void;
 };
 
 function toPickerItems(items: AdminAcademyCertificateQuestionBankItem[]): AcademyQuestionBankPickerItem[] {
@@ -26,7 +27,7 @@ function toPickerItems(items: AdminAcademyCertificateQuestionBankItem[]): Academ
   }));
 }
 
-export function ExamManagerModal({ open, certificateId, certificateTitle, onClose }: Props) {
+export function ExamManagerModal({ open, certificateId, certificateTitle, onClose, onSaved }: Props) {
   const [questionBankIds, setQuestionBankIds] = useState<string[]>([]);
   const [seedItems, setSeedItems] = useState<AcademyQuestionBankPickerItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -68,6 +69,7 @@ export function ExamManagerModal({ open, certificateId, certificateTitle, onClos
       const items = payload.items ?? [];
       setSeedItems(toPickerItems(items));
       setQuestionBankIds(items.map((item) => item.questionBankId));
+      onSaved?.(items.length);
       message.success('考试关联已保存');
     } catch (error) {
       message.error(error instanceof Error ? error.message : '保存失败');

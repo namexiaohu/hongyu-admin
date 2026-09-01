@@ -5,6 +5,7 @@ import { Button, Form, Input, InputNumber, Modal, Space, Switch, Tabs, Typograph
 import { useEffect, useMemo, useState, useTransition } from 'react';
 
 import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
+import { ContentTranslateButton } from '@/components/admin/content-translate-button';
 import { RichTextEditor } from '@/components/editorial/rich-text-editor';
 import { ProductGalleryField } from '@/components/products/product-gallery-field';
 import { ProductVideoField } from '@/components/products/product-video-field';
@@ -14,6 +15,10 @@ import {
   HERO_COVER_DISPLAY_FIELD_EXTRA,
 } from '@/components/shared/hero-cover-display-field';
 import type { AcademyStat, AcademyStatus } from '@/lib/academy-content-shared';
+import {
+  academyEntityDraftToTranslateFields,
+  applyTranslatedToAcademyEntityDraft,
+} from '@/lib/academy-translate-fields';
 import { hasMeaningfulHtmlBody } from '@/lib/editorial-html';
 import { defaultHeroCoverDisplay, type HeroCoverDisplay } from '@/lib/hero-cover-display';
 import { shouldPersistLocaleDraft } from '@/lib/locale-draft-persistence';
@@ -221,6 +226,40 @@ export function AcademyEditorModal({ open, entityType, detail, activeLanguages, 
     applyDraftToForm(merged[nextLocale] ?? emptyDraft());
   }
 
+  const translateContentType = entityType === 'course' ? 'academyCourse' : 'academyCertificate';
+
+  function getMergedDrafts() {
+    return { ...drafts, [activeLocale]: readDraftFromForm() };
+  }
+
+  function getDefaultSourceFields(): Record<string, string> {
+    const draft = getMergedDrafts()[defaultLocale] ?? emptyDraft();
+    const saved = detail?.translations.find((item) => item.locale === defaultLocale);
+    return academyEntityDraftToTranslateFields({
+      title: draft.title,
+      subtitle: draft.subtitle,
+      badgeLabel: draft.badgeLabel,
+      summary: draft.summary,
+      description: draft.description,
+      seoTitle: draft.seoTitle,
+      seoDescription: draft.seoDescription,
+      stats: draft.stats.some((row) => row.label?.trim() || row.value?.trim())
+        ? draft.stats
+        : (saved?.stats ?? []),
+      learnings: draft.learnings.some(Boolean) ? draft.learnings : (saved?.learnings ?? []),
+      skills: draft.skills.some(Boolean) ? draft.skills : (saved?.skills ?? []),
+      tools: draft.tools.some(Boolean) ? draft.tools : (saved?.tools ?? []),
+    });
+  }
+
+  function handleTranslated(fields: Record<string, string>) {
+    const merged = getMergedDrafts();
+    const current = merged[activeLocale] ?? emptyDraft();
+    const next = applyTranslatedToAcademyEntityDraft(current, fields);
+    setDrafts({ ...merged, [activeLocale]: next });
+    applyDraftToForm(next);
+  }
+
   async function persist() {
     const currentDraft = readDraftFromForm();
     const mergedDrafts = { ...drafts, [activeLocale]: currentDraft };
@@ -416,6 +455,16 @@ export function AcademyEditorModal({ open, entityType, detail, activeLanguages, 
                 { key: 'tools', label: '学习工具' },
                 { key: 'seo', label: 'SEO' },
               ]}
+            />
+            <ContentTranslateButton
+              contentType={translateContentType}
+              defaultLocale={defaultLocale}
+              activeLocale={activeLocale}
+              disabled={isPending}
+              getDefaultSourceFields={getDefaultSourceFields}
+              hasDefaultPersisted={() => Boolean(detail && translationByLocale.has(defaultLocale))}
+              hasTargetContent={() => hasDraftContent(getMergedDrafts()[activeLocale] ?? emptyDraft())}
+              onTranslated={handleTranslated}
             />
           </div>
 

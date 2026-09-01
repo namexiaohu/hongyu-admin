@@ -39,6 +39,7 @@ export type AdminAcademyCourseListItem = {
   studentCount: number;
   title: string;
   localeCount: number;
+  unitCount: number;
   publishedAt: string | null;
   updatedAt: string;
 };

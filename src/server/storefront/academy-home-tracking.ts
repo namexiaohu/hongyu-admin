@@ -5,7 +5,7 @@ import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { normalizeStringTags } from '@/lib/academy-content-shared';
 import { resolveStorefrontCoverUrl } from '@/lib/cover-presets';
 import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
-import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
+import { pickTranslationForLocale } from '@/lib/pick-translation-for-display';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
 import { db } from '@/server/db';
 import {
@@ -371,7 +371,8 @@ async function firstLessonsByCourseIds(courseIds: string[]) {
 }
 
 export async function getHomeDashboard(userId: string, locale?: string): Promise<AcademyHomeDashboardPayload> {
-  const resolvedLocale = locale?.trim() || await getDefaultSiteLanguageCode();
+  const defaultLocale = await getDefaultSiteLanguageCode();
+  const resolvedLocale = locale?.trim() || defaultLocale;
 
   const [user] = await db
     .select({ firstName: users.firstName, lastName: users.lastName })
@@ -640,7 +641,7 @@ export async function getHomeDashboard(userId: string, locale?: string): Promise
     const published = publishedLinksByCert.get(certRow.certificateId) ?? [];
     if (!published.length) continue;
 
-    const certT = pickTranslationForDisplay(certTById.get(certRow.certificateId) ?? [], resolvedLocale);
+    const certT = pickTranslationForLocale(certTById.get(certRow.certificateId) ?? [], resolvedLocale, defaultLocale);
     const certificateTitle = certT?.title?.trim() || '';
     if (!certificateTitle) continue;
 
@@ -667,9 +668,9 @@ export async function getHomeDashboard(userId: string, locale?: string): Promise
     const videoUrl = lesson.videoUrl?.trim() ? resolveOssAssetUrl(lesson.videoUrl) : '';
     if (!videoUrl) continue;
 
-    const courseT = pickTranslationForDisplay(courseTById.get(activeLink.courseId) ?? [], resolvedLocale);
-    const unitT = pickTranslationForDisplay(unitTById.get(unitId) ?? [], resolvedLocale);
-    const lessonT = pickTranslationForDisplay(lessonTById.get(lessonId) ?? [], resolvedLocale);
+    const courseT = pickTranslationForLocale(courseTById.get(activeLink.courseId) ?? [], resolvedLocale, defaultLocale);
+    const unitT = pickTranslationForLocale(unitTById.get(unitId) ?? [], resolvedLocale, defaultLocale);
+    const lessonT = pickTranslationForLocale(lessonTById.get(lessonId) ?? [], resolvedLocale, defaultLocale);
     const courseTitle = courseT?.title?.trim() || '';
     const unitTitle = unitT?.title?.trim() || '';
     const lessonTitle = lessonT?.title?.trim() || '';
@@ -723,26 +724,28 @@ export async function getHomeDashboard(userId: string, locale?: string): Promise
     };
   }
 
-  const recentCertificates = certViewRows.map((row) => {
-    const t = pickTranslationForDisplay(certTById.get(row.certificateId) ?? [], resolvedLocale);
+  const recentCertificates = certViewRows.flatMap((row) => {
+    const t = pickTranslationForLocale(certTById.get(row.certificateId) ?? [], resolvedLocale, defaultLocale);
+    const title = t?.title?.trim();
+    if (!title) return [];
     const skills = normalizeStringTags(t?.skills ?? []);
-    return {
+    return [{
       slug: row.slug,
       href: `/certificates/${row.slug}`,
-      title: t?.title?.trim() ?? '',
+      title,
       subtitle: t?.subtitle?.trim() || '',
       summary: t?.summary?.trim() || '',
       coverImage: resolveCover(row),
       skills,
       badgeLabel: t?.badgeLabel?.trim() || '',
-    };
+    }];
   });
 
   const recentCourses = courseViewRows.flatMap((row) => {
     const link = firstLinkByCourse.get(row.courseId);
     if (!link) return [];
-    const t = pickTranslationForDisplay(courseTById.get(row.courseId) ?? [], resolvedLocale);
-    const certT = pickTranslationForDisplay(certTById.get(link.certificateId) ?? [], resolvedLocale);
+    const t = pickTranslationForLocale(courseTById.get(row.courseId) ?? [], resolvedLocale, defaultLocale);
+    const certT = pickTranslationForLocale(certTById.get(link.certificateId) ?? [], resolvedLocale, defaultLocale);
     const certificateTitle = certT?.title?.trim() || '';
     const subtitle = t?.subtitle?.trim() || '';
     if (!certificateTitle || !subtitle) return [];

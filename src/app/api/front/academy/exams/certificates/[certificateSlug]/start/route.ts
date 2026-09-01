@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { frontCorsHeaders } from '@/lib/front-cors';
+import { resolveFrontRequestLocale } from '@/lib/front-request-locale';
 import { getCurrentUserId } from '@/server/auth/session';
 import { startCertificateExamAttempt } from '@/server/storefront/academy-exams';
 
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     );
   }
 
-  const locale = parsed.data.locale || request.nextUrl.searchParams.get('locale')?.trim() || undefined;
+  const locale = parsed.data.locale || await resolveFrontRequestLocale(request);
   const result = await startCertificateExamAttempt(userId, certificateSlug, locale);
 
   if (!result.ok) {

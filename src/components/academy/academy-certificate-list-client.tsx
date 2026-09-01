@@ -121,7 +121,7 @@ export function AcademyCertificateListClient({ initialList, activeLanguages }: P
     },
     {
       title: '考试',
-      width: 90,
+      width: 110,
       onHeaderCell: adminTableNowrapHeader,
       render: (_: unknown, record: AdminAcademyCertificateListItem) => (
         <Button
@@ -129,7 +129,7 @@ export function AcademyCertificateListClient({ initialList, activeLanguages }: P
           icon={<FileTextOutlined />}
           onClick={() => setExamManagerCertificate(record)}
         >
-          管理
+          管理（{record.examCount}）
         </Button>
       ),
     },
@@ -229,6 +229,11 @@ export function AcademyCertificateListClient({ initialList, activeLanguages }: P
           certificateTitle={examManagerCertificate.title}
           activeLanguages={activeLanguages}
           onClose={() => setExamManagerCertificate(null)}
+          onSaved={(examCount) => {
+            setItems((current) => current.map((item) => (
+              item.id === examManagerCertificate.id ? { ...item, examCount } : item
+            )));
+          }}
         />
       ) : null}
     </Space>

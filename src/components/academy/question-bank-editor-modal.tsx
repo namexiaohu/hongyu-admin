@@ -4,7 +4,9 @@ import { Form, Input, InputNumber, Modal, Space, message } from 'antd';
 import { useEffect, useMemo, useState, useTransition } from 'react';
 
 import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
+import { ContentTranslateButton } from '@/components/admin/content-translate-button';
 import type { AdminAcademyQuestionBankDetail } from '@/lib/academy-question-bank-content';
+import { applyNonemptyTranslatedFields } from '@/lib/content-translate-config';
 import { shouldPersistLocaleDraft } from '@/lib/locale-draft-persistence';
 import type { AdminSiteLanguageRow } from '@/server/admin/languages';
 
@@ -39,6 +41,15 @@ export function QuestionBankEditorModal({ open, detail, activeLanguages, onClose
 
   const defaultLocale = activeLanguages.find((item) => item.isDefault)?.code ?? activeLanguages[0]?.code ?? 'en';
   const isEdit = Boolean(detail);
+
+  const translationByLocale = useMemo(() => {
+    const persisted = new Set<string>();
+    for (const translation of detail?.translations ?? []) {
+      if (translation.title?.trim()) persisted.add(translation.locale);
+    }
+    return persisted;
+  }, [detail]);
+
   const currentDraft = useMemo(() => drafts[activeLocale] ?? emptyDraft(), [drafts, activeLocale]);
 
   useEffect(() => {
@@ -57,6 +68,11 @@ export function QuestionBankEditorModal({ open, detail, activeLanguages, onClose
       ...current,
       [activeLocale]: { ...(current[activeLocale] ?? emptyDraft()), ...patch },
     }));
+  }
+
+  function handleTranslated(fields: Record<string, string>) {
+    const current = drafts[activeLocale] ?? emptyDraft();
+    updateDraft(applyNonemptyTranslatedFields(current, fields));
   }
 
   function handleOk() {
@@ -160,6 +176,18 @@ export function QuestionBankEditorModal({ open, detail, activeLanguages, onClose
           ))}
         </div>
         <div className="content-editor-main">
+          <div className="content-editor-section-toolbar">
+            <ContentTranslateButton
+              contentType="academyQuestionBank"
+              defaultLocale={defaultLocale}
+              activeLocale={activeLocale}
+              disabled={isPending}
+              getDefaultSourceFields={() => ({ title: drafts[defaultLocale]?.title ?? '' })}
+              hasDefaultPersisted={() => Boolean(detail && translationByLocale.has(defaultLocale))}
+              hasTargetContent={() => Boolean((drafts[activeLocale]?.title ?? '').trim())}
+              onTranslated={handleTranslated}
+            />
+          </div>
           <Form layout="vertical">
             <Form.Item label="标题" required={activeLocale === defaultLocale}>
               <Input

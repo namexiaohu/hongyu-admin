@@ -5,6 +5,8 @@ import {
   type ContentTranslateType,
   getHtmlContentLabel,
 } from '@/lib/content-translate-config';
+import { translateAcademyQuestionContent } from '@/lib/academy-question-translate';
+import type { AcademyQuestionContent, AcademyQuestionType } from '@/lib/academy-question-content';
 import { hasMeaningfulHtmlBody } from '@/lib/editorial-html';
 
 import { chatWithLlm } from '@/server/ai/chat-with-llm';
@@ -210,6 +212,24 @@ export async function translateContentFields(options: {
 
   const profile = CONTENT_TRANSLATE_PROFILES[contentType];
   const result: Record<string, string> = {};
+
+  if (contentType === 'academyQuestion') {
+    const questionType = fields.questionType as AcademyQuestionType;
+    const contentJson = fields.contentJson?.trim();
+    if (!questionType || !contentJson) {
+      return result;
+    }
+    const content = JSON.parse(contentJson) as AcademyQuestionContent;
+    const translated = await translateAcademyQuestionContent(
+      questionType,
+      content,
+      sourceLocale,
+      targetLocale,
+    );
+    result.questionType = questionType;
+    result.contentJson = JSON.stringify(translated);
+    return result;
+  }
 
   for (const key of profile.passthroughFields ?? []) {
     if (fields[key]?.trim()) {
