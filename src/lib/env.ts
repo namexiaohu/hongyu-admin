@@ -31,12 +31,22 @@ process.env.SITE_URL ??= siteUrl;
 process.env.AUTH_URL ??= adminUrl;
 process.env.NEXTAUTH_URL ??= adminUrl;
 
-if (!process.env.CORS_ALLOWED_ORIGINS?.trim()) {
-  const courseSite = trimUrl(process.env.COURSE_SITE_URL)
-    ?? (process.env.NODE_ENV !== 'production' ? 'http://localhost:5001' : null);
-  const origins = [siteUrl];
-  if (courseSite && courseSite !== siteUrl) {
+function mergeCourseOrigin(origins: string[]) {
+  const courseSite = trimUrl(process.env.COURSE_SITE_URL);
+  if (courseSite && !origins.includes(courseSite)) {
     origins.push(courseSite);
   }
+  return origins;
+}
+
+if (!process.env.CORS_ALLOWED_ORIGINS?.trim()) {
+  const origins = mergeCourseOrigin([siteUrl]);
+  process.env.CORS_ALLOWED_ORIGINS = origins.join(',');
+} else {
+  const origins = mergeCourseOrigin(
+    process.env.CORS_ALLOWED_ORIGINS.split(',')
+      .map((value) => trimUrl(value))
+      .filter((value): value is string => Boolean(value)),
+  );
   process.env.CORS_ALLOWED_ORIGINS = origins.join(',');
 }

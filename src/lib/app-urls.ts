@@ -42,13 +42,13 @@ export function getSiteUrl() {
 
 /**
  * Academy / course storefront origin (e.g. http://localhost:5001).
+ * Production requires COURSE_SITE_URL — no localhost fallback.
  */
-export function getCourseSiteUrl() {
-  return (
-    trimUrl(process.env.COURSE_SITE_URL)
-    ?? (process.env.NODE_ENV !== 'production' ? DEV_COURSE_SITE_URL : null)
-    ?? DEV_COURSE_SITE_URL
-  );
+export function getCourseSiteUrl(): string | null {
+  const fromEnv = trimUrl(process.env.COURSE_SITE_URL);
+  if (fromEnv) return fromEnv;
+  if (process.env.NODE_ENV !== 'production') return DEV_COURSE_SITE_URL;
+  return null;
 }
 
 /**
