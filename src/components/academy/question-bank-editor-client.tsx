@@ -200,7 +200,7 @@ export function QuestionBankEditorClient({ bankId, initialDetail, activeLanguage
         </Form>
       </Card>
 
-      <Card title="多语言标题">
+      <Card title="多语言内容">
         <div className="content-editor-layout">
           <div className="content-editor-locale-nav">
             {activeLanguages.map((language) => (
@@ -214,6 +214,13 @@ export function QuestionBankEditorClient({ bankId, initialDetail, activeLanguage
             ))}
           </div>
           <div className="content-editor-main">
+            <div className="content-editor-section-toolbar">
+              <Tabs
+                activeKey="content"
+                className="content-editor-section-tabs"
+                items={[{ key: 'content', label: '内容' }]}
+              />
+            </div>
             <Form layout="vertical">
               <Form.Item label="标题" required={activeLocale === defaultLocale}>
                 <input

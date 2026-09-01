@@ -1,6 +1,6 @@
 'use client';
 
-import { Form, Input, InputNumber, Modal, Space, message } from 'antd';
+import { Form, Input, InputNumber, Modal, Space, Tabs, message } from 'antd';
 import { useEffect, useMemo, useState, useTransition } from 'react';
 
 import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
@@ -177,6 +177,11 @@ export function QuestionBankEditorModal({ open, detail, activeLanguages, onClose
         </div>
         <div className="content-editor-main">
           <div className="content-editor-section-toolbar">
+            <Tabs
+              activeKey="content"
+              className="content-editor-section-tabs"
+              items={[{ key: 'content', label: '内容' }]}
+            />
             <ContentTranslateButton
               contentType="academyQuestionBank"
               defaultLocale={defaultLocale}
