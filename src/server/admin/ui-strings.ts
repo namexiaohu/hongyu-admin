@@ -1,9 +1,10 @@
 import { and, asc, eq, inArray, like, notInArray, or, sql } from 'drizzle-orm';
 
-import { getSiteUrl } from '@/lib/app-urls';
+import { getCourseSiteUrl, getSiteUrl } from '@/lib/app-urls';
 import {
   type AdminUiStringRow,
   type UiStringResetScope,
+  type UiStringSite,
   type UiStringStatus,
   type UiStringTranslationSource,
   type UiStringsManifest,
@@ -18,20 +19,32 @@ function now() {
   return new Date();
 }
 
-function resolveManifestUrl(manifestUrl?: string | null) {
-  const configured = manifestUrl?.trim() || process.env.WEB_UI_STRINGS_MANIFEST_URL?.trim();
+function resolveManifestUrl(site: UiStringSite, manifestUrl?: string | null) {
+  if (manifestUrl?.trim()) {
+    return manifestUrl.trim();
+  }
+
+  if (site === 'course') {
+    const configured = process.env.COURSE_UI_STRINGS_MANIFEST_URL?.trim();
+    if (configured) {
+      return configured;
+    }
+    return `${getCourseSiteUrl()}/api/ui-strings/manifest`;
+  }
+
+  const configured = process.env.WEB_UI_STRINGS_MANIFEST_URL?.trim();
   if (configured) {
     return configured;
   }
   return `${getSiteUrl()}/api/ui-strings/manifest`;
 }
 
-export function getUiStringsManifestUrl(manifestUrl?: string | null) {
-  return resolveManifestUrl(manifestUrl);
+export function getUiStringsManifestUrl(site: UiStringSite, manifestUrl?: string | null) {
+  return resolveManifestUrl(site, manifestUrl);
 }
 
-export async function fetchUiStringsManifest(manifestUrl?: string | null): Promise<UiStringsManifest> {
-  const url = resolveManifestUrl(manifestUrl);
+export async function fetchUiStringsManifest(site: UiStringSite, manifestUrl?: string | null): Promise<UiStringsManifest> {
+  const url = resolveManifestUrl(site, manifestUrl);
   const response = await fetch(url, { cache: 'no-store' });
   if (!response.ok) {
     throw new Error(`MANIFEST_FETCH_FAILED:${response.status}`);
@@ -72,14 +85,14 @@ function toAdminRow(
   };
 }
 
-export async function getAdminUiStrings(options?: {
+export async function getAdminUiStrings(site: UiStringSite, options?: {
   group?: string;
   status?: UiStringStatus;
   missingOnly?: boolean;
   search?: string;
 }) {
   const targetLocales = await getActiveNonEnglishLocales();
-  const conditions = [];
+  const conditions = [eq(uiStrings.site, site)];
 
   if (options?.group) {
     conditions.push(eq(uiStrings.group, options.group));
@@ -89,13 +102,16 @@ export async function getAdminUiStrings(options?: {
   }
   if (options?.search?.trim()) {
     const term = `%${options.search.trim()}%`;
-    conditions.push(or(like(uiStrings.key, term), like(uiStrings.defaultText, term)));
+    const searchCondition = or(like(uiStrings.key, term), like(uiStrings.defaultText, term));
+    if (searchCondition) {
+      conditions.push(searchCondition);
+    }
   }
 
   const rows = await db
     .select()
     .from(uiStrings)
-    .where(conditions.length ? and(...conditions) : undefined)
+    .where(and(...conditions))
     .orderBy(asc(uiStrings.group), asc(uiStrings.key));
 
   if (!rows.length) {
@@ -106,7 +122,7 @@ export async function getAdminUiStrings(options?: {
   const translations = await db
     .select()
     .from(uiStringTranslations)
-    .where(inArray(uiStringTranslations.key, keys));
+    .where(and(eq(uiStringTranslations.site, site), inArray(uiStringTranslations.key, keys)));
 
   const translationsByKey = new Map<string, Array<typeof uiStringTranslations.$inferSelect>>();
   for (const row of translations) {
@@ -125,6 +141,7 @@ export async function getAdminUiStrings(options?: {
 }
 
 export async function updateAdminUiStringTranslation(input: {
+  site: UiStringSite;
   key: string;
   locale: string;
   value: string;
@@ -134,7 +151,11 @@ export async function updateAdminUiStringTranslation(input: {
     throw new Error('ENGLISH_IS_DEFAULT_TEXT');
   }
 
-  const [existing] = await db.select().from(uiStrings).where(eq(uiStrings.key, input.key)).limit(1);
+  const [existing] = await db
+    .select()
+    .from(uiStrings)
+    .where(and(eq(uiStrings.site, input.site), eq(uiStrings.key, input.key)))
+    .limit(1);
   if (!existing) {
     return null;
   }
@@ -142,6 +163,7 @@ export async function updateAdminUiStringTranslation(input: {
   const [saved] = await db
     .insert(uiStringTranslations)
     .values({
+      site: input.site,
       key: input.key,
       locale: input.locale,
       value: input.value,
@@ -149,7 +171,7 @@ export async function updateAdminUiStringTranslation(input: {
       updatedAt: now(),
     })
     .onConflictDoUpdate({
-      target: [uiStringTranslations.key, uiStringTranslations.locale],
+      target: [uiStringTranslations.site, uiStringTranslations.key, uiStringTranslations.locale],
       set: {
         value: input.value,
         source: input.source ?? 'manual',
@@ -161,8 +183,25 @@ export async function updateAdminUiStringTranslation(input: {
   return saved;
 }
 
-export async function syncUiStringsFromManifest(manifestUrl?: string | null) {
-  const manifest = await fetchUiStringsManifest(manifestUrl);
+export async function updateAdminUiStringDefaultText(input: {
+  site: UiStringSite;
+  key: string;
+  defaultText: string;
+}) {
+  const [saved] = await db
+    .update(uiStrings)
+    .set({
+      defaultText: input.defaultText,
+      updatedAt: now(),
+    })
+    .where(and(eq(uiStrings.site, input.site), eq(uiStrings.key, input.key)))
+    .returning();
+
+  return saved ?? null;
+}
+
+export async function syncUiStringsFromManifest(site: UiStringSite, manifestUrl?: string | null) {
+  const manifest = await fetchUiStringsManifest(site, manifestUrl);
   const manifestKeys = manifest.keys.map((item) => item.key);
   const timestamp = now();
 
@@ -170,6 +209,7 @@ export async function syncUiStringsFromManifest(manifestUrl?: string | null) {
     await db
       .insert(uiStrings)
       .values({
+        site,
         key: entry.key,
         defaultText: entry.default,
         group: entry.group,
@@ -178,7 +218,7 @@ export async function syncUiStringsFromManifest(manifestUrl?: string | null) {
         updatedAt: timestamp,
       })
       .onConflictDoUpdate({
-        target: uiStrings.key,
+        target: [uiStrings.site, uiStrings.key],
         set: {
           defaultText: entry.default,
           group: entry.group,
@@ -193,23 +233,31 @@ export async function syncUiStringsFromManifest(manifestUrl?: string | null) {
     await db
       .update(uiStrings)
       .set({ status: 'deprecated', updatedAt: timestamp })
-      .where(notInArray(uiStrings.key, manifestKeys));
+      .where(and(eq(uiStrings.site, site), notInArray(uiStrings.key, manifestKeys)));
   }
 
   const activeCount = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(uiStrings)
-    .where(eq(uiStrings.status, 'active'));
+    .where(and(eq(uiStrings.site, site), eq(uiStrings.status, 'active')));
+
+  const deprecatedCount = manifestKeys.length
+    ? (await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(uiStrings)
+        .where(and(eq(uiStrings.site, site), eq(uiStrings.status, 'deprecated'))))[0]?.count ?? 0
+    : 0;
 
   return {
     manifestVersion: manifest.version,
     syncedAt: timestamp.toISOString(),
     activeCount: activeCount[0]?.count ?? 0,
-    deprecatedCount: manifestKeys.length ? (await db.select({ count: sql<number>`count(*)::int` }).from(uiStrings).where(eq(uiStrings.status, 'deprecated')))[0]?.count ?? 0 : 0,
+    deprecatedCount,
   };
 }
 
 export async function resetUiStringTranslations(input: {
+  site: UiStringSite;
   scope: UiStringResetScope;
   locale?: string;
   manifestUrl?: string | null;
@@ -217,7 +265,7 @@ export async function resetUiStringTranslations(input: {
   const timestamp = now();
 
   if (input.scope === 'all_translations') {
-    await db.delete(uiStringTranslations);
+    await db.delete(uiStringTranslations).where(eq(uiStringTranslations.site, input.site));
     return { scope: input.scope, clearedAt: timestamp.toISOString() };
   }
 
@@ -225,15 +273,18 @@ export async function resetUiStringTranslations(input: {
     if (!input.locale || input.locale === UI_STRING_SOURCE_LOCALE) {
       throw new Error('INVALID_RESET_LOCALE');
     }
-    await db.delete(uiStringTranslations).where(eq(uiStringTranslations.locale, input.locale));
+    await db
+      .delete(uiStringTranslations)
+      .where(and(eq(uiStringTranslations.site, input.site), eq(uiStringTranslations.locale, input.locale)));
     return { scope: input.scope, locale: input.locale, clearedAt: timestamp.toISOString() };
   }
 
-  const manifest = await fetchUiStringsManifest(input.manifestUrl);
+  const manifest = await fetchUiStringsManifest(input.site, input.manifestUrl);
   for (const entry of manifest.keys) {
     await db
       .insert(uiStrings)
       .values({
+        site: input.site,
         key: entry.key,
         defaultText: entry.default,
         group: entry.group,
@@ -242,7 +293,7 @@ export async function resetUiStringTranslations(input: {
         updatedAt: timestamp,
       })
       .onConflictDoUpdate({
-        target: uiStrings.key,
+        target: [uiStrings.site, uiStrings.key],
         set: {
           defaultText: entry.default,
           group: entry.group,
@@ -253,17 +304,18 @@ export async function resetUiStringTranslations(input: {
       });
   }
 
-  await db.delete(uiStringTranslations);
+  await db.delete(uiStringTranslations).where(eq(uiStringTranslations.site, input.site));
   return { scope: input.scope, rebuiltAt: timestamp.toISOString(), manifestVersion: manifest.version };
 }
 
 export async function getFrontUiStrings(input: {
+  site: UiStringSite;
   locale: string;
   keys?: string[];
   groups?: string[];
 }) {
   const locale = input.locale || UI_STRING_SOURCE_LOCALE;
-  const conditions = [eq(uiStrings.status, 'active')];
+  const conditions = [eq(uiStrings.site, input.site), eq(uiStrings.status, 'active')];
 
   if (input.keys?.length) {
     conditions.push(inArray(uiStrings.key, input.keys));
@@ -293,7 +345,13 @@ export async function getFrontUiStrings(input: {
   const translations = await db
     .select()
     .from(uiStringTranslations)
-    .where(and(inArray(uiStringTranslations.key, keys), eq(uiStringTranslations.locale, locale)));
+    .where(
+      and(
+        eq(uiStringTranslations.site, input.site),
+        inArray(uiStringTranslations.key, keys),
+        eq(uiStringTranslations.locale, locale),
+      ),
+    );
 
   const translationMap = new Map(translations.map((row) => [row.key, row.value]));
   const strings: Record<string, string> = {};
@@ -306,6 +364,7 @@ export async function getFrontUiStrings(input: {
 }
 
 export async function translateSingleUiString(input: {
+  site: UiStringSite;
   key: string;
   targetLocale: string;
 }) {
@@ -313,7 +372,11 @@ export async function translateSingleUiString(input: {
     throw new Error('ENGLISH_IS_DEFAULT_TEXT');
   }
 
-  const [row] = await db.select().from(uiStrings).where(eq(uiStrings.key, input.key)).limit(1);
+  const [row] = await db
+    .select()
+    .from(uiStrings)
+    .where(and(eq(uiStrings.site, input.site), eq(uiStrings.key, input.key)))
+    .limit(1);
   if (!row) {
     return null;
   }
@@ -326,6 +389,7 @@ export async function translateSingleUiString(input: {
   });
 
   return updateAdminUiStringTranslation({
+    site: input.site,
     key: input.key,
     locale: input.targetLocale,
     value,

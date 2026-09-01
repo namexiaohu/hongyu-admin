@@ -80,6 +80,7 @@ const iconByKey: Record<string, React.ReactNode> = {
   'site-management': <SettingOutlined />,
   '/admin/languages': <GlobalOutlined />,
   '/admin/ui-strings': <TranslationOutlined />,
+  '/admin/course-ui-strings': <TranslationOutlined />,
   '/admin/site/config': <SettingOutlined />,
   '/admin/site/exchange-rates': <DollarOutlined />,
 };

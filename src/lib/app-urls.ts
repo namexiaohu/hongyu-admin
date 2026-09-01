@@ -4,6 +4,7 @@ function trimUrl(value: string | undefined) {
 
 const DEV_ADMIN_URL = 'http://localhost:5100';
 const DEV_SITE_URL = 'http://localhost:5000';
+const DEV_COURSE_SITE_URL = 'http://localhost:5001';
 
 /**
  * Admin console + REST API origin (e.g. http://localhost:5100).
@@ -40,6 +41,17 @@ export function getSiteUrl() {
 }
 
 /**
+ * Academy / course storefront origin (e.g. http://localhost:5001).
+ */
+export function getCourseSiteUrl() {
+  return (
+    trimUrl(process.env.COURSE_SITE_URL)
+    ?? (process.env.NODE_ENV !== 'production' ? DEV_COURSE_SITE_URL : null)
+    ?? DEV_COURSE_SITE_URL
+  );
+}
+
+/**
  * Primary storefront origin allowed by CORS. Falls back to {@link getSiteUrl}.
  */
 export function getAllowedCorsOrigins(): string[] {
@@ -48,8 +60,7 @@ export function getAllowedCorsOrigins(): string[] {
     .filter((value): value is string => Boolean(value)) ?? [];
 
   const origins = fromEnv.length ? [...fromEnv] : [getSiteUrl()];
-  const courseSite = trimUrl(process.env.COURSE_SITE_URL)
-    ?? (process.env.NODE_ENV !== 'production' ? 'http://localhost:5001' : null);
+  const courseSite = getCourseSiteUrl();
   if (courseSite && !origins.includes(courseSite)) {
     origins.push(courseSite);
   }

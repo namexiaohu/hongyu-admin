@@ -48,21 +48,28 @@ type BatchProgressState = {
   running: boolean;
 };
 
+type EditingState =
+  | { kind: 'default'; key: string; value: string }
+  | { kind: 'translation'; key: string; locale: string; value: string };
+
 function cellId(key: string, locale: string) {
   return `${key}:${locale}`;
 }
 
-async function fetchUiStringList(params: {
+async function fetchUiStringList(
+  apiBase: string,
+  params: {
   group?: string;
   missingOnly?: boolean;
   search?: string;
-}): Promise<UiStringsPayload> {
+},
+): Promise<UiStringsPayload> {
   const searchParams = new URLSearchParams();
   if (params.group) searchParams.set('group', params.group);
   if (params.missingOnly) searchParams.set('missingOnly', '1');
   if (params.search?.trim()) searchParams.set('search', params.search.trim());
 
-  const response = await fetch(`/api/admin/ui-strings?${searchParams.toString()}`, { cache: 'no-store' });
+  const response = await fetch(`${apiBase}?${searchParams.toString()}`, { cache: 'no-store' });
   if (!response.ok) {
     throw new Error('加载失败');
   }
@@ -70,8 +77,8 @@ async function fetchUiStringList(params: {
   return response.json() as Promise<UiStringsPayload>;
 }
 
-async function postTranslateOne(key: string, targetLocale: string) {
-  const response = await fetch('/api/admin/ui-strings', {
+async function postTranslateOne(apiBase: string, key: string, targetLocale: string) {
+  const response = await fetch(apiBase, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action: 'translate-one', key, targetLocale }),
@@ -92,14 +99,22 @@ function buildMissingJobs(rows: AdminUiStringRow[]): TranslationJob[] {
   );
 }
 
-export function AdminUiStringsClient({ manifestUrl }: { manifestUrl: string }) {
+export function AdminUiStringsClient({
+  title,
+  manifestUrl,
+  apiBase,
+}: {
+  title: string;
+  manifestUrl: string;
+  apiBase: string;
+}) {
   const [items, setItems] = useState<AdminUiStringRow[]>([]);
   const [groups, setGroups] = useState<string[]>([]);
   const [targetLocales, setTargetLocales] = useState<string[]>([]);
   const [groupFilter, setGroupFilter] = useState<string | undefined>();
   const [missingOnly, setMissingOnly] = useState(false);
   const [search, setSearch] = useState('');
-  const [editing, setEditing] = useState<{ key: string; locale: string; value: string } | null>(null);
+  const [editing, setEditing] = useState<EditingState | null>(null);
   const [translatingCell, setTranslatingCell] = useState<string | null>(null);
   const [batchProgress, setBatchProgress] = useState<BatchProgressState | null>(null);
   const [isLoading, startLoading] = useTransition();
@@ -108,7 +123,7 @@ export function AdminUiStringsClient({ manifestUrl }: { manifestUrl: string }) {
   const batchRunning = Boolean(batchProgress?.running);
 
   async function loadList(next?: { group?: string; missingOnly?: boolean; search?: string }) {
-    const payload = await fetchUiStringList({
+    const payload = await fetchUiStringList(apiBase, {
       group: next?.group ?? groupFilter,
       missingOnly: next?.missingOnly ?? missingOnly,
       search: next?.search ?? search,
@@ -132,7 +147,7 @@ export function AdminUiStringsClient({ manifestUrl }: { manifestUrl: string }) {
     const id = cellId(key, locale);
     setTranslatingCell(id);
     try {
-      await postTranslateOne(key, locale);
+      await postTranslateOne(apiBase, key, locale);
       if (options?.toast !== false) {
         messageApi.success('LLM 翻译完成');
       }
@@ -142,11 +157,11 @@ export function AdminUiStringsClient({ manifestUrl }: { manifestUrl: string }) {
     } finally {
       setTranslatingCell((current) => (current === id ? null : current));
     }
-  }, [messageApi]);
+  }, [apiBase, messageApi]);
 
   const runBatchTranslate = useCallback(async () => {
     try {
-      const payload = await fetchUiStringList({
+      const payload = await fetchUiStringList(apiBase, {
         group: groupFilter,
         missingOnly: true,
         search,
@@ -192,7 +207,7 @@ export function AdminUiStringsClient({ manifestUrl }: { manifestUrl: string }) {
         setTranslatingCell(cellId(job.key, job.locale));
 
         try {
-          await postTranslateOne(job.key, job.locale);
+          await postTranslateOne(apiBase, job.key, job.locale);
           succeeded += 1;
         } catch (error) {
           failed += 1;
@@ -237,7 +252,7 @@ export function AdminUiStringsClient({ manifestUrl }: { manifestUrl: string }) {
       setBatchProgress(null);
       messageApi.error(error instanceof Error ? error.message : '批量翻译失败');
     }
-  }, [groupFilter, messageApi, search]);
+  }, [apiBase, groupFilter, messageApi, search]);
 
   useEffect(() => {
     runListLoader(() => loadList());
@@ -265,7 +280,7 @@ export function AdminUiStringsClient({ manifestUrl }: { manifestUrl: string }) {
                 type="link"
                 icon={<EditOutlined />}
                 disabled={loading || batchRunning}
-                onClick={() => setEditing({ key: row.key, locale, value: translation?.value ?? '' })}
+                onClick={() => setEditing({ kind: 'translation', key: row.key, locale, value: translation?.value ?? '' })}
               >
                 编辑
               </Button>
@@ -304,11 +319,24 @@ export function AdminUiStringsClient({ manifestUrl }: { manifestUrl: string }) {
         ),
       },
       {
-        title: '英文范本',
+        title: '英文原文',
         dataIndex: 'defaultText',
         key: 'defaultText',
         width: 280,
-        ellipsis: true,
+        render: (value: string, row: AdminUiStringRow) => (
+          <Space direction="vertical" size={4} style={{ width: '100%' }}>
+            <Typography.Text ellipsis>{value || '—'}</Typography.Text>
+            <Button
+              size="small"
+              type="link"
+              icon={<EditOutlined />}
+              disabled={batchRunning}
+              onClick={() => setEditing({ kind: 'default', key: row.key, value: value ?? '' })}
+            >
+              编辑
+            </Button>
+          </Space>
+        ),
       },
       {
         title: '分组',
@@ -331,13 +359,13 @@ export function AdminUiStringsClient({ manifestUrl }: { manifestUrl: string }) {
         title={
           <Space>
             <GlobalOutlined />
-            <span>文案翻译</span>
+            <span>{title}</span>
           </Space>
         }
         extra={
           <Space wrap>
             <Button icon={<CloudSyncOutlined />} loading={isLoading} disabled={batchRunning} onClick={() => runListLoader(async () => {
-              const response = await fetch('/api/admin/ui-strings', {
+              const response = await fetch(apiBase, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'sync-manifest' }),
@@ -356,11 +384,11 @@ export function AdminUiStringsClient({ manifestUrl }: { manifestUrl: string }) {
               onClick={() => {
                 Modal.confirm({
                   title: '重置翻译',
-                  content: '将清空除英文外的全部翻译，英文范本保留在 default_text。确认继续？',
+                  content: '将清空除英文外的全部翻译，英文原文保留在 default_text。确认继续？',
                   okText: '重置',
                   cancelText: '取消',
                   onOk: async () => {
-                    const response = await fetch('/api/admin/ui-strings', {
+                    const response = await fetch(apiBase, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ action: 'reset', scope: 'all_translations' }),
@@ -391,6 +419,7 @@ export function AdminUiStringsClient({ manifestUrl }: { manifestUrl: string }) {
       >
         <Space wrap style={{ marginBottom: 16 }}>
           <Typography.Text type="secondary">清单来源：{manifestUrl}</Typography.Text>
+          <Typography.Text type="secondary">英文原文可直接编辑；再次「从前台同步清单」会用 en.json 覆盖手动修改。</Typography.Text>
         </Space>
 
         <Space wrap style={{ marginBottom: 16 }}>
@@ -492,25 +521,36 @@ export function AdminUiStringsClient({ manifestUrl }: { manifestUrl: string }) {
       </Modal>
 
       <Modal
-        title={editing ? `编辑 ${editing.key} (${editing.locale})` : '编辑翻译'}
+        title={
+          editing?.kind === 'default'
+            ? `编辑英文原文 ${editing.key}`
+            : editing
+              ? `编辑 ${editing.key} (${editing.locale})`
+              : '编辑翻译'
+        }
         open={Boolean(editing)}
         onCancel={() => setEditing(null)}
         onOk={() => {
           if (!editing) return;
           runListLoader(async () => {
-            const response = await fetch('/api/admin/ui-strings', {
+            const body =
+              editing.kind === 'default'
+                ? { key: editing.key, defaultText: editing.value }
+                : {
+                    key: editing.key,
+                    locale: editing.locale,
+                    value: editing.value,
+                    source: 'manual' as const,
+                  };
+
+            const response = await fetch(apiBase, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                key: editing.key,
-                locale: editing.locale,
-                value: editing.value,
-                source: 'manual',
-              }),
+              body: JSON.stringify(body),
             });
             const payload = await response.json().catch(() => ({}));
             if (!response.ok) throw new Error(payload.message ?? '保存失败');
-            messageApi.success('已保存');
+            messageApi.success(editing.kind === 'default' ? '英文原文已保存' : '已保存');
             setEditing(null);
             await loadList();
           });

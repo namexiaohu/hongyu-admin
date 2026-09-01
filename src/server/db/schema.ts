@@ -56,6 +56,7 @@ export type SummitStat = {
 import {
   type AnyPgColumn,
   boolean,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -1328,7 +1329,8 @@ export const newsletterSubscribers = pgTable(
 export const uiStrings = pgTable(
   'ui_strings',
   {
-    key: varchar('key', { length: 200 }).primaryKey(),
+    site: varchar('site', { length: 16 }).notNull().default('web'),
+    key: varchar('key', { length: 200 }).notNull(),
     defaultText: text('default_text').notNull(),
     group: varchar('group', { length: 64 }).notNull(),
     context: text('context'),
@@ -1336,25 +1338,29 @@ export const uiStrings = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    groupIdx: index('ui_strings_group_idx').on(table.group),
-    statusIdx: index('ui_strings_status_idx').on(table.status),
+    pk: primaryKey({ columns: [table.site, table.key] }),
+    siteGroupIdx: index('ui_strings_site_group_idx').on(table.site, table.group),
+    siteStatusIdx: index('ui_strings_site_status_idx').on(table.site, table.status),
   }),
 );
 
 export const uiStringTranslations = pgTable(
   'ui_string_translations',
   {
-    key: varchar('key', { length: 200 })
-      .notNull()
-      .references(() => uiStrings.key, { onDelete: 'cascade' }),
+    site: varchar('site', { length: 16 }).notNull().default('web'),
+    key: varchar('key', { length: 200 }).notNull(),
     locale: varchar('locale', { length: 16 }).notNull(),
     value: text('value').notNull(),
     source: varchar('source', { length: 16 }).notNull().default('manual'),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    pk: primaryKey({ columns: [table.key, table.locale] }),
-    localeIdx: index('ui_string_translations_locale_idx').on(table.locale),
+    pk: primaryKey({ columns: [table.site, table.key, table.locale] }),
+    siteKeyFk: foreignKey({
+      columns: [table.site, table.key],
+      foreignColumns: [uiStrings.site, uiStrings.key],
+    }).onDelete('cascade'),
+    siteLocaleIdx: index('ui_string_translations_site_locale_idx').on(table.site, table.locale),
   }),
 );
 

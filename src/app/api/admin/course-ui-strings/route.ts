@@ -6,7 +6,7 @@ import {
   handleAdminUiStringsPut,
 } from '@/server/admin/ui-strings-route-handlers';
 
-const SITE = 'web' as const;
+const SITE = 'course' as const;
 
 export async function GET(request: NextRequest) {
   return handleAdminUiStringsGet(SITE, request);

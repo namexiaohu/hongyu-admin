@@ -29,3 +29,7 @@ export type AdminUiStringRow = {
 };
 
 export const UI_STRING_SOURCE_LOCALE = 'en' as const;
+
+export type UiStringSite = 'web' | 'course';
+
+export const UI_STRING_SITES = ['web', 'course'] as const satisfies readonly UiStringSite[];

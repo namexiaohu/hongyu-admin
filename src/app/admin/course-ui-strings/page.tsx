@@ -1,13 +1,13 @@
 import { AdminUiStringsClient } from '../ui-strings/ui-strings-client';
 import { getUiStringsManifestUrl } from '@/server/admin/ui-strings';
 
-export default function AdminUiStringsPage() {
-  const manifestUrl = getUiStringsManifestUrl('web');
+export default function AdminCourseUiStringsPage() {
+  const manifestUrl = getUiStringsManifestUrl('course');
   return (
     <AdminUiStringsClient
-      title="主站文案翻译"
+      title="课程站文案翻译"
       manifestUrl={manifestUrl}
-      apiBase="/api/admin/ui-strings"
+      apiBase="/api/admin/course-ui-strings"
     />
   );
 }

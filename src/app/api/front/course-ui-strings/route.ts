@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   const keys = searchParams.get('keys')?.split(',').map((item) => item.trim()).filter(Boolean);
   const groups = searchParams.get('groups')?.split(',').map((item) => item.trim()).filter(Boolean);
 
-  const payload = await getFrontUiStrings({ site: 'web', locale, keys, groups });
+  const payload = await getFrontUiStrings({ site: 'course', locale, keys, groups });
   return NextResponse.json(payload, { headers: frontCorsHeaders() });
 }
 
