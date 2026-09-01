@@ -45,3 +45,5 @@ export type ContentBlockCarouselSlide = {
   id: string;
   url: string;
 };
+
+export type ContentBlockSplitHeroCopyStyle = 'light' | 'dark';

@@ -6,16 +6,17 @@ import { useState } from 'react';
 
 type MediaPreviewVideoProps = {
   src: string;
+  className?: string;
 };
 
-export function MediaPreviewVideo({ src }: MediaPreviewVideoProps) {
+export function MediaPreviewVideo({ src, className }: MediaPreviewVideoProps) {
   const [open, setOpen] = useState(false);
 
   return (
     <>
       <button
         type="button"
-        className="media-preview-thumb media-preview-video-thumb"
+        className={['media-preview-thumb media-preview-video-thumb', className].filter(Boolean).join(' ')}
         onClick={() => setOpen(true)}
         aria-label="预览视频"
       >

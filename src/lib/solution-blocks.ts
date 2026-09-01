@@ -10,6 +10,9 @@ import {
   type ContentBlockSummaryIcon,
   type ContentBlockSummaryLayout,
 } from '@/lib/content-blocks-shared';
+import type { HeroBackgroundFitMode } from '@/lib/hero-background-fit';
+import { defaultHeroBackgroundFitMode } from '@/lib/hero-background-fit';
+import type { HeroCopyStyle } from '@/lib/hero-copy-style';
 
 export const solutionBlockTypes = ['split', 'summary', 'timeline', 'course', 'specifications', 'relatedProducts'] as const;
 export type SolutionBlockType = (typeof solutionBlockTypes)[number];
@@ -50,6 +53,8 @@ export type SolutionBlockDraft = {
   id: string;
   type: SolutionBlockType;
   layout?: SolutionBlockLayout;
+  heroCopyStyle?: HeroCopyStyle;
+  carouselFitMode?: HeroBackgroundFitMode;
   carouselImages?: SolutionCarouselSlide[];
   videoUrl?: string;
   href?: string;
@@ -68,8 +73,8 @@ export const solutionBlockTypeLabels: Record<SolutionBlockType, string> = {
 };
 
 export const solutionSplitLayoutLabels: Record<SolutionSplitLayout, string> = {
-  'image-left': '图在左',
-  'image-right': '图在右',
+  'image-left': '文字在右',
+  'image-right': '文字在左',
 };
 
 export const solutionSummaryLayoutLabels: Record<SolutionSummaryLayout, string> = {
@@ -210,6 +215,8 @@ export function createSolutionBlock(type: SolutionBlockType): SolutionBlockDraft
   };
   if (type === 'split') {
     block.layout = 'image-left';
+    block.heroCopyStyle = 'light';
+    block.carouselFitMode = defaultHeroBackgroundFitMode();
     block.carouselImages = [];
     block.videoUrl = '';
   }

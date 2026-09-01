@@ -7,6 +7,7 @@ import {
   solutionSummaryLayouts,
   type SolutionBlockDraft,
 } from '@/lib/solution-blocks';
+import { heroBackgroundFitModeOptionalSchema } from '@/lib/hero-background-fit';
 import { heroCopyStyleOptionalSchema, heroCopyStyleSchema, type HeroCopyStyle } from '@/lib/hero-copy-style';
 import { heroCoverDisplaySchema, type HeroCoverDisplay } from '@/lib/hero-cover-display';
 import type { ProductGalleryImage } from '@/lib/product-content';
@@ -120,6 +121,8 @@ export const solutionBlockSchema = z.object({
     url: z.string(),
   })).optional(),
   videoUrl: z.string().optional(),
+  heroCopyStyle: heroCopyStyleOptionalSchema,
+  carouselFitMode: heroBackgroundFitModeOptionalSchema,
   href: z.string().optional(),
   productIds: z.array(z.string().trim().min(1)).optional().default([]),
   locales: z.record(localeCopySchema).default({}),

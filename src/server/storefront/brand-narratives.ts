@@ -7,11 +7,12 @@ import { isSummaryIcon, pickBlockLocaleCopy, summaryItemUsesCoverImage } from '@
 import {
   resolvePartnerCenterBackgroundDisplay,
 } from '@/lib/partner-center-background-presets';
+import { resolveStorefrontHeroBackgroundFitMode } from '@/lib/hero-background-fit';
 import { resolveStorefrontHeroCopyStyle } from '@/lib/hero-copy-style';
 import { resolveStorefrontHeroCoverDisplay } from '@/lib/hero-cover-display';
 import { resolveStorefrontCoverUrl } from '@/lib/cover-presets';
-import { resolveUploadStorageKey } from '@/lib/upload-storage-key';
 import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
+import { resolveUploadStorageKey } from '@/lib/upload-storage-key';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import { db } from '@/server/db';
 import { brandNarrativeContents, brandNarrativeTranslations, brandNarratives } from '@/server/db/schema';
@@ -82,6 +83,8 @@ function mapSplitSection(
     id: block.id,
     layout: slug === 'patents' ? 'rd-split' as const : 'team-split' as const,
     imagePosition: block.layout === 'image-right' ? 'right' as const : 'left' as const,
+    heroCopyStyle: resolveStorefrontHeroCopyStyle(block.heroCopyStyle),
+    carouselFitMode: resolveStorefrontHeroBackgroundFitMode(block.carouselFitMode),
     eyebrow: eyebrow || title,
     title: title || eyebrow || ' ',
     body: body || ' ',

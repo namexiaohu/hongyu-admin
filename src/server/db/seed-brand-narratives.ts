@@ -66,6 +66,7 @@ function sectionsToBlocks(sections: BrandNarrativeLegacyPayload['sections'], loc
         id: typeof section.id === 'string' ? section.id : createBrandNarrativeBlockId(),
         type: 'split',
         layout: section.imagePosition === 'right' ? 'image-right' : 'image-left',
+        carouselFitMode: 'contain-center',
         carouselImages: image ? [createBrandNarrativeCarouselSlide(image)] : [],
         locales: fillLocales(locales, {
           smallTitle: String(section.eyebrow ?? ''),

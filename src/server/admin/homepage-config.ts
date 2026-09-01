@@ -20,6 +20,11 @@ import {
   type HomepageMediaSlide,
   type HomepageSolutionItem,
 } from '@/lib/homepage-config';
+import {
+  normalizeHeroBackgroundFitModeForWrite,
+  resolveStorefrontHeroBackgroundFitMode,
+} from '@/lib/hero-background-fit';
+import { normalizeHeroCopyStyleForWrite, resolveHomepageAboutHeroCopyStyle, resolveHomepageBannerHeroCopyStyle } from '@/lib/hero-copy-style';
 import { shouldPersistLocaleDraft } from '@/lib/locale-draft-persistence';
 import { toOssStorageKey } from '@/lib/oss-asset-url';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
@@ -62,6 +67,10 @@ function mapConfig(
     id: row.id,
     bannerSlides: compactMediaSlides(row.bannerSlides),
     aboutSlides: compactMediaSlides(row.aboutSlides),
+    bannerHeroCopyStyle: resolveHomepageBannerHeroCopyStyle(row.bannerHeroCopyStyle),
+    aboutHeroCopyStyle: resolveHomepageAboutHeroCopyStyle(row.aboutHeroCopyStyle),
+    bannerCarouselFitMode: resolveStorefrontHeroBackgroundFitMode(row.bannerCarouselFitMode),
+    aboutCarouselFitMode: resolveStorefrontHeroBackgroundFitMode(row.aboutCarouselFitMode),
     translations: translations.map(mapTranslation),
     createdAt: toIso(row.createdAt),
     updatedAt: toIso(row.updatedAt),
@@ -127,6 +136,8 @@ async function ensureHomepageConfigRow() {
     .values({
       bannerSlides,
       aboutSlides,
+      bannerCarouselFitMode: 'contain',
+      aboutCarouselFitMode: 'contain-center',
     })
     .returning();
 
@@ -179,6 +190,10 @@ export async function updateAdminHomepageConfig(input: unknown): Promise<AdminHo
     .set({
       bannerSlides,
       aboutSlides,
+      bannerHeroCopyStyle: normalizeHeroCopyStyleForWrite(parsed.bannerHeroCopyStyle),
+      aboutHeroCopyStyle: normalizeHeroCopyStyleForWrite(parsed.aboutHeroCopyStyle),
+      bannerCarouselFitMode: normalizeHeroBackgroundFitModeForWrite(parsed.bannerCarouselFitMode),
+      aboutCarouselFitMode: normalizeHeroBackgroundFitModeForWrite(parsed.aboutCarouselFitMode),
       updatedAt: new Date(),
     })
     .where(eq(homepageConfigs.id, row.id));

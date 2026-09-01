@@ -7,6 +7,7 @@ import {
   brandNarrativeSummaryLayouts,
   type BrandNarrativeBlockDraft,
 } from '@/lib/brand-narrative-blocks';
+import { heroBackgroundFitModeOptionalSchema } from '@/lib/hero-background-fit';
 import { heroCopyStyleOptionalSchema, heroCopyStyleSchema, type HeroCopyStyle } from '@/lib/hero-copy-style';
 import { heroCoverDisplaySchema, type HeroCoverDisplay } from '@/lib/hero-cover-display';
 import type { ProductGalleryImage } from '@/lib/product-content';
@@ -118,6 +119,8 @@ export const brandNarrativeBlockSchema = z.object({
     url: z.string(),
   })).optional(),
   videoUrl: z.string().optional(),
+  heroCopyStyle: heroCopyStyleOptionalSchema,
+  carouselFitMode: heroBackgroundFitModeOptionalSchema,
   href: z.string().optional(),
   locales: z.record(localeCopySchema).default({}),
   items: z.array(blockItemSchema).default([]),

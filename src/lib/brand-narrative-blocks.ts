@@ -6,10 +6,14 @@ import {
   isContentBlockSummaryIcon,
   type ContentBlockCarouselSlide,
   type ContentBlockLocaleCopy,
+  type ContentBlockSplitHeroCopyStyle,
   type ContentBlockSplitLayout,
   type ContentBlockSummaryIcon,
   type ContentBlockSummaryLayout,
 } from '@/lib/content-blocks-shared';
+import type { HeroBackgroundFitMode } from '@/lib/hero-background-fit';
+import { defaultHeroBackgroundFitMode } from '@/lib/hero-background-fit';
+import type { HeroCopyStyle } from '@/lib/hero-copy-style';
 
 export const brandNarrativeBlockTypes = ['split', 'summary', 'timeline', 'course', 'cta'] as const;
 export type BrandNarrativeBlockType = (typeof brandNarrativeBlockTypes)[number];
@@ -50,6 +54,8 @@ export type BrandNarrativeBlockDraft = {
   id: string;
   type: BrandNarrativeBlockType;
   layout?: BrandNarrativeBlockLayout;
+  heroCopyStyle?: HeroCopyStyle;
+  carouselFitMode?: HeroBackgroundFitMode;
   carouselImages?: BrandNarrativeCarouselSlide[];
   videoUrl?: string;
   href?: string;
@@ -66,8 +72,8 @@ export const brandNarrativeBlockTypeLabels: Record<BrandNarrativeBlockType, stri
 };
 
 export const brandNarrativeSplitLayoutLabels: Record<BrandNarrativeSplitLayout, string> = {
-  'image-left': '图在左',
-  'image-right': '图在右',
+  'image-left': '文字在右',
+  'image-right': '文字在左',
 };
 
 export const brandNarrativeSummaryLayoutLabels: Record<BrandNarrativeSummaryLayout, string> = {
@@ -208,6 +214,8 @@ export function createBrandNarrativeBlock(type: BrandNarrativeBlockType): BrandN
   };
   if (type === 'split') {
     block.layout = 'image-left';
+    block.heroCopyStyle = 'light';
+    block.carouselFitMode = defaultHeroBackgroundFitMode();
     block.carouselImages = [];
     block.videoUrl = '';
   }

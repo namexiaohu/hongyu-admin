@@ -38,3 +38,15 @@ export function normalizeHeroCopyStyleForWrite(value?: string | null): HeroCopyS
   if (trimmed === 'light' || trimmed === 'dark') return trimmed;
   return defaultAdminHeroCopyStyle();
 }
+
+/** 首页 Banner 区：历史默认浅色字暗色底 */
+export function resolveHomepageBannerHeroCopyStyle(value?: string | null): HeroCopyStyle {
+  if (value === 'light' || value === 'dark') return value;
+  return 'light';
+}
+
+/** 首页 About 区：历史默认暗色字浅色底（与现网 split-bg-hero--copy-dark 一致） */
+export function resolveHomepageAboutHeroCopyStyle(value?: string | null): HeroCopyStyle {
+  if (value === 'light' || value === 'dark') return value;
+  return 'dark';
+}

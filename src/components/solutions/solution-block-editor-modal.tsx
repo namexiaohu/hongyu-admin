@@ -10,6 +10,8 @@ import { SolutionBlockItemEditorModal, type SolutionBlockItemEditorHandle } from
 import { SolutionBlockItemList } from '@/components/solutions/solution-block-item-list';
 import { ProductGalleryField } from '@/components/products/product-gallery-field';
 import { ProductVideoField } from '@/components/products/product-video-field';
+import { HeroBackgroundFitField } from '@/components/shared/hero-background-fit-field';
+import { HeroCopyStyleField } from '@/components/shared/hero-copy-style-field';
 import type { AdminCategoryTreeNode } from '@/lib/category-content';
 import type { ProductGalleryImage } from '@/lib/product-content';
 import {
@@ -32,6 +34,8 @@ import {
   type SolutionSummaryLayout,
 } from '@/lib/solution-blocks';
 import { applyNonemptyTranslatedFields } from '@/lib/content-translate-config';
+import { defaultHeroBackgroundFitMode, type HeroBackgroundFitMode } from '@/lib/hero-background-fit';
+import { defaultAdminHeroCopyStyle, type HeroCopyStyle } from '@/lib/hero-copy-style';
 import type { AdminSiteLanguageRow } from '@/server/admin/languages';
 
 export type SolutionBlockEditorHandle = {
@@ -247,6 +251,22 @@ export function SolutionBlockEditorModal({
                           label: solutionSplitLayoutLabels[layout],
                         }))}
                         onChange={(layout: SolutionSplitLayout) => patchShared({ layout })}
+                      />
+                    </div>
+                    <div>
+                      <div style={{ marginBottom: 8 }}>看板文案风格</div>
+                      <HeroCopyStyleField
+                        value={block.heroCopyStyle ?? defaultAdminHeroCopyStyle()}
+                        onChange={(value: HeroCopyStyle) => patchShared({ heroCopyStyle: value })}
+                        disabled={disabled}
+                      />
+                    </div>
+                    <div>
+                      <div style={{ marginBottom: 8 }}>轮播图显示效果</div>
+                      <HeroBackgroundFitField
+                        value={block.carouselFitMode ?? defaultHeroBackgroundFitMode()}
+                        onChange={(value: HeroBackgroundFitMode) => patchShared({ carouselFitMode: value })}
+                        disabled={disabled}
                       />
                     </div>
                     <div>

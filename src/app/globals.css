@@ -10011,6 +10011,25 @@ main {
   object-fit: cover;
 }
 
+.media-preview-thumb--slide {
+  width: 160px;
+  height: 90px;
+  max-width: 160px;
+  max-height: 90px;
+  flex-shrink: 0;
+  border: 1px solid #f0f0f0;
+}
+
+.media-preview-thumb--slide .ant-image,
+.media-preview-thumb--slide .ant-image-img,
+.media-preview-thumb--slide video {
+  width: 160px !important;
+  height: 90px !important;
+  max-width: 160px !important;
+  max-height: 90px !important;
+  object-fit: cover;
+}
+
 .cover-image-field-avatar-upload {
   width: 140px;
   height: 140px;

@@ -1806,6 +1806,10 @@ export const homepageConfigs = pgTable('homepage_configs', {
   id: uuid('id').defaultRandom().primaryKey(),
   bannerSlides: jsonb('banner_slides').$type<HomepageMediaSlide[]>().notNull().default([]),
   aboutSlides: jsonb('about_slides').$type<HomepageMediaSlide[]>().notNull().default([]),
+  bannerHeroCopyStyle: text('banner_hero_copy_style'),
+  aboutHeroCopyStyle: text('about_hero_copy_style'),
+  bannerCarouselFitMode: text('banner_carousel_fit_mode'),
+  aboutCarouselFitMode: text('about_carousel_fit_mode'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

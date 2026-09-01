@@ -6,6 +6,7 @@ import type { SolutionBlockDraft, SolutionBlockLocaleCopy } from '@/lib/solution
 import { isSummaryIcon, pickBlockLocaleCopy, summaryItemUsesCoverImage } from '@/lib/solution-blocks';
 import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
 import { resolveStorefrontCoverUrl } from '@/lib/cover-presets';
+import { resolveStorefrontHeroBackgroundFitMode } from '@/lib/hero-background-fit';
 import { resolveStorefrontHeroCopyStyle } from '@/lib/hero-copy-style';
 import { resolveStorefrontHeroCoverDisplay } from '@/lib/hero-cover-display';
 import { resolveUploadStorageKey } from '@/lib/upload-storage-key';
@@ -153,6 +154,8 @@ function mapSplitSection(block: SolutionBlockDraft, copy: SolutionBlockLocaleCop
     type: bullets.length ? 'clinical-split' : 'split-content',
     id: block.id,
     imagePosition: block.layout === 'image-right' ? 'right' : 'left',
+    heroCopyStyle: resolveStorefrontHeroCopyStyle(block.heroCopyStyle),
+    carouselFitMode: resolveStorefrontHeroBackgroundFitMode(block.carouselFitMode),
     eyebrow: eyebrow || title,
     title: title || eyebrow || ' ',
     body: body || ' ',

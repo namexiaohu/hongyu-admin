@@ -10,6 +10,8 @@ import {
   compactSolutionItems,
   compactStatItems,
 } from '@/lib/homepage-config';
+import { resolveStorefrontHeroBackgroundFitMode } from '@/lib/hero-background-fit';
+import { resolveHomepageAboutHeroCopyStyle, resolveHomepageBannerHeroCopyStyle } from '@/lib/hero-copy-style';
 import { resolveOssAssetUrl } from '@/lib/oss-asset-url';
 import { pickTranslationForDisplay } from '@/lib/pick-translation-for-display';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
@@ -46,6 +48,10 @@ export async function getStorefrontHomepageConfig(locale: string): Promise<Store
       ...slide,
       url: resolveSlideUrl(slide.url),
     })),
+    bannerHeroCopyStyle: resolveHomepageBannerHeroCopyStyle(row.bannerHeroCopyStyle),
+    aboutHeroCopyStyle: resolveHomepageAboutHeroCopyStyle(row.aboutHeroCopyStyle),
+    bannerCarouselFitMode: resolveStorefrontHeroBackgroundFitMode(row.bannerCarouselFitMode),
+    aboutCarouselFitMode: resolveStorefrontHeroBackgroundFitMode(row.aboutCarouselFitMode),
     bannerTitle: display?.bannerTitle ?? '',
     bannerSubtitle: display?.bannerSubtitle ?? '',
     bannerDescription: display?.bannerDescription ?? '',

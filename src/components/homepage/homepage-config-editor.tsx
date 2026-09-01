@@ -9,6 +9,8 @@ import { ContentTranslateButton } from '@/components/admin/content-translate-but
 import { CommercePageHeader } from '@/components/commerce/commerce-page-header';
 import { CoverImageField } from '@/components/editorial/cover-image-field';
 import { HomepageMediaSlidesField } from '@/components/homepage/homepage-media-slides-field';
+import { HeroBackgroundFitField } from '@/components/shared/hero-background-fit-field';
+import { HeroCopyStyleField } from '@/components/shared/hero-copy-style-field';
 import { applyNonemptyTranslatedFields } from '@/lib/content-translate-config';
 import {
   type AdminHomepageConfig,
@@ -18,6 +20,8 @@ import {
   type HomepageStatItem,
   homepageTranslationHasContent,
 } from '@/lib/homepage-config';
+import type { HeroBackgroundFitMode } from '@/lib/hero-background-fit';
+import type { HeroCopyStyle } from '@/lib/hero-copy-style';
 import { shouldPersistLocaleDraft } from '@/lib/locale-draft-persistence';
 import type { AdminSiteLanguageRow } from '@/server/admin/languages';
 
@@ -26,6 +30,10 @@ type SectionTabKey = 'banner' | 'solutions' | 'about' | 'stats' | 'global' | 'ed
 type SharedFormValues = {
   bannerSlides: HomepageMediaSlide[];
   aboutSlides: HomepageMediaSlide[];
+  bannerHeroCopyStyle: HeroCopyStyle;
+  aboutHeroCopyStyle: HeroCopyStyle;
+  bannerCarouselFitMode: HeroBackgroundFitMode;
+  aboutCarouselFitMode: HeroBackgroundFitMode;
 };
 
 type LocaleDraft = {
@@ -217,6 +225,10 @@ export function HomepageConfigEditor({ initialConfig, activeLanguages }: Homepag
     sharedForm.setFieldsValue({
       bannerSlides: config.bannerSlides,
       aboutSlides: config.aboutSlides,
+      bannerHeroCopyStyle: config.bannerHeroCopyStyle,
+      aboutHeroCopyStyle: config.aboutHeroCopyStyle,
+      bannerCarouselFitMode: config.bannerCarouselFitMode,
+      aboutCarouselFitMode: config.aboutCarouselFitMode,
     });
     const nextDrafts: Record<string, LocaleDraft> = {};
     activeLanguages.forEach((language) => {
@@ -309,6 +321,10 @@ export function HomepageConfigEditor({ initialConfig, activeLanguages }: Homepag
           body: JSON.stringify({
             bannerSlides: shared.bannerSlides ?? [],
             aboutSlides: shared.aboutSlides ?? [],
+            bannerHeroCopyStyle: shared.bannerHeroCopyStyle ?? 'light',
+            aboutHeroCopyStyle: shared.aboutHeroCopyStyle ?? 'dark',
+            bannerCarouselFitMode: shared.bannerCarouselFitMode ?? 'contain',
+            aboutCarouselFitMode: shared.aboutCarouselFitMode ?? 'contain-center',
             translations,
           }),
         });
@@ -338,24 +354,41 @@ export function HomepageConfigEditor({ initialConfig, activeLanguages }: Homepag
         onSave={handleSave}
       />
 
-      <div className="content-editor-shared-section">
-        <Form form={sharedForm} layout="vertical">
+      <Form form={sharedForm} layout="vertical">
+        <div className="content-editor-shared-section" style={{ marginBottom: 16 }}>
+          <div style={{ fontWeight: 600, marginBottom: 12 }}>Banner 区</div>
+          <Form.Item name="bannerHeroCopyStyle" label="看板文案风格" initialValue="light">
+            <HeroCopyStyleField />
+          </Form.Item>
+          <Form.Item name="bannerCarouselFitMode" label="轮播图显示效果" initialValue="contain">
+            <HeroBackgroundFitField />
+          </Form.Item>
           <Form.Item
             name="bannerSlides"
-            label="Banner 轮播"
+            label="轮播图"
             getValueFromEvent={(value: HomepageMediaSlide[]) => value ?? []}
           >
             <HomepageMediaSlidesField folder="homepage/banner" />
           </Form.Item>
+        </div>
+
+        <div className="content-editor-shared-section">
+          <div style={{ fontWeight: 600, marginBottom: 12 }}>企业介绍区</div>
+          <Form.Item name="aboutHeroCopyStyle" label="看板文案风格" initialValue="dark">
+            <HeroCopyStyleField />
+          </Form.Item>
+          <Form.Item name="aboutCarouselFitMode" label="轮播图显示效果" initialValue="contain-center">
+            <HeroBackgroundFitField />
+          </Form.Item>
           <Form.Item
             name="aboutSlides"
-            label="企业介绍轮播"
+            label="轮播图"
             getValueFromEvent={(value: HomepageMediaSlide[]) => value ?? []}
           >
             <HomepageMediaSlidesField folder="homepage/about" />
           </Form.Item>
-        </Form>
-      </div>
+        </div>
+      </Form>
 
       <Form form={form} layout="vertical" preserve>
         <div className="content-editor-layout">

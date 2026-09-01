@@ -103,9 +103,9 @@ export function HomepageMediaSlidesField({
             style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}
           >
             {item.mediaType === 'video' ? (
-              <MediaPreviewVideo src={previewUrl} />
+              <MediaPreviewVideo src={previewUrl} className="media-preview-thumb--slide" />
             ) : (
-              <MediaPreviewImage src={previewUrl} />
+              <MediaPreviewImage src={previewUrl} className="media-preview-thumb--slide" />
             )}
             <span style={{ color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>
               {item.mediaType === 'video' ? '视频' : '图片'}

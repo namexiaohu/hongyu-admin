@@ -1,5 +1,11 @@
 import { z } from 'zod';
 
+import { heroCopyStyleSchema, type HeroCopyStyle } from '@/lib/hero-copy-style';
+import {
+  heroBackgroundFitModeSchema,
+  type HeroBackgroundFitMode,
+} from '@/lib/hero-background-fit';
+
 export type HomepageMediaSlide = {
   id: string;
   url: string;
@@ -55,6 +61,10 @@ export type AdminHomepageConfig = {
   id: string;
   bannerSlides: HomepageMediaSlide[];
   aboutSlides: HomepageMediaSlide[];
+  bannerHeroCopyStyle: HeroCopyStyle;
+  aboutHeroCopyStyle: HeroCopyStyle;
+  bannerCarouselFitMode: HeroBackgroundFitMode;
+  aboutCarouselFitMode: HeroBackgroundFitMode;
   translations: AdminHomepageConfigTranslation[];
   createdAt: string;
   updatedAt: string;
@@ -64,6 +74,10 @@ export type StorefrontHomepageConfig = {
   locale: string;
   bannerSlides: HomepageMediaSlide[];
   aboutSlides: HomepageMediaSlide[];
+  bannerHeroCopyStyle: HeroCopyStyle;
+  aboutHeroCopyStyle: HeroCopyStyle;
+  bannerCarouselFitMode: HeroBackgroundFitMode;
+  aboutCarouselFitMode: HeroBackgroundFitMode;
   bannerTitle: string;
   bannerSubtitle: string;
   bannerDescription: string;
@@ -130,6 +144,10 @@ export const adminHomepageTranslationSchema = z.object({
 export const adminHomepageConfigPutSchema = z.object({
   bannerSlides: z.array(mediaSlideSchema).optional().default([]),
   aboutSlides: z.array(mediaSlideSchema).optional().default([]),
+  bannerHeroCopyStyle: heroCopyStyleSchema.optional().default('light'),
+  aboutHeroCopyStyle: heroCopyStyleSchema.optional().default('dark'),
+  bannerCarouselFitMode: heroBackgroundFitModeSchema.optional().default('contain'),
+  aboutCarouselFitMode: heroBackgroundFitModeSchema.optional().default('contain-center'),
   translations: z.array(adminHomepageTranslationSchema).optional().default([]),
 });
 
@@ -388,6 +406,10 @@ export const EMPTY_STOREFRONT_HOMEPAGE: StorefrontHomepageConfig = {
   locale: '',
   bannerSlides: [],
   aboutSlides: [],
+  bannerHeroCopyStyle: 'light',
+  aboutHeroCopyStyle: 'dark',
+  bannerCarouselFitMode: 'contain',
+  aboutCarouselFitMode: 'contain-center',
   bannerTitle: '',
   bannerSubtitle: '',
   bannerDescription: '',
