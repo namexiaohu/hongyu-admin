@@ -426,7 +426,7 @@ export function AdminUiStringsClient({
           <Input
             allowClear
             prefix={<SearchOutlined />}
-            placeholder="搜索 key 或英文"
+            placeholder="搜索 key、英文原文或各语言译文"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             onPressEnter={() => runListLoader(() => loadList())}

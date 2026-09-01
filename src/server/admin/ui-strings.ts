@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, like, notInArray, or, sql } from 'drizzle-orm';
+import { and, asc, eq, exists, inArray, like, notInArray, or, sql } from 'drizzle-orm';
 
 import { getCourseSiteUrl, getSiteUrl } from '@/lib/app-urls';
 import {
@@ -57,6 +57,15 @@ async function getActiveNonEnglishLocales() {
   return languages.filter((item) => item.status === 'active' && item.code !== UI_STRING_SOURCE_LOCALE).map((item) => item.code);
 }
 
+async function getActiveLocaleCodes() {
+  const languages = await getAdminSiteLanguages();
+  return languages.filter((item) => item.status === 'active').map((item) => item.code);
+}
+
+function escapeLikePattern(value: string) {
+  return value.replace(/[%_\\]/g, '\\$&');
+}
+
 function toAdminRow(
   row: typeof uiStrings.$inferSelect,
   translations: Array<typeof uiStringTranslations.$inferSelect>,
@@ -91,7 +100,10 @@ export async function getAdminUiStrings(site: UiStringSite, options?: {
   missingOnly?: boolean;
   search?: string;
 }) {
-  const targetLocales = await getActiveNonEnglishLocales();
+  const [targetLocales, activeLocaleCodes] = await Promise.all([
+    getActiveNonEnglishLocales(),
+    getActiveLocaleCodes(),
+  ]);
   const conditions = [eq(uiStrings.site, site)];
 
   if (options?.group) {
@@ -101,8 +113,31 @@ export async function getAdminUiStrings(site: UiStringSite, options?: {
     conditions.push(eq(uiStrings.status, options.status));
   }
   if (options?.search?.trim()) {
-    const term = `%${options.search.trim()}%`;
-    const searchCondition = or(like(uiStrings.key, term), like(uiStrings.defaultText, term));
+    const term = `%${escapeLikePattern(options.search.trim())}%`;
+    const searchParts = [
+      like(uiStrings.key, term),
+      like(uiStrings.defaultText, term),
+    ];
+
+    if (activeLocaleCodes.length) {
+      searchParts.push(
+        exists(
+          db
+            .select({ key: uiStringTranslations.key })
+            .from(uiStringTranslations)
+            .where(
+              and(
+                eq(uiStringTranslations.site, site),
+                eq(uiStringTranslations.key, uiStrings.key),
+                inArray(uiStringTranslations.locale, activeLocaleCodes),
+                like(uiStringTranslations.value, term),
+              ),
+            ),
+        ),
+      );
+    }
+
+    const searchCondition = or(...searchParts);
     if (searchCondition) {
       conditions.push(searchCondition);
     }
