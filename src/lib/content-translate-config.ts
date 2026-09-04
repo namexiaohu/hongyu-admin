@@ -2,6 +2,7 @@ import { hasMeaningfulHtmlBody } from '@/lib/editorial-html';
 
 export type ContentTranslateType =
   | 'blog'
+  | 'other'
   | 'faq'
   | 'brand'
   | 'category'
@@ -25,6 +26,7 @@ export type ContentTranslateType =
   | 'summitAgendaItem'
   | 'websiteNavColumn'
   | 'websiteNavItem'
+  | 'privacyPreference'
   | 'academyCertificate'
   | 'academyCourse'
   | 'academyUnit'
@@ -72,6 +74,36 @@ export const CONTENT_TRANSLATE_PROFILES: Record<ContentTranslateType, ContentTra
     passthroughFields: ['relatedProductSlugsText'],
     serverLabel: 'engineering blog article',
     tooltip: '将默认语言已保存的标题、摘要、正文、作者与 SEO 字段翻译到当前语言；Slug 与关联产品 Slug 不会翻译；保留原文排版结构与链接，仅翻译可见文字',
+  },
+  other: {
+    sourceFields: [
+      'title',
+      'category',
+      'summary',
+      'body',
+      'authorName',
+      'authorTitle',
+      'authorBio',
+      'tagsText',
+      'seoTitle',
+      'seoDescription',
+      'relatedProductSlugsText',
+    ],
+    plainTextFields: [
+      'title',
+      'category',
+      'summary',
+      'authorName',
+      'authorTitle',
+      'authorBio',
+      'tagsText',
+      'seoTitle',
+      'seoDescription',
+    ],
+    htmlField: 'body',
+    passthroughFields: ['relatedProductSlugsText'],
+    serverLabel: 'custom content page',
+    tooltip: '将默认语言已保存的标题、摘要、正文、作者与 SEO 字段翻译到当前语言；Slug 不会翻译；保留原文排版结构与链接，仅翻译可见文字',
   },
   faq: {
     sourceFields: ['title', 'body', 'seoTitle', 'seoDescription'],
@@ -353,6 +385,13 @@ export const CONTENT_TRANSLATE_PROFILES: Record<ContentTranslateType, ContentTra
     serverLabel: 'website navigation item',
     tooltip: '将默认语言已填写的导航条目标题翻译到当前语言，翻译后请校对',
   },
+  privacyPreference: {
+    sourceFields: ['title', 'summary', 'detailHtml'],
+    plainTextFields: ['title', 'detailHtml'],
+    htmlField: 'summary',
+    serverLabel: 'privacy preference cookie notice',
+    tooltip: '将默认语言已填写的隐私偏好标题、简介与详细描述翻译到当前语言；简介为富文本，保留排版仅翻译可见文字',
+  },
   academyCertificate: {
     sourceFields: [
       'title',
@@ -515,7 +554,7 @@ export function validateDefaultTranslateSource(
   contentType: ContentTranslateType,
   fields: Record<string, string>,
 ): string | null {
-  if (contentType === 'blog' || contentType === 'faq') {
+  if (contentType === 'blog' || contentType === 'faq' || contentType === 'other') {
     const titleKey = contentType === 'blog' ? 'title' : 'title';
     if (!fields[titleKey]?.trim()) {
       return '默认语言内容不完整，请先完善标题与正文';
@@ -589,6 +628,13 @@ export function validateDefaultTranslateSource(
     return null;
   }
 
+  if (contentType === 'privacyPreference') {
+    if (!fields.title?.trim() && !hasMeaningfulHtmlBody(fields.summary ?? '') && !hasMeaningfulHtmlBody(fields.detailHtml ?? '')) {
+      return '默认语言内容不完整，请先完善标题、简介或详细描述';
+    }
+    return null;
+  }
+
   if (
     contentType === 'academyCertificate'
     || contentType === 'academyCourse'
@@ -637,6 +683,8 @@ export function getHtmlContentLabel(contentType: ContentTranslateType): string {
   switch (contentType) {
     case 'blog':
       return 'engineering blog article body';
+    case 'other':
+      return 'custom content page body';
     case 'faq':
       return 'FAQ answer body';
     case 'product':

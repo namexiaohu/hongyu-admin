@@ -8,11 +8,15 @@ import {
   listHeroBoardFromFormValues,
 } from '@/components/website-config/list-hero-board-fields';
 import { NavColumnsEditor } from '@/components/website-config/nav-columns-editor';
+import { PrivacyPreferenceFields } from '@/components/website-config/privacy-preference-fields';
 import { CommercePageHeader } from '@/components/commerce/commerce-page-header';
 import {
   type AdminWebsiteConfig,
   type NavColumn,
+  type PrivacyPreferenceConfig,
   compactNavColumns,
+  compactPrivacyPreferenceConfig,
+  emptyPrivacyPreferenceConfig,
 } from '@/lib/website-config';
 import {
   listHeroBoardKeys,
@@ -34,6 +38,9 @@ export function WebsiteConfigEditor({ initialConfig, activeLanguages }: Props) {
     () => compactNavColumns(initialConfig.footerNavColumns),
   );
   const [listHeroBoards, setListHeroBoards] = useState<AdminListHeroBoardsRecord>(initialConfig.listHeroBoards);
+  const [privacyPreference, setPrivacyPreference] = useState<PrivacyPreferenceConfig>(
+    () => compactPrivacyPreferenceConfig(initialConfig.privacyPreference ?? emptyPrivacyPreferenceConfig()),
+  );
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -41,6 +48,7 @@ export function WebsiteConfigEditor({ initialConfig, activeLanguages }: Props) {
     setHeaderNavColumns(compactNavColumns(initialConfig.headerNavColumns));
     setFooterNavColumns(compactNavColumns(initialConfig.footerNavColumns));
     setListHeroBoards(initialConfig.listHeroBoards);
+    setPrivacyPreference(compactPrivacyPreferenceConfig(initialConfig.privacyPreference ?? emptyPrivacyPreferenceConfig()));
   }, [initialConfig]);
 
   function updateListHeroBoard(key: ListHeroBoardKey, patch: ReturnType<typeof listHeroBoardFromFormValues>) {
@@ -79,6 +87,7 @@ export function WebsiteConfigEditor({ initialConfig, activeLanguages }: Props) {
                 }];
               }),
             ),
+            privacyPreference: compactPrivacyPreferenceConfig(privacyPreference),
           }),
         });
         if (!response.ok) {
@@ -89,6 +98,7 @@ export function WebsiteConfigEditor({ initialConfig, activeLanguages }: Props) {
         setHeaderNavColumns(compactNavColumns(updated.headerNavColumns));
         setFooterNavColumns(compactNavColumns(updated.footerNavColumns));
         setListHeroBoards(updated.listHeroBoards);
+        setPrivacyPreference(compactPrivacyPreferenceConfig(updated.privacyPreference ?? emptyPrivacyPreferenceConfig()));
         setStatusMessage('网站配置已保存');
         message.success('网站配置已保存');
       } catch (error) {
@@ -103,7 +113,7 @@ export function WebsiteConfigEditor({ initialConfig, activeLanguages }: Props) {
     <Space orientation="vertical" size="large" style={{ width: '100%' }}>
       <CommercePageHeader
         title="网站配置"
-        description="维护头部/底部导航栏目与条目，以及列表页看板媒体配置，保存后前台同步生效。"
+        description="维护头部/底部导航栏目与条目、列表页看板媒体，以及隐私偏好弹窗文案，保存后前台同步生效。"
         statusMessage={statusMessage}
         isPending={isPending}
         onSave={handleSave}
@@ -133,6 +143,12 @@ export function WebsiteConfigEditor({ initialConfig, activeLanguages }: Props) {
           onChange={(next) => updateListHeroBoard(boardKey, next)}
         />
       ))}
+
+      <PrivacyPreferenceFields
+        value={privacyPreference}
+        onChange={setPrivacyPreference}
+        activeLanguages={activeLanguages}
+      />
     </Space>
   );
 }

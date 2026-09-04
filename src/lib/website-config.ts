@@ -41,11 +41,28 @@ export type NavColumn = {
   locales?: Record<string, NavColumnLocale>;
 };
 
+export type PrivacyPreferenceLocaleCopy = {
+  title: string;
+  summary: string;
+  detailHtml: string;
+};
+
+export type PrivacyPreferenceConfig = {
+  locales: Record<string, PrivacyPreferenceLocaleCopy>;
+};
+
+export type StorefrontPrivacyPreference = {
+  title: string;
+  summary: string;
+  detailHtml: string;
+};
+
 export type AdminWebsiteConfig = {
   id: string;
   headerNavColumns: NavColumn[];
   footerNavColumns: NavColumn[];
   listHeroBoards: AdminListHeroBoardsRecord;
+  privacyPreference: PrivacyPreferenceConfig;
   createdAt: string;
   updatedAt: string;
 };
@@ -68,6 +85,7 @@ export type StorefrontWebsiteConfig = {
   headerNavColumns: StorefrontNavColumn[];
   footerNavColumns: StorefrontNavColumn[];
   listHeroBoards: StorefrontListHeroBoardsRecord;
+  privacyPreference: StorefrontPrivacyPreference | null;
 };
 
 const navItemLocaleSchema = z.object({
@@ -93,10 +111,21 @@ const navColumnSchema = z.object({
   locales: z.record(z.string(), navColumnLocaleSchema).optional(),
 });
 
+const privacyPreferenceLocaleSchema = z.object({
+  title: z.string().optional().default(''),
+  summary: z.string().optional().default(''),
+  detailHtml: z.string().optional().default(''),
+});
+
+const privacyPreferenceConfigSchema = z.object({
+  locales: z.record(z.string(), privacyPreferenceLocaleSchema).optional().default({}),
+});
+
 export const adminWebsiteConfigPutSchema = z.object({
   headerNavColumns: z.array(navColumnSchema).optional(),
   footerNavColumns: z.array(navColumnSchema).optional(),
   listHeroBoards: listHeroBoardsPutSchema.optional(),
+  privacyPreference: privacyPreferenceConfigSchema.optional(),
 });
 
 export type AdminWebsiteConfigPutInput = z.infer<typeof adminWebsiteConfigPutSchema>;
@@ -421,9 +450,76 @@ export function getDefaultWebsiteNavColumns(): NavColumn[] {
   ];
 }
 
+export function emptyPrivacyPreferenceLocale(): PrivacyPreferenceLocaleCopy {
+  return { title: '', summary: '', detailHtml: '' };
+}
+
+export function emptyPrivacyPreferenceConfig(): PrivacyPreferenceConfig {
+  return { locales: {} };
+}
+
+export function compactPrivacyPreferenceConfig(
+  input: PrivacyPreferenceConfig | null | undefined,
+): PrivacyPreferenceConfig {
+  const locales = Object.fromEntries(
+    Object.entries(input?.locales ?? {})
+      .map(([locale, copy]) => {
+        const next: PrivacyPreferenceLocaleCopy = {
+          title: copy?.title?.trim() ?? '',
+          summary: copy?.summary?.trim() ?? '',
+          detailHtml: copy?.detailHtml?.trim() ?? '',
+        };
+        return [locale, next] as const;
+      })
+      .filter(([, copy]) => Boolean(copy.title || copy.summary || copy.detailHtml)),
+  );
+  return { locales };
+}
+
+function pickPrivacyPreferenceLocale(
+  config: PrivacyPreferenceConfig | null | undefined,
+  locale: string,
+): PrivacyPreferenceLocaleCopy | null {
+  const locales = config?.locales ?? {};
+  const exact = locales[locale];
+  if (exact) {
+    const title = exact.title?.trim() ?? '';
+    const summary = exact.summary?.trim() ?? '';
+    const detailHtml = exact.detailHtml?.trim() ?? '';
+    if (title || summary || detailHtml) {
+      return { title, summary, detailHtml };
+    }
+    return null;
+  }
+  const match = Object.entries(locales).find(([key]) => localeKeysMatch(key, locale));
+  if (!match) return null;
+  const copy = match[1];
+  const title = copy?.title?.trim() ?? '';
+  const summary = copy?.summary?.trim() ?? '';
+  const detailHtml = copy?.detailHtml?.trim() ?? '';
+  if (!title && !summary && !detailHtml) return null;
+  return { title, summary, detailHtml };
+}
+
+/** Storefront: only the requested locale — no cross-language content fallback. */
+export function resolveStorefrontPrivacyPreference(
+  config: PrivacyPreferenceConfig | null | undefined,
+  locale: string,
+): StorefrontPrivacyPreference | null {
+  return pickPrivacyPreferenceLocale(config, locale);
+}
+
+export function hasPrivacyPreferenceLocaleContent(
+  config: PrivacyPreferenceConfig | null | undefined,
+  locale: string,
+) {
+  return Boolean(pickPrivacyPreferenceLocale(config, locale));
+}
+
 export const EMPTY_STOREFRONT_WEBSITE_CONFIG: StorefrontWebsiteConfig = {
   locale: '',
   headerNavColumns: [],
   footerNavColumns: [],
   listHeroBoards: resolveStorefrontListHeroBoards(createEmptyListHeroBoards()),
+  privacyPreference: null,
 };

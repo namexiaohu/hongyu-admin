@@ -88,7 +88,7 @@ import type {
   HomepageSolutionItem,
   HomepageStatItem,
 } from '@/lib/homepage-config';
-import type { NavColumn } from '@/lib/website-config';
+import type { NavColumn, PrivacyPreferenceConfig } from '@/lib/website-config';
 import type { ListHeroBoardsRecord } from '@/lib/list-hero-board';
 import type { HeroCoverDisplay } from '@/lib/hero-cover-display';
 import type {
@@ -142,7 +142,7 @@ export const newsletterStatusEnum = pgEnum('newsletter_status', ['subscribed', '
 export const accountTypeEnum = pgEnum('account_type', ['oauth', 'oidc', 'email', 'credentials']);
 export const customerMessageSenderTypeEnum = pgEnum('customer_message_sender_type', ['admin', 'customer']);
 export const editorialContentTypeEnum = pgEnum('editorial_content_type', ['content']);
-export const editorialContentModuleEnum = pgEnum('editorial_content_module', ['editorial', 'faq']);
+export const editorialContentModuleEnum = pgEnum('editorial_content_module', ['editorial', 'faq', 'other']);
 export const productRelationTypeEnum = pgEnum('product_relation_type', ['drivers', 'mechanical-integration', 'power-control', 'custom']);
 export const textDirectionEnum = pgEnum('text_direction', ['ltr', 'rtl']);
 export const geoDivisionLevelEnum = pgEnum('geo_division_level', ['country', 'admin1', 'admin2', 'admin3', 'locality', 'postal']);
@@ -1848,6 +1848,7 @@ export const websiteConfigs = pgTable('website_configs', {
   navColumns: jsonb('nav_columns').$type<NavColumn[]>().notNull().default([]),
   footerNavColumns: jsonb('footer_nav_columns').$type<NavColumn[]>().notNull().default([]),
   listHeroBoards: jsonb('list_hero_boards').$type<ListHeroBoardsRecord>().notNull().default({} as ListHeroBoardsRecord),
+  privacyPreference: jsonb('privacy_preference').$type<PrivacyPreferenceConfig>().notNull().default({ locales: {} }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

@@ -17,9 +17,11 @@ import {
 import { RichTextEditor } from '@/components/editorial/rich-text-editor';
 import { hasMeaningfulHtmlBody } from '@/lib/editorial-html';
 import {
+  OTHER_BOARD_KEY,
   defaultEditorialContentBody,
   type AdminEditorialContentListItem,
   type AdminEditorialContentTranslation,
+  type EditorialContentModule,
   type EditorialEntryStatus,
   resolveContentId,
 } from '@/lib/editorial-content';
@@ -63,6 +65,9 @@ type ContentEditorModalProps = {
   availableBoards: EditorialBoardOption[];
   activeLanguages: AdminSiteLanguageRow[];
   editingEntry: AdminEditorialContentListItem | null;
+  contentModule?: EditorialContentModule;
+  hideBoardSelect?: boolean;
+  translateContentType?: 'blog' | 'other';
   onClose: () => void;
   onSaved: (entry: AdminEditorialContentTranslation) => void;
 };
@@ -171,6 +176,7 @@ function validateDraft(locale: string, draft: LocaleDraft) {
 
 function buildEntryPayload(draft: LocaleDraft, locale: string, status: EditorialEntryStatus, options: {
   contentId: string;
+  contentModule: EditorialContentModule;
   boardKey: string;
   boardKeys: string[];
   coverMode: '' | 'preset' | 'upload';
@@ -185,12 +191,14 @@ function buildEntryPayload(draft: LocaleDraft, locale: string, status: Editorial
         ? new Date(draft.publishedAt).toISOString()
         : null;
 
+  const isOther = options.contentModule === 'other';
+
   return {
     contentType: 'content' as const,
-    contentModule: 'editorial' as const,
+    contentModule: options.contentModule,
     contentId: options.contentId ? options.contentId : undefined,
-    boardKey: options.boardKey,
-    boardKeys: options.boardKeys,
+    boardKey: isOther ? OTHER_BOARD_KEY : options.boardKey,
+    boardKeys: isOther ? [OTHER_BOARD_KEY] : options.boardKeys,
     coverMode: options.coverMode,
     coverValue: options.coverValue,
     title: draft.title.trim(),
@@ -259,6 +267,9 @@ export function ContentEditorModal({
   availableBoards,
   activeLanguages,
   editingEntry,
+  contentModule = 'editorial',
+  hideBoardSelect = false,
+  translateContentType = 'blog',
   onClose,
   onSaved,
 }: ContentEditorModalProps) {
@@ -290,6 +301,8 @@ export function ContentEditorModal({
     </Space>
   );
 
+  const resolvedBoardKey = hideBoardSelect ? OTHER_BOARD_KEY : boardKey;
+
   function loadDraft(locale: string, nextDrafts: Record<string, LocaleDraft>) {
     const draft = nextDrafts[locale] ?? createEmptyDraft();
     form.setFieldsValue({
@@ -313,7 +326,11 @@ export function ContentEditorModal({
 
     const initialContentId = editingEntry?.id ?? '';
     setContentId(initialContentId);
-    setBoardKeys(editingEntry?.boardKeys?.length ? editingEntry.boardKeys : [boardKey]);
+    setBoardKeys(
+      hideBoardSelect
+        ? [OTHER_BOARD_KEY]
+        : (editingEntry?.boardKeys?.length ? editingEntry.boardKeys : [boardKey]),
+    );
     setCover({
       mode: editingEntry?.coverMode ?? '',
       value: editingEntry?.coverValue ?? '',
@@ -572,8 +589,9 @@ export function ContentEditorModal({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(buildEntryPayload(draft, locale, targetStatus, {
               contentId: nextContentId,
-              boardKey,
-              boardKeys,
+              contentModule,
+              boardKey: resolvedBoardKey,
+              boardKeys: hideBoardSelect ? [OTHER_BOARD_KEY] : boardKeys,
               coverMode: cover.mode ?? '',
               coverValue: cover.value?.trim() ?? '',
               publishedAt: options?.publishedAt,
@@ -673,7 +691,7 @@ export function ContentEditorModal({
           ]}
         />
         <ContentTranslateButton
-          contentType="blog"
+          contentType={translateContentType}
           defaultLocale={defaultLocale}
           activeLocale={activeLocale}
           disabled={isReadOnly || loadingGroup}
@@ -687,17 +705,19 @@ export function ContentEditorModal({
       <Form<LocaleFormValues> form={form} layout="vertical" disabled={isReadOnly} preserve>
         <div style={{ display: sectionTab === 'content' ? 'block' : 'none' }}>
           <Row gutter={[16, 0]}>
-            <Col span={24}>
-              <Form.Item label="所属看板" required>
-                <BoardMultiSelect
-                  boards={availableBoards}
-                  lockedBoardKey={boardKey}
-                  value={boardKeys}
-                  onChange={setBoardKeys}
-                  disabled={isReadOnly}
-                />
-              </Form.Item>
-            </Col>
+            {hideBoardSelect ? null : (
+              <Col span={24}>
+                <Form.Item label="所属看板" required>
+                  <BoardMultiSelect
+                    boards={availableBoards}
+                    lockedBoardKey={boardKey}
+                    value={boardKeys}
+                    onChange={setBoardKeys}
+                    disabled={isReadOnly}
+                  />
+                </Form.Item>
+              </Col>
+            )}
             <Col span={24}>
               <Form.Item label="标题" name="title" rules={[{ required: true, message: '请输入标题' }]}>
                 <Input />

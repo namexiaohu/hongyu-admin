@@ -2,12 +2,15 @@ export const editorialEntryStatuses = ['draft', 'published', 'archived'] as cons
 
 export type EditorialEntryStatus = (typeof editorialEntryStatuses)[number];
 
-export const editorialContentModules = ['editorial', 'faq'] as const;
+export const editorialContentModules = ['editorial', 'faq', 'other'] as const;
 export type EditorialContentModule = (typeof editorialContentModules)[number];
 
 import { normalizeEntityKeyForSave } from '@/lib/admin-entity-key';
 
 export const FAQ_BOARD_KEYS = ['faq', 'tech-faq', 'glossary'] as const;
+
+/** Sentinel board_key for content_module=other; never written to editorial_content_boards. */
+export const OTHER_BOARD_KEY = 'other';
 
 export function normalizeBoardKeyForModule(value: string | null | undefined) {
   return normalizeEntityKeyForSave(value ?? '') ?? 'content';
@@ -15,6 +18,7 @@ export function normalizeBoardKeyForModule(value: string | null | undefined) {
 
 export function resolveContentModuleByBoard(boardKey: string): EditorialContentModule {
   const normalized = normalizeBoardKeyForModule(boardKey);
+  if (normalized === OTHER_BOARD_KEY) return 'other';
   return (FAQ_BOARD_KEYS as readonly string[]).includes(normalized) ? 'faq' : 'editorial';
 }
 
@@ -57,6 +61,7 @@ export type EditorialContentPayload = {
 export type AdminEditorialContentListItem = {
   id: string;
   contentType: 'content';
+  contentModule: EditorialContentModule;
   boardKey: string;
   boardKeys: string[];
   coverImage: string;
@@ -80,6 +85,7 @@ export type AdminEditorialContentTranslation = {
   id: string;
   contentId: string;
   contentType: 'content';
+  contentModule: EditorialContentModule;
   boardKey: string;
   boardKeys: string[];
   locale: string;

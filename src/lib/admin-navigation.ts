@@ -47,6 +47,7 @@ export const adminNavItems: AdminNavItem[] = [
     children: [
       { key: '/admin/editorial/boards', title: '内容看板', href: '/admin/editorial/boards' },
       { key: '/admin/editorial', title: '博客管理', href: '/admin/editorial' },
+      { key: '/admin/other-content', title: '其他内容', href: '/admin/other-content' },
     ],
   },
   {

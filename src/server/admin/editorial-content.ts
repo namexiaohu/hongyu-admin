@@ -12,6 +12,7 @@ import {
   type AdminEditorialContentTranslation,
   type EditorialContentModule,
   type EditorialContentPayload,
+  OTHER_BOARD_KEY,
   defaultEditorialPayloadMeta,
   editorialContentModules,
   editorialEntryStatuses,
@@ -60,6 +61,7 @@ const adminEditorialContentTranslationBaseSchema = z.object({
 });
 
 export const adminEditorialContentTranslationSchema = adminEditorialContentTranslationBaseSchema.superRefine((data, ctx) => {
+  if (data.contentModule === 'other') return;
   if (!data.boardKeys?.length && !data.boardKey) {
     ctx.addIssue({ code: 'custom', message: 'boardKey or boardKeys is required', path: ['boardKey'] });
   }
@@ -149,6 +151,17 @@ async function syncContentBoards(
   boardKeysInput: string[],
   options?: { lockedBoardKey?: string; contentModule?: EditorialContentModule },
 ): Promise<SyncContentBoardsResult> {
+  if (options?.contentModule === 'other') {
+    await db.transaction(async (tx) => {
+      await tx.delete(editorialContentBoards).where(eq(editorialContentBoards.contentId, contentId));
+      await tx
+        .update(editorialContents)
+        .set({ boardKey: OTHER_BOARD_KEY, updatedAt: new Date() })
+        .where(eq(editorialContents.id, contentId));
+    });
+    return { ok: true, boardKeys: [OTHER_BOARD_KEY], primaryBoardKey: OTHER_BOARD_KEY };
+  }
+
   let boardKeys = [...new Set(boardKeysInput.map(normalizeBoardKey).filter(Boolean))];
   const lockedBoardKey = options?.lockedBoardKey ? normalizeBoardKey(options.lockedBoardKey) : null;
 
@@ -219,11 +232,14 @@ function mergePayload(payload: Partial<EditorialContentPayload> & Pick<Editorial
 function sanitizeTranslationInput(input: TranslationCreateInput) {
   const normalizedTitle = input.title.trim();
   const normalizedPayload = mergePayload(input.payload);
-  const boardKeys = resolveBoardKeys(input);
-  const boardKey = boardKeys[0] ?? 'content';
-  const contentModule = input.contentModule ?? resolveContentModuleByBoard(boardKey);
+  const contentModule = input.contentModule
+    ?? (input.boardKey || input.boardKeys?.length
+      ? resolveContentModuleByBoard(input.boardKey ?? input.boardKeys![0]!)
+      : 'editorial');
+  const boardKeys = contentModule === 'other' ? [OTHER_BOARD_KEY] : resolveBoardKeys(input);
+  const boardKey = contentModule === 'other' ? OTHER_BOARD_KEY : (boardKeys[0] ?? 'content');
   let normalizedSummary = normalizeText(input.summary);
-  if (contentModule === 'editorial' && !normalizedSummary) {
+  if ((contentModule === 'editorial' || contentModule === 'other') && !normalizedSummary) {
     normalizedSummary = normalizeText(extractSummaryFromHtmlBody(normalizedPayload.body));
   }
   const normalizedSlug = resolveSlugForSave({
@@ -267,8 +283,11 @@ function normalizeTranslationRow(
     id: translation.id,
     contentId: content.id,
     contentType: 'content',
-    boardKey: resolvedBoardKeys[0] ?? normalizeBoardKey(content.boardKey),
-    boardKeys: resolvedBoardKeys,
+    contentModule: content.contentModule,
+    boardKey: content.contentModule === 'other'
+      ? OTHER_BOARD_KEY
+      : (resolvedBoardKeys[0] ?? normalizeBoardKey(content.boardKey)),
+    boardKeys: content.contentModule === 'other' ? [OTHER_BOARD_KEY] : resolvedBoardKeys,
     locale: translation.locale,
     title: translation.title,
     slug: translation.slug,
@@ -309,8 +328,11 @@ function toListItem(
   return {
     id: content.id,
     contentType: 'content',
-    boardKey: resolvedBoardKeys[0] ?? normalizeBoardKey(content.boardKey),
-    boardKeys: resolvedBoardKeys,
+    contentModule: content.contentModule,
+    boardKey: content.contentModule === 'other'
+      ? OTHER_BOARD_KEY
+      : (resolvedBoardKeys[0] ?? normalizeBoardKey(content.boardKey)),
+    boardKeys: content.contentModule === 'other' ? [OTHER_BOARD_KEY] : resolvedBoardKeys,
     coverImage: content.coverImage ?? '',
     coverMode: (content.coverMode ?? '') as AdminEditorialContentListItem['coverMode'],
     coverValue: content.coverValue ?? '',
@@ -373,18 +395,20 @@ async function findContentIdsBySearch(
     boardConditions.push(eq(editorialContents.contentModule, options.contentModule));
   }
 
-  if (options.boardKey === '__unassigned__' && options.knownBoardKeys?.length) {
-    const assignedToKnown = db
-      .select({ contentId: editorialContentBoards.contentId })
-      .from(editorialContentBoards)
-      .where(inArray(editorialContentBoards.boardKey, options.knownBoardKeys.map(normalizeBoardKey)));
-    boardConditions.push(notInArray(editorialContents.id, assignedToKnown));
-  } else if (options.boardKey && options.boardKey !== '__unassigned__') {
-    const boardContentIds = db
-      .select({ contentId: editorialContentBoards.contentId })
-      .from(editorialContentBoards)
-      .where(eq(editorialContentBoards.boardKey, normalizeBoardKey(options.boardKey)));
-    boardConditions.push(inArray(editorialContents.id, boardContentIds));
+  if (options.contentModule !== 'other') {
+    if (options.boardKey === '__unassigned__' && options.knownBoardKeys?.length) {
+      const assignedToKnown = db
+        .select({ contentId: editorialContentBoards.contentId })
+        .from(editorialContentBoards)
+        .where(inArray(editorialContentBoards.boardKey, options.knownBoardKeys.map(normalizeBoardKey)));
+      boardConditions.push(notInArray(editorialContents.id, assignedToKnown));
+    } else if (options.boardKey && options.boardKey !== '__unassigned__') {
+      const boardContentIds = db
+        .select({ contentId: editorialContentBoards.contentId })
+        .from(editorialContentBoards)
+        .where(eq(editorialContentBoards.boardKey, normalizeBoardKey(options.boardKey)));
+      boardConditions.push(inArray(editorialContents.id, boardContentIds));
+    }
   }
 
   const rows = await db
@@ -419,18 +443,20 @@ function buildContentListConditions(options: {
     conditions.push(eq(editorialContents.contentModule, options.contentModule));
   }
 
-  if (options.boardKey === '__unassigned__' && options.knownBoardKeys?.length) {
-    const assignedToKnown = db
-      .select({ contentId: editorialContentBoards.contentId })
-      .from(editorialContentBoards)
-      .where(inArray(editorialContentBoards.boardKey, options.knownBoardKeys.map(normalizeBoardKey)));
-    conditions.push(notInArray(editorialContents.id, assignedToKnown));
-  } else if (options.boardKey && options.boardKey !== '__unassigned__') {
-    const boardContentIds = db
-      .select({ contentId: editorialContentBoards.contentId })
-      .from(editorialContentBoards)
-      .where(eq(editorialContentBoards.boardKey, normalizeBoardKey(options.boardKey)));
-    conditions.push(inArray(editorialContents.id, boardContentIds));
+  if (options.contentModule !== 'other') {
+    if (options.boardKey === '__unassigned__' && options.knownBoardKeys?.length) {
+      const assignedToKnown = db
+        .select({ contentId: editorialContentBoards.contentId })
+        .from(editorialContentBoards)
+        .where(inArray(editorialContentBoards.boardKey, options.knownBoardKeys.map(normalizeBoardKey)));
+      conditions.push(notInArray(editorialContents.id, assignedToKnown));
+    } else if (options.boardKey && options.boardKey !== '__unassigned__') {
+      const boardContentIds = db
+        .select({ contentId: editorialContentBoards.contentId })
+        .from(editorialContentBoards)
+        .where(eq(editorialContentBoards.boardKey, normalizeBoardKey(options.boardKey)));
+      conditions.push(inArray(editorialContents.id, boardContentIds));
+    }
   }
 
   if (options.matchingIds !== undefined && options.matchingIds !== null) {
@@ -780,7 +806,7 @@ export async function updateAdminEditorialContentTranslation(translationId: stri
 
   const merged = sanitizeTranslationInput({
     contentId: current.contentId,
-    contentModule: input.contentModule ?? resolveContentModuleByBoard(input.boardKey ?? current.boardKey),
+    contentModule: input.contentModule ?? current.contentModule,
     boardKey: input.boardKey ?? current.boardKey,
     boardKeys: input.boardKeys ?? current.boardKeys,
     title: input.title ?? current.title,

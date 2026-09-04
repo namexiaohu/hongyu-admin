@@ -55,13 +55,15 @@ export async function POST(request: NextRequest) {
 
   const contentModule = parsed.data.contentModule
     ?? (parsed.data.boardKey ? resolveContentModuleByBoard(parsed.data.boardKey) : 'editorial');
-  const boardKeys = parsed.data.boardKeys?.length
-    ? parsed.data.boardKeys
-    : parsed.data.boardKey
-      ? [parsed.data.boardKey]
-      : [];
+  const boardKeys = contentModule === 'other'
+    ? []
+    : parsed.data.boardKeys?.length
+      ? parsed.data.boardKeys
+      : parsed.data.boardKey
+        ? [parsed.data.boardKey]
+        : [];
 
-  if (!boardKeys.length) {
+  if (contentModule !== 'other' && !boardKeys.length) {
     return NextResponse.json({ code: 'VALIDATION_ERROR', message: 'boardKey or boardKeys is required' }, { status: 400 });
   }
 

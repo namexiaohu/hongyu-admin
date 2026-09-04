@@ -4,8 +4,10 @@ import {
   EMPTY_STOREFRONT_WEBSITE_CONFIG,
   type StorefrontWebsiteConfig,
   compactNavColumns,
+  compactPrivacyPreferenceConfig,
   resolveAdminFooterNavColumns,
   resolveStorefrontNavColumns,
+  resolveStorefrontPrivacyPreference,
 } from '@/lib/website-config';
 import { compactListHeroBoards, resolveStorefrontListHeroBoards } from '@/lib/list-hero-board';
 import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
@@ -34,6 +36,10 @@ export async function getStorefrontWebsiteConfig(locale: string): Promise<Storef
     headerNavColumns: resolveStorefrontNavColumns(headerRaw, resolvedLocale),
     footerNavColumns: resolveStorefrontNavColumns(footerRaw, resolvedLocale),
     listHeroBoards,
+    privacyPreference: resolveStorefrontPrivacyPreference(
+      compactPrivacyPreferenceConfig(row.privacyPreference),
+      resolvedLocale,
+    ),
   };
 }
 

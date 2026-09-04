@@ -6,7 +6,6 @@ import {
   getAdminEditorialContentTranslation,
   updateAdminEditorialContentTranslation,
 } from '@/server/admin/editorial-content';
-import { resolveContentModuleByBoard } from '@/lib/editorial-content';
 
 export async function GET(_: Request, { params }: { params: Promise<{ translationId: string }> }) {
   const { translationId } = await params;
@@ -34,8 +33,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   const nextSlug = parsed.data.slug ?? current.slug;
   const nextLocale = parsed.data.locale ?? current.locale;
-  const nextBoardKey = parsed.data.boardKey ?? current.boardKey;
-  const contentModule = parsed.data.contentModule ?? resolveContentModuleByBoard(nextBoardKey);
+  const contentModule = parsed.data.contentModule ?? current.contentModule;
   const existing = await findAdminEditorialContentTranslationBySlug(nextSlug, nextLocale, translationId, contentModule);
   if (existing) {
     return NextResponse.json({ code: 'SLUG_CONFLICT', message: '该语言下 slug 已被占用' }, { status: 409 });

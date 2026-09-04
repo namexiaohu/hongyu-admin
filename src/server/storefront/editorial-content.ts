@@ -8,6 +8,7 @@ import {
 } from '@/lib/editorial-content';
 import { resolveOssAssetUrl, rewriteHtmlOssAssets } from '@/lib/oss-asset-url';
 import { resolveStorefrontCoverUrl } from '@/lib/cover-presets';
+import { normalizeSlug } from '@/lib/slug';
 import { db } from '@/server/db';
 import {
   editorialContentBoards,
@@ -267,4 +268,78 @@ export async function getStorefrontBoardContent(
 export async function getStorefrontBlogDetailBySlug(slugInput: string, localeInput?: string | null) {
   const { getStorefrontInsightDetailBySlug } = await import('@/server/storefront/insights');
   return getStorefrontInsightDetailBySlug(slugInput, localeInput);
+}
+
+export type StorefrontOtherContentDetail = {
+  id: string;
+  title: string;
+  summary: string | null;
+  body: string;
+  slug: string;
+  coverImage: string | null;
+  seo: {
+    title: string | null;
+    description: string | null;
+  };
+  publishedAt: string | null;
+  createdAt: string | null;
+};
+
+export async function getStorefrontOtherContentBySlug(
+  slugInput: string,
+  localeInput?: string | null,
+): Promise<StorefrontOtherContentDetail | null> {
+  const locale = editorialLocale(localeInput);
+  const slug = normalizeSlug(slugInput);
+  if (!slug) return null;
+
+  const rows = await db
+    .select({
+      content: editorialContents,
+      translation: editorialContentTranslations,
+    })
+    .from(editorialContentTranslations)
+    .innerJoin(editorialContents, eq(editorialContents.id, editorialContentTranslations.contentId))
+    .where(and(
+      eq(editorialContentTranslations.slug, slug),
+      eq(editorialContentTranslations.contentModule, 'other'),
+      eq(editorialContents.status, 'published'),
+      eq(editorialContents.contentModule, 'other'),
+    ));
+
+  if (!rows.length) return null;
+
+  const preferred = rows.find((row) => row.translation.locale === locale)
+    ?? rows.find((row) => row.translation.locale.toLowerCase().startsWith('en'))
+    ?? rows[0];
+  if (!preferred) return null;
+
+  const translations = await db
+    .select()
+    .from(editorialContentTranslations)
+    .where(eq(editorialContentTranslations.contentId, preferred.content.id));
+
+  const picked = pickTranslation(translations, locale) ?? preferred.translation;
+  const payload = normalizePayload(picked.payload);
+  const content = preferred.content;
+
+  return {
+    id: content.id,
+    title: picked.title,
+    summary: picked.summary,
+    body: rewriteHtmlOssAssets(payload.body, 'toPublicUrl'),
+    slug: picked.slug,
+    coverImage: resolveStorefrontCoverUrl({
+      mode: content.coverMode,
+      value: content.coverValue,
+      legacyCoverImageKey: content.coverImage,
+      toPublicUrl: resolveOssAssetUrl,
+    }) || null,
+    seo: {
+      title: picked.seoTitle,
+      description: picked.seoDescription,
+    },
+    publishedAt: content.publishedAt?.toISOString() ?? null,
+    createdAt: content.createdAt?.toISOString() ?? null,
+  };
 }
