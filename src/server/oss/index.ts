@@ -4,9 +4,10 @@
  * SERVER-ONLY MODULE: must never be imported into client-side components.
  */
 
-'use server';
+import 'server-only';
 
 import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 
@@ -22,6 +23,12 @@ type UploadInput = {
   contentType?: string;
   folder?: string;
 };
+
+type PresignPutResult =
+  | { ok: true; uploadUrl: string; url: string; key: string }
+  | { ok: false; error: string };
+
+const DEFAULT_PRESIGN_EXPIRES_SECONDS = 15 * 60;
 
 function getR2Config() {
   const accessKeyId = process.env.R2_ACCESS_KEY_ID;
@@ -50,6 +57,19 @@ function createR2Client(config: NonNullable<ReturnType<typeof getR2Config>>) {
     requestChecksumCalculation: 'WHEN_REQUIRED',
     responseChecksumValidation: 'WHEN_REQUIRED',
   });
+}
+
+export function buildObjectKey(folder: string, filename: string) {
+  const ext = path.extname(filename) || '.jpg';
+  const normalizedFolder = folder.replace(/^\/+|\/+$/g, '') || 'uploads';
+  return `${normalizedFolder}/${randomUUID()}${ext}`;
+}
+
+export function getPublicObjectUrl(key: string): string | null {
+  const domain = getPublicOssDomain();
+  const normalized = key.replace(/^\//, '').trim();
+  if (!domain || !normalized) return null;
+  return `${domain}/${normalized}`;
 }
 
 export async function putStorageObject(
@@ -82,10 +102,39 @@ export async function putStorageObject(
 }
 
 export async function uploadToOss(input: UploadInput): Promise<UploadResult> {
-  const ext = path.extname(input.filename) || '.jpg';
   const folder = input.folder ?? 'uploads';
-  const key = `${folder}/${randomUUID()}${ext}`;
+  const key = buildObjectKey(folder, input.filename);
+  const ext = path.extname(input.filename) || '.jpg';
   return putStorageObject(key, input.buffer, input.contentType ?? getMimeType(ext));
+}
+
+export async function presignPutObject(input: {
+  key: string;
+  contentType: string;
+  expiresIn?: number;
+}): Promise<PresignPutResult> {
+  const config = getR2Config();
+  if (!config) {
+    return { ok: false, error: 'Cloudflare R2 not configured' };
+  }
+
+  try {
+    const client = createR2Client(config);
+    const command = new PutObjectCommand({
+      Bucket: config.bucket,
+      Key: input.key,
+      ContentType: input.contentType,
+    });
+    const uploadUrl = await getSignedUrl(client, command, {
+      expiresIn: input.expiresIn ?? DEFAULT_PRESIGN_EXPIRES_SECONDS,
+    });
+    const url = config.domain ? `${config.domain}/${input.key}` : input.key;
+    return { ok: true, uploadUrl, url, key: input.key };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[r2] Presign failed:', message);
+    return { ok: false, error: message };
+  }
 }
 
 export async function deleteFromOss(key: string): Promise<{ ok: boolean; error?: string }> {
@@ -104,12 +153,6 @@ export async function deleteFromOss(key: string): Promise<{ ok: boolean; error?:
     console.error('[r2] Delete failed:', message);
     return { ok: false, error: message };
   }
-}
-
-export async function getSignedUrl(key: string, _expiresSeconds = 3600): Promise<string | null> {
-  const domain = getPublicOssDomain();
-  if (!domain || !key.trim()) return null;
-  return `${domain}/${key.replace(/^\//, '')}`;
 }
 
 function getMimeType(ext: string): string {

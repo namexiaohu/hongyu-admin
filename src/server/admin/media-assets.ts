@@ -73,7 +73,7 @@ export async function getAdminMediaAssetStorageKeys(ids: string[]) {
   return map;
 }
 
-const FOLDER_BY_TYPE: Record<string, string> = {
+export const MEDIA_ASSET_FOLDER_BY_TYPE: Record<string, string> = {
   [MEDIA_ASSET_TYPE_BACKGROUND]: 'backgrounds',
   [MEDIA_ASSET_TYPE_COVER]: 'covers',
   partner_center_background: 'backgrounds',
@@ -82,6 +82,18 @@ const FOLDER_BY_TYPE: Record<string, string> = {
   product_background: 'backgrounds',
 };
 
+export function getMediaAssetFolderForType(type: string) {
+  const normalized = normalizeMediaAssetType(type);
+  return MEDIA_ASSET_FOLDER_BY_TYPE[normalized] ?? MEDIA_ASSET_FOLDER_BY_TYPE[type] ?? 'uploads';
+}
+
+export function isAllowedMediaAssetStorageKey(type: string, storageKey: string) {
+  const folder = getMediaAssetFolderForType(type);
+  const key = storageKey.replace(/^\//, '').trim();
+  return key.startsWith(`${folder}/`) && !key.includes('..');
+}
+
+/** @deprecated Prefer client presign + createAdminMediaAssetFromKey for HTTP uploads. */
 export async function createAdminMediaAssetFromUpload(input: {
   type: string;
   buffer: Buffer;
@@ -94,7 +106,7 @@ export async function createAdminMediaAssetFromUpload(input: {
   }
 
   const type = normalizeMediaAssetType(input.type);
-  const folder = FOLDER_BY_TYPE[type] ?? 'uploads';
+  const folder = getMediaAssetFolderForType(type);
   const uploaded = await uploadToOss({
     buffer: input.buffer,
     filename: input.filename,
@@ -106,18 +118,13 @@ export async function createAdminMediaAssetFromUpload(input: {
     throw new Error(uploaded.error || 'UPLOAD_FAILED');
   }
 
-  const [inserted] = await db
-    .insert(mediaAssets)
-    .values({
-      type,
-      storageKey: uploaded.key,
-      filename: input.filename,
-      contentType: input.contentType,
-      byteSize: input.byteSize,
-    })
-    .returning();
-
-  return mapAsset(inserted);
+  return createAdminMediaAssetFromKey({
+    type,
+    storageKey: uploaded.key,
+    filename: input.filename,
+    contentType: input.contentType,
+    byteSize: input.byteSize,
+  });
 }
 
 export async function createAdminMediaAssetFromKey(input: {
@@ -131,12 +138,16 @@ export async function createAdminMediaAssetFromKey(input: {
     throw new Error('INVALID_TYPE');
   }
   const type = normalizeMediaAssetType(input.type);
+  const storageKey = input.storageKey.replace(/^\//, '').trim();
+  if (!isAllowedMediaAssetStorageKey(type, storageKey)) {
+    throw new Error('INVALID_STORAGE_KEY');
+  }
   const [inserted] = await db
     .insert(mediaAssets)
     .values({
       type,
-      storageKey: input.storageKey,
-      filename: input.filename ?? input.storageKey.split('/').pop() ?? '',
+      storageKey,
+      filename: input.filename ?? storageKey.split('/').pop() ?? '',
       contentType: input.contentType ?? 'image/jpeg',
       byteSize: input.byteSize ?? 0,
     })

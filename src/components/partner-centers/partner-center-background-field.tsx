@@ -6,6 +6,7 @@ import type { UploadProps } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { AdminMediaAsset } from '@/lib/media-assets';
+import { uploadSharedMediaAsset } from '@/lib/media-assets';
 import { IMAGE_UPLOAD_MIME_TYPES, MAX_IMAGE_UPLOAD_BYTES } from '@/lib/media-upload';
 import {
   getSharedBackgroundMediaAssets,
@@ -210,13 +211,7 @@ export function PartnerCenterBackgroundField({
     customRequest: async ({ file, onError, onSuccess }) => {
       try {
         setUploading(true);
-        const formData = new FormData();
-        formData.append('file', file as File);
-        formData.append('type', assetType);
-        const r = await fetch('/api/admin/media-assets', { method: 'POST', body: formData });
-        const data = await r.json().catch(() => null);
-        if (!r.ok) throw new Error(data?.message || '上传失败');
-        const asset = data as AdminMediaAsset;
+        const asset = await uploadSharedMediaAsset(file as File, assetType);
         // Refresh shared library so the new upload is included, then reuse cache next open
         const items = await getSharedBackgroundMediaAssets({ force: true });
         setSharedBackgroundMediaAssets(items);

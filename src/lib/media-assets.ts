@@ -47,3 +47,65 @@ export function normalizeMediaAssetType(value: string): string {
   if (isCoverMediaType(value)) return MEDIA_ASSET_TYPE_COVER;
   return value;
 }
+
+type MediaAssetPresignResponse = {
+  uploadUrl: string;
+  url: string;
+  key: string;
+  filename: string;
+  size: number;
+  contentType: string;
+  message?: string;
+};
+
+/** Presign → PUT R2 → register into shared media_assets library. */
+export async function uploadSharedMediaAsset(
+  file: File,
+  type: MediaAssetType | string,
+): Promise<AdminMediaAsset> {
+  const presignResponse = await fetch('/api/admin/media-assets/presign', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      type,
+      filename: file.name,
+      contentType: file.type,
+      size: file.size,
+    }),
+  });
+  const presign = await presignResponse.json().catch(() => ({})) as MediaAssetPresignResponse;
+  if (!presignResponse.ok) {
+    throw new Error(presign.message ?? '预签名失败');
+  }
+  if (!presign.uploadUrl || !presign.key) {
+    throw new Error('预签名响应无效');
+  }
+
+  const putResponse = await fetch(presign.uploadUrl, {
+    method: 'PUT',
+    body: file,
+    headers: {
+      'Content-Type': file.type || 'application/octet-stream',
+    },
+  });
+  if (!putResponse.ok) {
+    throw new Error(`直传存储失败 (${putResponse.status})`);
+  }
+
+  const registerResponse = await fetch('/api/admin/media-assets', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      type,
+      storageKey: presign.key,
+      filename: file.name,
+      contentType: file.type,
+      byteSize: file.size,
+    }),
+  });
+  const asset = await registerResponse.json().catch(() => null) as (AdminMediaAsset & { message?: string }) | null;
+  if (!registerResponse.ok || !asset?.id) {
+    throw new Error(asset?.message ?? '登记素材失败');
+  }
+  return asset;
+}

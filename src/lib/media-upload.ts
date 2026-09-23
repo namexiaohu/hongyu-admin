@@ -35,6 +35,11 @@ export type MediaUploadResult = {
   contentType: string;
 };
 
+type PresignResponse = MediaUploadResult & {
+  uploadUrl: string;
+  message?: string;
+};
+
 export function resolveMediaUploadKind(contentType: string): MediaUploadKind | null {
   if ((IMAGE_UPLOAD_MIME_TYPES as readonly string[]).includes(contentType)) return 'image';
   if ((VIDEO_UPLOAD_MIME_TYPES as readonly string[]).includes(contentType)) return 'video';
@@ -55,6 +60,20 @@ export function defaultUploadFolder(kind: MediaUploadKind) {
 
 export { getPublicOssDomain, isOssCdnUrl } from '@/lib/oss-asset-url';
 
+async function putFileToPresignedUrl(uploadUrl: string, file: File) {
+  const putResponse = await fetch(uploadUrl, {
+    method: 'PUT',
+    body: file,
+    headers: {
+      'Content-Type': file.type || 'application/octet-stream',
+    },
+  });
+
+  if (!putResponse.ok) {
+    throw new Error(`直传存储失败 (${putResponse.status})`);
+  }
+}
+
 export async function uploadMediaFile(
   file: File,
   options?: { folder?: string; kind?: MediaUploadKind },
@@ -64,22 +83,33 @@ export async function uploadMediaFile(
     throw new Error(`不支持的文件类型: ${file.type || 'unknown'}`);
   }
 
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('kind', kind);
-  if (options?.folder) {
-    formData.append('folder', options.folder);
-  }
-
   const response = await fetch('/api/admin/upload', {
     method: 'POST',
-    body: formData,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      filename: file.name,
+      contentType: file.type,
+      size: file.size,
+      kind,
+      folder: options?.folder,
+    }),
   });
 
-  const payload = await response.json().catch(() => ({})) as MediaUploadResult & { message?: string };
+  const payload = await response.json().catch(() => ({})) as PresignResponse;
   if (!response.ok) {
     throw new Error(payload.message ?? '上传失败');
   }
+  if (!payload.uploadUrl || !payload.key || !payload.url) {
+    throw new Error('预签名响应无效');
+  }
 
-  return payload;
+  await putFileToPresignedUrl(payload.uploadUrl, file);
+
+  return {
+    url: payload.url,
+    key: payload.key,
+    filename: payload.filename || file.name,
+    size: payload.size || file.size,
+    contentType: payload.contentType || file.type,
+  };
 }

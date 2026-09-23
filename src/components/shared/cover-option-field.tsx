@@ -6,7 +6,7 @@ import type { UploadProps } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { AdminMediaAsset } from '@/lib/media-assets';
-import { MEDIA_ASSET_TYPE_COVER } from '@/lib/media-assets';
+import { MEDIA_ASSET_TYPE_COVER, uploadSharedMediaAsset } from '@/lib/media-assets';
 import { IMAGE_UPLOAD_MIME_TYPES, MAX_IMAGE_UPLOAD_BYTES } from '@/lib/media-upload';
 import {
   getSharedCoverMediaAssets,
@@ -180,13 +180,7 @@ export function CoverOptionField({ value, onChange, disabled = false }: Props) {
     customRequest: async ({ file, onError, onSuccess }) => {
       try {
         setUploading(true);
-        const formData = new FormData();
-        formData.append('file', file as File);
-        formData.append('type', MEDIA_ASSET_TYPE_COVER);
-        const r = await fetch('/api/admin/media-assets', { method: 'POST', body: formData });
-        const data = await r.json().catch(() => null);
-        if (!r.ok) throw new Error(data?.message || '上传失败');
-        const asset = data as AdminMediaAsset;
+        const asset = await uploadSharedMediaAsset(file as File, MEDIA_ASSET_TYPE_COVER);
         const items = await getSharedCoverMediaAssets({ force: true });
         setSharedCoverMediaAssets(items);
         setUploadItems(items);
