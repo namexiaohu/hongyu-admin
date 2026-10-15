@@ -29,6 +29,8 @@ export type NavItem = {
   id: string;
   href: string;
   name: string;
+  /** When false, hidden on storefront. Missing/undefined means enabled. */
+  enabled?: boolean;
   locales?: Record<string, NavItemLocale>;
 };
 
@@ -37,6 +39,8 @@ export type NavColumn = {
   /** Optional top-level link; when set (often with empty items), header renders as a direct `<a>`. */
   href?: string;
   name: string;
+  /** When false, whole column (and its items) hidden on storefront. Missing/undefined means enabled. */
+  enabled?: boolean;
   items: NavItem[];
   locales?: Record<string, NavColumnLocale>;
 };
@@ -96,6 +100,7 @@ const navItemSchema = z.object({
   id: z.string().optional().default(''),
   href: z.string().optional().default(''),
   name: z.string().optional().default(''),
+  enabled: z.boolean().optional().default(true),
   locales: z.record(z.string(), navItemLocaleSchema).optional(),
 });
 
@@ -107,6 +112,7 @@ const navColumnSchema = z.object({
   id: z.string().optional().default(''),
   href: z.string().optional().default(''),
   name: z.string().optional().default(''),
+  enabled: z.boolean().optional().default(true),
   items: z.array(navItemSchema).optional().default([]),
   locales: z.record(z.string(), navColumnLocaleSchema).optional(),
 });
@@ -134,6 +140,10 @@ export function createNavId(prefix: string) {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+export function isNavEnabled(row: { enabled?: boolean } | null | undefined): boolean {
+  return row?.enabled !== false;
+}
+
 export function compactNavItems(rows: NavItem[] | undefined): NavItem[] {
   return (rows ?? [])
     .map((row, index) => {
@@ -146,6 +156,7 @@ export function compactNavItems(rows: NavItem[] | undefined): NavItem[] {
         id: row.id?.trim() || `nav-item-${index + 1}`,
         href: row.href?.trim() ?? '',
         name: row.name?.trim() ?? '',
+        enabled: isNavEnabled(row),
         ...(Object.keys(locales).length ? { locales } : {}),
       };
     })
@@ -164,6 +175,7 @@ export function compactNavColumns(rows: NavColumn[] | undefined): NavColumn[] {
         id: row.id?.trim() || `nav-column-${index + 1}`,
         href: row.href?.trim() ?? '',
         name: row.name?.trim() ?? '',
+        enabled: isNavEnabled(row),
         items: compactNavItems(row.items),
         ...(Object.keys(locales).length ? { locales } : {}),
       };
@@ -258,16 +270,22 @@ export function hasNavLocaleContent(
 }
 
 export function resolveStorefrontNavColumns(raw: NavColumn[] | undefined, locale: string): StorefrontNavColumn[] {
-  return compactNavColumns(raw).map((column) => ({
-    id: column.id,
-    href: column.href?.trim() ?? '',
-    name: resolveNavName(column, locale),
-    items: column.items.map((item) => ({
-      id: item.id,
-      href: item.href,
-      name: resolveNavName(item, locale),
-    })).filter((item) => item.name && item.href),
-  })).filter((column) => column.name && (column.href || column.items.length));
+  return compactNavColumns(raw)
+    .filter((column) => isNavEnabled(column))
+    .map((column) => ({
+      id: column.id,
+      href: column.href?.trim() ?? '',
+      name: resolveNavName(column, locale),
+      items: column.items
+        .filter((item) => isNavEnabled(item))
+        .map((item) => ({
+          id: item.id,
+          href: item.href,
+          name: resolveNavName(item, locale),
+        }))
+        .filter((item) => item.name && item.href),
+    }))
+    .filter((column) => column.name && (column.href || column.items.length));
 }
 
 /** Seed navigation aligned with storefront footer structure (zh default + en/es titles). */

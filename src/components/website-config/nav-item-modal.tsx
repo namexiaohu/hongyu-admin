@@ -1,16 +1,16 @@
 'use client';
 
-import { Button, Form, Input, Modal, Tabs } from 'antd';
+import { Button, Form, Input, Modal, Switch, Tabs } from 'antd';
 import { useEffect, useTransition } from 'react';
 
 import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
 import { ContentTranslateButton } from '@/components/admin/content-translate-button';
 import { applyNonemptyTranslatedFields } from '@/lib/content-translate-config';
-import { createNavId, hasNavLocaleContent, type NavItem } from '@/lib/website-config';
+import { createNavId, hasNavLocaleContent, isNavEnabled, type NavItem } from '@/lib/website-config';
 import type { AdminSiteLanguageRow } from '@/server/admin/languages';
 
 type LocaleItemDraft = { name: string };
-type SharedValues = { href: string };
+type SharedValues = { href: string; enabled: boolean };
 
 type Props = {
   open: boolean;
@@ -50,7 +50,7 @@ export function NavItemModal({
 
   useEffect(() => {
     if (!open) return;
-    sharedForm.setFieldsValue({ href: item?.href ?? '' });
+    sharedForm.setFieldsValue({ href: item?.href ?? '', enabled: isNavEnabled(item) });
     localeForm.setFieldsValue(drafts[activeLocale] ?? emptyDraft());
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -104,6 +104,7 @@ export function NavItemModal({
         id: item?.id ?? createNavId('nav-item'),
         href: shared.href?.trim() ?? '',
         name: primaryDraft.name?.trim() ?? '',
+        enabled: shared.enabled !== false,
         locales,
       });
     });
@@ -126,6 +127,9 @@ export function NavItemModal({
 
         <div className="content-editor-shared-section">
           <Form form={sharedForm} layout="vertical">
+            <Form.Item label="状态" name="enabled" valuePropName="checked">
+              <Switch checkedChildren="启用" unCheckedChildren="停用" />
+            </Form.Item>
             <Form.Item name="href" label="链接" rules={[{ required: true, message: '请输入链接' }]}>
               <Input placeholder="/about 或 https://..." />
             </Form.Item>

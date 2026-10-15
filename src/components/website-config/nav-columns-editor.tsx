@@ -1,11 +1,11 @@
 'use client';
 
 import { DeleteOutlined, DownOutlined, EditOutlined, PlusOutlined, UpOutlined } from '@ant-design/icons';
-import { Button, Popconfirm, Space, Table, Typography } from 'antd';
+import { Button, Popconfirm, Space, Table, Tag, Typography } from 'antd';
 import { useMemo, useState } from 'react';
 
 import { NavColumnDrawer } from '@/components/website-config/nav-column-drawer';
-import { resolveNavName, type NavColumn } from '@/lib/website-config';
+import { isNavEnabled, resolveNavName, type NavColumn } from '@/lib/website-config';
 import type { AdminSiteLanguageRow } from '@/server/admin/languages';
 
 type Props = {
@@ -40,6 +40,15 @@ export function NavColumnsEditor({ title, description, columns, onChange, active
       title: '条目数',
       width: 90,
       render: (_: unknown, record: NavColumn) => record.items.length,
+    },
+    {
+      title: '状态',
+      width: 80,
+      render: (_: unknown, record: NavColumn) => (
+        isNavEnabled(record)
+          ? <Tag color="green">启用</Tag>
+          : <Tag>停用</Tag>
+      ),
     },
     {
       title: '排序',

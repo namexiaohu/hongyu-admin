@@ -1,18 +1,18 @@
 'use client';
 
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Drawer, Form, Input, Popconfirm, Space, Table, Tabs, Typography } from 'antd';
+import { Button, Drawer, Form, Input, Popconfirm, Space, Switch, Table, Tabs, Tag, Typography } from 'antd';
 import { useEffect, useState } from 'react';
 
 import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
 import { ContentTranslateButton } from '@/components/admin/content-translate-button';
 import { NavItemModal } from '@/components/website-config/nav-item-modal';
 import { applyNonemptyTranslatedFields } from '@/lib/content-translate-config';
-import { createNavId, hasNavLocaleContent, resolveNavEditorDraftName, resolveNavName, type NavColumn, type NavItem } from '@/lib/website-config';
+import { createNavId, hasNavLocaleContent, isNavEnabled, resolveNavEditorDraftName, resolveNavName, type NavColumn, type NavItem } from '@/lib/website-config';
 import type { AdminSiteLanguageRow } from '@/server/admin/languages';
 
 type LocaleColumnDraft = { name: string };
-type SharedValues = { href: string };
+type SharedValues = { href: string; enabled: boolean };
 
 type Props = {
   open: boolean;
@@ -52,7 +52,7 @@ export function NavColumnDrawer({ open, column, activeLanguages, onClose, onSave
     const first = activeLanguages.find((language) => language.isDefault)?.code ?? activeLanguages[0]?.code ?? 'zh';
     setActiveLocale(first);
     setItems(column?.items ?? []);
-    sharedForm.setFieldsValue({ href: column?.href ?? '' });
+    sharedForm.setFieldsValue({ href: column?.href ?? '', enabled: isNavEnabled(column) });
     const next: Record<string, LocaleColumnDraft> = {};
     for (const language of activeLanguages) {
       next[language.code] = draftFromColumn(column, language.code, first);
@@ -104,6 +104,7 @@ export function NavColumnDrawer({ open, column, activeLanguages, onClose, onSave
       id: column?.id ?? createNavId('nav-column'),
       href,
       name: primary.name ?? '',
+      enabled: shared.enabled !== false,
       items,
       locales,
     });
@@ -136,6 +137,15 @@ export function NavColumnDrawer({ open, column, activeLanguages, onClose, onSave
     { title: '标题', ellipsis: true, render: (_: unknown, record: NavItem) => resolveNavName(record, defaultLocale) || record.name || '—' },
     { title: '链接', dataIndex: 'href', ellipsis: true },
     {
+      title: '状态',
+      width: 80,
+      render: (_: unknown, record: NavItem) => (
+        isNavEnabled(record)
+          ? <Tag color="green">启用</Tag>
+          : <Tag>停用</Tag>
+      ),
+    },
+    {
       title: '操作',
       width: 90,
       render: (_: unknown, record: NavItem) => (
@@ -164,6 +174,9 @@ export function NavColumnDrawer({ open, column, activeLanguages, onClose, onSave
         <Space orientation="vertical" size="large" style={{ width: '100%' }}>
           <div className="content-editor-shared-section">
             <Form form={sharedForm} layout="vertical">
+              <Form.Item label="状态" name="enabled" valuePropName="checked">
+                <Switch checkedChildren="启用" unCheckedChildren="停用" />
+              </Form.Item>
               <Form.Item
                 name="href"
                 label="链接"
