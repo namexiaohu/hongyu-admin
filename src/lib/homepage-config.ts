@@ -12,6 +12,41 @@ export type HomepageMediaSlide = {
   mediaType: 'image' | 'video';
 };
 
+export const HOMEPAGE_SECTION_KEYS = [
+  'banner',
+  'solutions',
+  'about',
+  'stats',
+  'global',
+  'education',
+] as const;
+
+export type HomepageSectionKey = (typeof HOMEPAGE_SECTION_KEYS)[number];
+
+export type HomepageSectionConfig = {
+  key: HomepageSectionKey;
+  /** When false, section is hidden on storefront. Missing/undefined means enabled. */
+  enabled?: boolean;
+};
+
+export const HOMEPAGE_SECTION_LABELS: Record<HomepageSectionKey, string> = {
+  banner: 'Banner',
+  solutions: '解决方案',
+  about: '企业介绍',
+  stats: '核心数据',
+  global: '全球布局',
+  education: '持续教育',
+};
+
+export const DEFAULT_HOMEPAGE_SECTIONS: HomepageSectionConfig[] = HOMEPAGE_SECTION_KEYS.map((key) => ({
+  key,
+  enabled: true,
+}));
+
+export function isHomepageSectionEnabled(row: { enabled?: boolean } | null | undefined): boolean {
+  return row?.enabled !== false;
+}
+
 export type HomepageStatItem = {
   title: string;
   subtitle: string;
@@ -65,6 +100,7 @@ export type AdminHomepageConfig = {
   aboutHeroCopyStyle: HeroCopyStyle;
   bannerCarouselFitMode: HeroBackgroundFitMode;
   aboutCarouselFitMode: HeroBackgroundFitMode;
+  sections: HomepageSectionConfig[];
   translations: AdminHomepageConfigTranslation[];
   createdAt: string;
   updatedAt: string;
@@ -78,6 +114,7 @@ export type StorefrontHomepageConfig = {
   aboutHeroCopyStyle: HeroCopyStyle;
   bannerCarouselFitMode: HeroBackgroundFitMode;
   aboutCarouselFitMode: HeroBackgroundFitMode;
+  sections: HomepageSectionConfig[];
   bannerTitle: string;
   bannerSubtitle: string;
   bannerDescription: string;
@@ -141,6 +178,11 @@ export const adminHomepageTranslationSchema = z.object({
   solutionItems: z.array(solutionItemSchema).optional().default([]),
 });
 
+const homepageSectionSchema = z.object({
+  key: z.enum(HOMEPAGE_SECTION_KEYS),
+  enabled: z.boolean().optional().default(true),
+});
+
 export const adminHomepageConfigPutSchema = z.object({
   bannerSlides: z.array(mediaSlideSchema).optional().default([]),
   aboutSlides: z.array(mediaSlideSchema).optional().default([]),
@@ -148,10 +190,34 @@ export const adminHomepageConfigPutSchema = z.object({
   aboutHeroCopyStyle: heroCopyStyleSchema.optional().default('dark'),
   bannerCarouselFitMode: heroBackgroundFitModeSchema.optional().default('contain'),
   aboutCarouselFitMode: heroBackgroundFitModeSchema.optional().default('contain-center'),
+  sections: z.array(homepageSectionSchema).optional(),
   translations: z.array(adminHomepageTranslationSchema).optional().default([]),
 });
 
 export type AdminHomepageConfigPutInput = z.infer<typeof adminHomepageConfigPutSchema>;
+
+export function compactHomepageSections(rows: HomepageSectionConfig[] | undefined): HomepageSectionConfig[] {
+  const seen = new Set<HomepageSectionKey>();
+  const ordered: HomepageSectionConfig[] = [];
+
+  for (const row of rows ?? []) {
+    const key = row?.key;
+    if (!HOMEPAGE_SECTION_KEYS.includes(key as HomepageSectionKey)) continue;
+    if (seen.has(key as HomepageSectionKey)) continue;
+    seen.add(key as HomepageSectionKey);
+    ordered.push({
+      key: key as HomepageSectionKey,
+      enabled: isHomepageSectionEnabled(row),
+    });
+  }
+
+  for (const key of HOMEPAGE_SECTION_KEYS) {
+    if (seen.has(key)) continue;
+    ordered.push({ key, enabled: true });
+  }
+
+  return ordered;
+}
 
 export function compactMediaSlides(rows: HomepageMediaSlide[] | undefined): HomepageMediaSlide[] {
   return (rows ?? [])
@@ -410,6 +476,7 @@ export const EMPTY_STOREFRONT_HOMEPAGE: StorefrontHomepageConfig = {
   aboutHeroCopyStyle: 'dark',
   bannerCarouselFitMode: 'contain',
   aboutCarouselFitMode: 'contain-center',
+  sections: DEFAULT_HOMEPAGE_SECTIONS.map((row) => ({ ...row })),
   bannerTitle: '',
   bannerSubtitle: '',
   bannerDescription: '',

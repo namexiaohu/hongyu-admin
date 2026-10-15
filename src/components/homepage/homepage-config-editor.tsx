@@ -9,6 +9,7 @@ import { ContentTranslateButton } from '@/components/admin/content-translate-but
 import { CommercePageHeader } from '@/components/commerce/commerce-page-header';
 import { CoverImageField } from '@/components/editorial/cover-image-field';
 import { HomepageMediaSlidesField } from '@/components/homepage/homepage-media-slides-field';
+import { HomepageSectionsField } from '@/components/homepage/homepage-sections-field';
 import { HeroBackgroundFitField } from '@/components/shared/hero-background-fit-field';
 import { HeroCopyStyleField } from '@/components/shared/hero-copy-style-field';
 import { applyNonemptyTranslatedFields } from '@/lib/content-translate-config';
@@ -16,8 +17,10 @@ import {
   type AdminHomepageConfig,
   type HomepageEducationItem,
   type HomepageMediaSlide,
+  type HomepageSectionConfig,
   type HomepageSolutionItem,
   type HomepageStatItem,
+  compactHomepageSections,
   homepageTranslationHasContent,
 } from '@/lib/homepage-config';
 import type { HeroBackgroundFitMode } from '@/lib/hero-background-fit';
@@ -34,6 +37,7 @@ type SharedFormValues = {
   aboutHeroCopyStyle: HeroCopyStyle;
   bannerCarouselFitMode: HeroBackgroundFitMode;
   aboutCarouselFitMode: HeroBackgroundFitMode;
+  sections: HomepageSectionConfig[];
 };
 
 type LocaleDraft = {
@@ -229,6 +233,7 @@ export function HomepageConfigEditor({ initialConfig, activeLanguages }: Homepag
       aboutHeroCopyStyle: config.aboutHeroCopyStyle,
       bannerCarouselFitMode: config.bannerCarouselFitMode,
       aboutCarouselFitMode: config.aboutCarouselFitMode,
+      sections: compactHomepageSections(config.sections),
     });
     const nextDrafts: Record<string, LocaleDraft> = {};
     activeLanguages.forEach((language) => {
@@ -325,6 +330,7 @@ export function HomepageConfigEditor({ initialConfig, activeLanguages }: Homepag
             aboutHeroCopyStyle: shared.aboutHeroCopyStyle ?? 'dark',
             bannerCarouselFitMode: shared.bannerCarouselFitMode ?? 'contain',
             aboutCarouselFitMode: shared.aboutCarouselFitMode ?? 'contain-center',
+            sections: compactHomepageSections(shared.sections),
             translations,
           }),
         });
@@ -372,7 +378,7 @@ export function HomepageConfigEditor({ initialConfig, activeLanguages }: Homepag
           </Form.Item>
         </div>
 
-        <div className="content-editor-shared-section">
+        <div className="content-editor-shared-section" style={{ marginBottom: 16 }}>
           <div style={{ fontWeight: 600, marginBottom: 12 }}>企业介绍区</div>
           <Form.Item name="aboutHeroCopyStyle" label="看板文案风格" initialValue="dark">
             <HeroCopyStyleField />
@@ -386,6 +392,17 @@ export function HomepageConfigEditor({ initialConfig, activeLanguages }: Homepag
             getValueFromEvent={(value: HomepageMediaSlide[]) => value ?? []}
           >
             <HomepageMediaSlidesField folder="homepage/about" />
+          </Form.Item>
+        </div>
+
+        <div className="content-editor-shared-section">
+          <div style={{ fontWeight: 600, marginBottom: 12 }}>首页区块</div>
+          <Form.Item
+            name="sections"
+            getValueFromEvent={(value: HomepageSectionConfig[]) => compactHomepageSections(value)}
+            normalize={(value) => compactHomepageSections(value)}
+          >
+            <HomepageSectionsField />
           </Form.Item>
         </div>
       </Form>

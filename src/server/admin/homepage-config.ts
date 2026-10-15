@@ -9,9 +9,11 @@ import {
   type AdminHomepageConfigTranslation,
   adminHomepageConfigPutSchema,
   compactEducationItems,
+  compactHomepageSections,
   compactMediaSlides,
   compactSolutionItems,
   compactStatItems,
+  DEFAULT_HOMEPAGE_SECTIONS,
   getDefaultHomepageAboutSlides,
   getDefaultHomepageBannerSlides,
   getDefaultHomepageTranslationForLocale,
@@ -71,6 +73,7 @@ function mapConfig(
     aboutHeroCopyStyle: resolveHomepageAboutHeroCopyStyle(row.aboutHeroCopyStyle),
     bannerCarouselFitMode: resolveStorefrontHeroBackgroundFitMode(row.bannerCarouselFitMode),
     aboutCarouselFitMode: resolveStorefrontHeroBackgroundFitMode(row.aboutCarouselFitMode),
+    sections: compactHomepageSections(row.sections),
     translations: translations.map(mapTranslation),
     createdAt: toIso(row.createdAt),
     updatedAt: toIso(row.updatedAt),
@@ -138,6 +141,7 @@ async function ensureHomepageConfigRow() {
       aboutSlides,
       bannerCarouselFitMode: 'contain',
       aboutCarouselFitMode: 'contain-center',
+      sections: DEFAULT_HOMEPAGE_SECTIONS.map((row) => ({ ...row })),
     })
     .returning();
 
@@ -194,6 +198,9 @@ export async function updateAdminHomepageConfig(input: unknown): Promise<AdminHo
       aboutHeroCopyStyle: normalizeHeroCopyStyleForWrite(parsed.aboutHeroCopyStyle),
       bannerCarouselFitMode: normalizeHeroBackgroundFitModeForWrite(parsed.bannerCarouselFitMode),
       aboutCarouselFitMode: normalizeHeroBackgroundFitModeForWrite(parsed.aboutCarouselFitMode),
+      ...(parsed.sections !== undefined
+        ? { sections: compactHomepageSections(parsed.sections) }
+        : {}),
       updatedAt: new Date(),
     })
     .where(eq(homepageConfigs.id, row.id));

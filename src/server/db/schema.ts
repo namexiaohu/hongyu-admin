@@ -88,6 +88,7 @@ import type {
 import type {
   HomepageEducationItem,
   HomepageMediaSlide,
+  HomepageSectionConfig,
   HomepageSolutionItem,
   HomepageStatItem,
 } from '@/lib/homepage-config';
@@ -1883,6 +1884,14 @@ export const homepageConfigs = pgTable('homepage_configs', {
   aboutHeroCopyStyle: text('about_hero_copy_style'),
   bannerCarouselFitMode: text('banner_carousel_fit_mode'),
   aboutCarouselFitMode: text('about_carousel_fit_mode'),
+  sections: jsonb('sections').$type<HomepageSectionConfig[]>().notNull().default([
+    { key: 'banner', enabled: true },
+    { key: 'solutions', enabled: true },
+    { key: 'about', enabled: true },
+    { key: 'stats', enabled: true },
+    { key: 'global', enabled: true },
+    { key: 'education', enabled: true },
+  ]),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
