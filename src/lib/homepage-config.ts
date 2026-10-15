@@ -18,6 +18,7 @@ export const HOMEPAGE_SECTION_KEYS = [
   'about',
   'stats',
   'global',
+  'insights',
   'education',
 ] as const;
 
@@ -35,8 +36,11 @@ export const HOMEPAGE_SECTION_LABELS: Record<HomepageSectionKey, string> = {
   about: '企业介绍',
   stats: '核心数据',
   global: '全球布局',
+  insights: '洞察与资讯',
   education: '持续教育',
 };
+
+export const DEFAULT_HOMEPAGE_INSIGHTS_ARTICLE_COUNT = 5;
 
 export const DEFAULT_HOMEPAGE_SECTIONS: HomepageSectionConfig[] = HOMEPAGE_SECTION_KEYS.map((key) => ({
   key,
@@ -88,6 +92,7 @@ export type AdminHomepageConfigTranslation = {
   educationDescription: string;
   educationItems: HomepageEducationItem[];
   solutionItems: HomepageSolutionItem[];
+  insightsTitle: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -101,6 +106,7 @@ export type AdminHomepageConfig = {
   bannerCarouselFitMode: HeroBackgroundFitMode;
   aboutCarouselFitMode: HeroBackgroundFitMode;
   sections: HomepageSectionConfig[];
+  insightsArticleCount: number;
   translations: AdminHomepageConfigTranslation[];
   createdAt: string;
   updatedAt: string;
@@ -115,6 +121,7 @@ export type StorefrontHomepageConfig = {
   bannerCarouselFitMode: HeroBackgroundFitMode;
   aboutCarouselFitMode: HeroBackgroundFitMode;
   sections: HomepageSectionConfig[];
+  insightsArticleCount: number;
   bannerTitle: string;
   bannerSubtitle: string;
   bannerDescription: string;
@@ -129,6 +136,7 @@ export type StorefrontHomepageConfig = {
   educationDescription: string;
   educationItems: HomepageEducationItem[];
   solutionItems: HomepageSolutionItem[];
+  insightsTitle: string;
 };
 
 const mediaSlideSchema = z.object({
@@ -176,6 +184,7 @@ export const adminHomepageTranslationSchema = z.object({
   educationDescription: z.string().optional().default(''),
   educationItems: z.array(educationItemSchema).optional().default([]),
   solutionItems: z.array(solutionItemSchema).optional().default([]),
+  insightsTitle: z.string().optional().default(''),
 });
 
 const homepageSectionSchema = z.object({
@@ -191,6 +200,7 @@ export const adminHomepageConfigPutSchema = z.object({
   bannerCarouselFitMode: heroBackgroundFitModeSchema.optional().default('contain'),
   aboutCarouselFitMode: heroBackgroundFitModeSchema.optional().default('contain-center'),
   sections: z.array(homepageSectionSchema).optional(),
+  insightsArticleCount: z.number().int().min(1).max(50).optional().default(DEFAULT_HOMEPAGE_INSIGHTS_ARTICLE_COUNT),
   translations: z.array(adminHomepageTranslationSchema).optional().default([]),
 });
 
@@ -213,10 +223,23 @@ export function compactHomepageSections(rows: HomepageSectionConfig[] | undefine
 
   for (const key of HOMEPAGE_SECTION_KEYS) {
     if (seen.has(key)) continue;
-    ordered.push({ key, enabled: true });
+    const educationIndex = ordered.findIndex((row) => row.key === 'education');
+    if (key === 'insights' && educationIndex >= 0) {
+      ordered.splice(educationIndex, 0, { key, enabled: true });
+    } else {
+      ordered.push({ key, enabled: true });
+    }
+    seen.add(key);
   }
 
   return ordered;
+}
+
+export function normalizeInsightsArticleCount(value: number | null | undefined): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return DEFAULT_HOMEPAGE_INSIGHTS_ARTICLE_COUNT;
+  }
+  return Math.min(50, Math.max(1, Math.round(value)));
 }
 
 export function compactMediaSlides(rows: HomepageMediaSlide[] | undefined): HomepageMediaSlide[] {
@@ -279,6 +302,7 @@ export function homepageTranslationHasContent(input: {
   educationDescription?: string;
   educationItems?: HomepageEducationItem[];
   solutionItems?: HomepageSolutionItem[];
+  insightsTitle?: string;
 }) {
   return Boolean(
     input.bannerTitle?.trim()
@@ -292,6 +316,7 @@ export function homepageTranslationHasContent(input: {
     || input.globalDescription?.trim()
     || input.educationTitle?.trim()
     || input.educationDescription?.trim()
+    || input.insightsTitle?.trim()
     || compactStatItems(input.stats).length
     || compactEducationItems(input.educationItems).length
     || compactSolutionItems(input.solutionItems).length,
@@ -381,6 +406,7 @@ export function getDefaultHomepageZhTranslation() {
       },
     ] satisfies HomepageEducationItem[],
     solutionItems: [] satisfies HomepageSolutionItem[],
+    insightsTitle: '技术前沿与临床实践',
   };
 }
 
@@ -453,6 +479,7 @@ export function getDefaultHomepageEnTranslation() {
       },
     ] satisfies HomepageEducationItem[],
     solutionItems: [] satisfies HomepageSolutionItem[],
+    insightsTitle: 'Technology frontiers & clinical practice',
   };
 }
 
@@ -477,6 +504,7 @@ export const EMPTY_STOREFRONT_HOMEPAGE: StorefrontHomepageConfig = {
   bannerCarouselFitMode: 'contain',
   aboutCarouselFitMode: 'contain-center',
   sections: DEFAULT_HOMEPAGE_SECTIONS.map((row) => ({ ...row })),
+  insightsArticleCount: DEFAULT_HOMEPAGE_INSIGHTS_ARTICLE_COUNT,
   bannerTitle: '',
   bannerSubtitle: '',
   bannerDescription: '',
@@ -491,4 +519,5 @@ export const EMPTY_STOREFRONT_HOMEPAGE: StorefrontHomepageConfig = {
   educationDescription: '',
   educationItems: [],
   solutionItems: [],
+  insightsTitle: '',
 };

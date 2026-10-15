@@ -1890,8 +1890,10 @@ export const homepageConfigs = pgTable('homepage_configs', {
     { key: 'about', enabled: true },
     { key: 'stats', enabled: true },
     { key: 'global', enabled: true },
+    { key: 'insights', enabled: true },
     { key: 'education', enabled: true },
   ]),
+  insightsArticleCount: integer('insights_article_count').notNull().default(5),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -1916,6 +1918,7 @@ export const homepageConfigTranslations = pgTable(
     educationDescription: text('education_description').notNull().default(''),
     educationItems: jsonb('education_items').$type<HomepageEducationItem[]>().notNull().default([]),
     solutionItems: jsonb('solutions_items').$type<HomepageSolutionItem[]>().notNull().default([]),
+    insightsTitle: text('insights_title').notNull().default(''),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

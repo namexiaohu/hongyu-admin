@@ -18,6 +18,7 @@ import {
   getDefaultHomepageBannerSlides,
   getDefaultHomepageTranslationForLocale,
   homepageTranslationHasContent,
+  normalizeInsightsArticleCount,
   type HomepageEducationItem,
   type HomepageMediaSlide,
   type HomepageSolutionItem,
@@ -56,6 +57,7 @@ function mapTranslation(row: typeof homepageConfigTranslations.$inferSelect): Ad
     educationDescription: row.educationDescription,
     educationItems: compactEducationItems(row.educationItems),
     solutionItems: compactSolutionItems(row.solutionItems),
+    insightsTitle: row.insightsTitle ?? '',
     createdAt: toIso(row.createdAt),
     updatedAt: toIso(row.updatedAt),
   };
@@ -74,6 +76,7 @@ function mapConfig(
     bannerCarouselFitMode: resolveStorefrontHeroBackgroundFitMode(row.bannerCarouselFitMode),
     aboutCarouselFitMode: resolveStorefrontHeroBackgroundFitMode(row.aboutCarouselFitMode),
     sections: compactHomepageSections(row.sections),
+    insightsArticleCount: normalizeInsightsArticleCount(row.insightsArticleCount),
     translations: translations.map(mapTranslation),
     createdAt: toIso(row.createdAt),
     updatedAt: toIso(row.updatedAt),
@@ -142,6 +145,7 @@ async function ensureHomepageConfigRow() {
       bannerCarouselFitMode: 'contain',
       aboutCarouselFitMode: 'contain-center',
       sections: DEFAULT_HOMEPAGE_SECTIONS.map((row) => ({ ...row })),
+      insightsArticleCount: 5,
     })
     .returning();
 
@@ -201,6 +205,9 @@ export async function updateAdminHomepageConfig(input: unknown): Promise<AdminHo
       ...(parsed.sections !== undefined
         ? { sections: compactHomepageSections(parsed.sections) }
         : {}),
+      ...(parsed.insightsArticleCount !== undefined
+        ? { insightsArticleCount: normalizeInsightsArticleCount(parsed.insightsArticleCount) }
+        : {}),
       updatedAt: new Date(),
     })
     .where(eq(homepageConfigs.id, row.id));
@@ -235,6 +242,7 @@ export async function updateAdminHomepageConfig(input: unknown): Promise<AdminHo
       educationDescription: translation.educationDescription.trim(),
       educationItems,
       solutionItems,
+      insightsTitle: translation.insightsTitle?.trim() ?? '',
       updatedAt: new Date(),
     };
 

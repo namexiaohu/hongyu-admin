@@ -10,12 +10,15 @@ export async function GET(request: NextRequest) {
   const boardKey = searchParams.get('board') ?? searchParams.get('category') ?? undefined;
   const page = Number.parseInt(searchParams.get('page') ?? '1', 10);
   const pageSize = Number.parseInt(searchParams.get('pageSize') ?? '6', 10);
+  const reserveFeaturedParam = searchParams.get('reserveFeatured');
+  const reserveFeatured = reserveFeaturedParam === '1' || reserveFeaturedParam === 'true';
 
   const payload = await getStorefrontInsightsList({
     boardKey,
     locale,
     page: Number.isFinite(page) ? page : 1,
     pageSize: Number.isFinite(pageSize) ? pageSize : 6,
+    reserveFeatured,
   });
 
   return NextResponse.json(payload, { headers: frontCorsHeaders() });

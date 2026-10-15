@@ -226,15 +226,50 @@ function mapRelatedItem(
   };
 }
 
+/**
+ * /insights page 1 uses item[0] as featured and the rest as the grid.
+ * When `reserveFeatured` is on, page 1 returns pageSize+1 items and later pages
+ * skip the featured slot so the grid stays full without dropping an article.
+ */
+export function insightsListPageWindow(
+  page: number,
+  pageSize: number,
+  reserveFeatured: boolean,
+) {
+  if (!reserveFeatured) {
+    return { offset: (page - 1) * pageSize, limit: pageSize };
+  }
+  if (page <= 1) {
+    return { offset: 0, limit: pageSize + 1 };
+  }
+  return { offset: (page - 1) * pageSize + 1, limit: pageSize };
+}
+
+export function insightsListTotalPages(
+  total: number,
+  pageSize: number,
+  reserveFeatured: boolean,
+) {
+  if (total <= 0) return 1;
+  if (!reserveFeatured) {
+    return Math.max(1, Math.ceil(total / pageSize));
+  }
+  if (total <= pageSize + 1) return 1;
+  return 1 + Math.ceil((total - pageSize - 1) / pageSize);
+}
+
 export async function getStorefrontInsightsList(input: {
   boardKey?: string | null;
   locale?: string | null;
   page?: number;
   pageSize?: number;
+  /** When true, page 1 includes an extra item for the featured card. */
+  reserveFeatured?: boolean;
 }) {
   const locale = editorialLocale(input.locale);
   const page = Math.max(1, input.page ?? 1);
   const pageSize = Math.min(50, Math.max(1, input.pageSize ?? 6));
+  const reserveFeatured = Boolean(input.reserveFeatured);
   const boardKey = input.boardKey?.trim() || null;
 
   const [boardNames, rows] = await Promise.all([
@@ -248,8 +283,8 @@ export async function getStorefrontInsightsList(input: {
   );
 
   const total = items.length;
-  const offset = (page - 1) * pageSize;
-  const pageItems = items.slice(offset, offset + pageSize);
+  const { offset, limit } = insightsListPageWindow(page, pageSize, reserveFeatured);
+  const pageItems = items.slice(offset, offset + limit);
 
   return {
     locale,
@@ -258,6 +293,7 @@ export async function getStorefrontInsightsList(input: {
     total,
     page,
     pageSize,
+    totalPages: insightsListTotalPages(total, pageSize, reserveFeatured),
   };
 }
 

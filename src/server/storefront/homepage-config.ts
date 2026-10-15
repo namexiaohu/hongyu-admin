@@ -10,6 +10,7 @@ import {
   compactMediaSlides,
   compactSolutionItems,
   compactStatItems,
+  normalizeInsightsArticleCount,
 } from '@/lib/homepage-config';
 import { resolveStorefrontHeroBackgroundFitMode } from '@/lib/hero-background-fit';
 import { resolveHomepageAboutHeroCopyStyle, resolveHomepageBannerHeroCopyStyle } from '@/lib/hero-copy-style';
@@ -54,6 +55,7 @@ export async function getStorefrontHomepageConfig(locale: string): Promise<Store
     bannerCarouselFitMode: resolveStorefrontHeroBackgroundFitMode(row.bannerCarouselFitMode),
     aboutCarouselFitMode: resolveStorefrontHeroBackgroundFitMode(row.aboutCarouselFitMode),
     sections: compactHomepageSections(row.sections),
+    insightsArticleCount: normalizeInsightsArticleCount(row.insightsArticleCount),
     bannerTitle: display?.bannerTitle ?? '',
     bannerSubtitle: display?.bannerSubtitle ?? '',
     bannerDescription: display?.bannerDescription ?? '',
@@ -74,5 +76,6 @@ export async function getStorefrontHomepageConfig(locale: string): Promise<Store
       ...item,
       coverImage: resolveSlideUrl(item.coverImage),
     })),
+    insightsTitle: display?.insightsTitle ?? '',
   };
 }

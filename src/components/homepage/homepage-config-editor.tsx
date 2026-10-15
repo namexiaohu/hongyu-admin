@@ -1,7 +1,7 @@
 'use client';
 
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Form, Input, Space, Tabs, message } from 'antd';
+import { Button, Form, Input, InputNumber, Space, Tabs, message } from 'antd';
 import { useEffect, useMemo, useState, useTransition } from 'react';
 
 import { ContentEditorLocaleTab } from '@/components/admin/content-editor-locale-tab';
@@ -21,14 +21,16 @@ import {
   type HomepageSolutionItem,
   type HomepageStatItem,
   compactHomepageSections,
+  DEFAULT_HOMEPAGE_INSIGHTS_ARTICLE_COUNT,
   homepageTranslationHasContent,
+  normalizeInsightsArticleCount,
 } from '@/lib/homepage-config';
 import type { HeroBackgroundFitMode } from '@/lib/hero-background-fit';
 import type { HeroCopyStyle } from '@/lib/hero-copy-style';
 import { shouldPersistLocaleDraft } from '@/lib/locale-draft-persistence';
 import type { AdminSiteLanguageRow } from '@/server/admin/languages';
 
-type SectionTabKey = 'banner' | 'solutions' | 'about' | 'stats' | 'global' | 'education';
+type SectionTabKey = 'banner' | 'solutions' | 'about' | 'stats' | 'global' | 'insights' | 'education';
 
 type SharedFormValues = {
   bannerSlides: HomepageMediaSlide[];
@@ -38,6 +40,7 @@ type SharedFormValues = {
   bannerCarouselFitMode: HeroBackgroundFitMode;
   aboutCarouselFitMode: HeroBackgroundFitMode;
   sections: HomepageSectionConfig[];
+  insightsArticleCount: number;
 };
 
 type LocaleDraft = {
@@ -55,6 +58,7 @@ type LocaleDraft = {
   educationDescription: string;
   educationItems: HomepageEducationItem[];
   solutionItems: HomepageSolutionItem[];
+  insightsTitle: string;
 };
 
 function emptyDraft(): LocaleDraft {
@@ -73,6 +77,7 @@ function emptyDraft(): LocaleDraft {
     educationDescription: '',
     educationItems: [],
     solutionItems: [],
+    insightsTitle: '',
   };
 }
 
@@ -93,6 +98,7 @@ function translationToDraft(translation?: AdminHomepageConfig['translations'][nu
     educationDescription: translation.educationDescription,
     educationItems: translation.educationItems.length ? translation.educationItems : [],
     solutionItems: translation.solutionItems.length ? translation.solutionItems : [],
+    insightsTitle: translation.insightsTitle ?? '',
   };
 }
 
@@ -112,6 +118,7 @@ function readLocaleForm(values: Partial<LocaleDraft>): LocaleDraft {
     educationDescription: values.educationDescription ?? '',
     educationItems: values.educationItems ?? [],
     solutionItems: values.solutionItems ?? [],
+    insightsTitle: values.insightsTitle ?? '',
   };
 }
 
@@ -234,6 +241,7 @@ export function HomepageConfigEditor({ initialConfig, activeLanguages }: Homepag
       bannerCarouselFitMode: config.bannerCarouselFitMode,
       aboutCarouselFitMode: config.aboutCarouselFitMode,
       sections: compactHomepageSections(config.sections),
+      insightsArticleCount: normalizeInsightsArticleCount(config.insightsArticleCount),
     });
     const nextDrafts: Record<string, LocaleDraft> = {};
     activeLanguages.forEach((language) => {
@@ -267,6 +275,7 @@ export function HomepageConfigEditor({ initialConfig, activeLanguages }: Homepag
       globalDescription: draft.globalDescription,
       educationTitle: draft.educationTitle,
       educationDescription: draft.educationDescription,
+      insightsTitle: draft.insightsTitle,
       statsText: serializeStats(draft.stats),
       educationText: serializeEducation(draft.educationItems),
       solutionsText: serializeSolutions(draft.solutionItems),
@@ -331,6 +340,9 @@ export function HomepageConfigEditor({ initialConfig, activeLanguages }: Homepag
             bannerCarouselFitMode: shared.bannerCarouselFitMode ?? 'contain',
             aboutCarouselFitMode: shared.aboutCarouselFitMode ?? 'contain-center',
             sections: compactHomepageSections(shared.sections),
+            insightsArticleCount: normalizeInsightsArticleCount(
+              shared.insightsArticleCount ?? DEFAULT_HOMEPAGE_INSIGHTS_ARTICLE_COUNT,
+            ),
             translations,
           }),
         });
@@ -395,7 +407,7 @@ export function HomepageConfigEditor({ initialConfig, activeLanguages }: Homepag
           </Form.Item>
         </div>
 
-        <div className="content-editor-shared-section">
+        <div className="content-editor-shared-section" style={{ marginBottom: 16 }}>
           <div style={{ fontWeight: 600, marginBottom: 12 }}>首页区块</div>
           <Form.Item
             name="sections"
@@ -405,6 +417,7 @@ export function HomepageConfigEditor({ initialConfig, activeLanguages }: Homepag
             <HomepageSectionsField />
           </Form.Item>
         </div>
+
       </Form>
 
       <Form form={form} layout="vertical" preserve>
@@ -433,6 +446,7 @@ export function HomepageConfigEditor({ initialConfig, activeLanguages }: Homepag
                   { key: 'about', label: '企业介绍' },
                   { key: 'stats', label: '核心数据' },
                   { key: 'global', label: '全球布局' },
+                  { key: 'insights', label: '洞察与资讯' },
                   { key: 'education', label: '持续教育' },
                 ]}
               />
@@ -579,6 +593,29 @@ export function HomepageConfigEditor({ initialConfig, activeLanguages }: Homepag
               <Form.Item name="globalDescription" label="描述">
                 <Input.TextArea rows={3} />
               </Form.Item>
+            </div>
+
+            <div style={{ display: sectionTab === 'insights' ? 'block' : 'none' }}>
+              <Form.Item
+                name="insightsTitle"
+                label="标题"
+                extra="仅替换首页洞察区块标题；/insights 内页仍使用界面文案 titleLine1"
+              >
+                <Input placeholder="如 技术前沿与临床实践" />
+              </Form.Item>
+              <Form form={sharedForm} component={false} layout="vertical">
+                <Form.Item
+                  name="insightsArticleCount"
+                  label="文章数量"
+                  initialValue={DEFAULT_HOMEPAGE_INSIGHTS_ARTICLE_COUNT}
+                  extra="首页洞察区块展示的文章条数（全语言共用），默认 5"
+                  getValueFromEvent={(value: number | null) =>
+                    normalizeInsightsArticleCount(value ?? DEFAULT_HOMEPAGE_INSIGHTS_ARTICLE_COUNT)
+                  }
+                >
+                  <InputNumber min={1} max={50} style={{ width: 160 }} />
+                </Form.Item>
+              </Form>
             </div>
 
             <div style={{ display: sectionTab === 'education' ? 'block' : 'none' }}>
