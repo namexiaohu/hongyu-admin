@@ -71,6 +71,7 @@ const iconByKey: Record<string, React.ReactNode> = {
   '/admin/surgeons': <TeamOutlined />,
   '/admin/partner-centers': <GlobalOutlined />,
   '/admin/summits': <CalendarOutlined />,
+  '/admin/market-events': <CalendarOutlined />,
   '/admin/company': <BankOutlined />,
   '/admin/social-media': <ShareAltOutlined />,
   '/admin/homepage': <HomeOutlined />,

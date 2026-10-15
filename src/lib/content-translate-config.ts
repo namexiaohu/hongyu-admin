@@ -24,6 +24,9 @@ export type ContentTranslateType =
   | 'summit'
   | 'summitAgendaGroup'
   | 'summitAgendaItem'
+  | 'marketEvent'
+  | 'marketEventAgendaGroup'
+  | 'marketEventAgendaItem'
   | 'websiteNavColumn'
   | 'websiteNavItem'
   | 'privacyPreference'
@@ -373,6 +376,27 @@ export const CONTENT_TRANSLATE_PROFILES: Record<ContentTranslateType, ContentTra
     serverLabel: 'summit agenda item',
     tooltip: '将默认语言已填写的议程环节标题、描述与演讲人翻译到当前语言，翻译后请校对',
   },
+  marketEvent: {
+    sourceFields: ['title', 'description', 'detailDescription', 'scale', 'duration', 'location', 'address', 'transportation', 'statsText', 'speakersText', 'sponsorsText'],
+    plainTextFields: ['title', 'description', 'scale', 'duration', 'location', 'address', 'transportation', 'statsText', 'speakersText', 'sponsorsText'],
+    htmlField: 'detailDescription',
+    serverLabel: 'market event page',
+    tooltip: '将默认语言已保存的活动资料与嘉宾信息翻译到当前语言；封面与嘉宾头像直接沿用默认语言',
+    translateNotes:
+      'detailDescription is HTML rich text — preserve structure. statsText has one row per line as LABEL|||VALUE. Translate LABEL only. Keep VALUE exactly. speakersText has one speaker per line as NAME|||REGION|||BIO|||BADGE|||EXPERTISE. Translate those text fields only; keep the same line count and ||| separator; avatar and description HTML follow the default locale. sponsorsText has one sponsor per line as NAME|||BADGE|||INTRO. Translate those text fields only; tier and logo follow the default locale.',
+  },
+  marketEventAgendaGroup: {
+    sourceFields: ['dayLabel', 'groupTitle'],
+    plainTextFields: ['dayLabel', 'groupTitle'],
+    serverLabel: 'market event agenda group',
+    tooltip: '将默认语言已填写的议程分组时间文案与标题翻译到当前语言，翻译后请校对',
+  },
+  marketEventAgendaItem: {
+    sourceFields: ['title', 'desc', 'speaker'],
+    plainTextFields: ['title', 'desc', 'speaker'],
+    serverLabel: 'market event agenda item',
+    tooltip: '将默认语言已填写的议程环节标题、描述与演讲人翻译到当前语言，翻译后请校对',
+  },
   websiteNavColumn: {
     sourceFields: ['name'],
     plainTextFields: ['name'],
@@ -572,7 +596,7 @@ export function validateDefaultTranslateSource(
     return null;
   }
 
-  if (contentType === 'summit') {
+  if (contentType === 'summit' || contentType === 'marketEvent') {
     if (!fields.title?.trim()) {
       return '默认语言内容不完整，请先完善标题';
     }
@@ -607,14 +631,14 @@ export function validateDefaultTranslateSource(
     return null;
   }
 
-  if (contentType === 'summitAgendaGroup') {
+  if (contentType === 'summitAgendaGroup' || contentType === 'marketEventAgendaGroup') {
     if (!fields.dayLabel?.trim() && !fields.groupTitle?.trim()) {
       return '默认语言内容不完整，请先完善分组文案';
     }
     return null;
   }
 
-  if (contentType === 'summitAgendaItem') {
+  if (contentType === 'summitAgendaItem' || contentType === 'marketEventAgendaItem') {
     if (!fields.title?.trim() && !fields.desc?.trim() && !fields.speaker?.trim()) {
       return '默认语言内容不完整，请先完善环节文案';
     }

@@ -1,6 +1,6 @@
 'use client';
 
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
+import { DeleteOutlined, DownOutlined, EditOutlined, PlusOutlined, UpOutlined } from '@ant-design/icons';
 import { Button, Drawer, Form, Input, Popconfirm, Space, Switch, Table, Tabs, Tag, Typography } from 'antd';
 import { useEffect, useState } from 'react';
 
@@ -133,6 +133,18 @@ export function NavColumnDrawer({ open, column, activeLanguages, onClose, onSave
     setEditingItem(null);
   }
 
+  function moveItem(index: number, offset: number) {
+    setItems((prev) => {
+      const nextIndex = index + offset;
+      if (nextIndex < 0 || nextIndex >= prev.length) return prev;
+      const next = [...prev];
+      const [item] = next.splice(index, 1);
+      if (!item) return prev;
+      next.splice(nextIndex, 0, item);
+      return next;
+    });
+  }
+
   const columns = [
     { title: '标题', ellipsis: true, render: (_: unknown, record: NavItem) => resolveNavName(record, defaultLocale) || record.name || '—' },
     { title: '链接', dataIndex: 'href', ellipsis: true },
@@ -143,6 +155,26 @@ export function NavColumnDrawer({ open, column, activeLanguages, onClose, onSave
         isNavEnabled(record)
           ? <Tag color="green">启用</Tag>
           : <Tag>停用</Tag>
+      ),
+    },
+    {
+      title: '排序',
+      width: 100,
+      render: (_: unknown, __: NavItem, index: number) => (
+        <Space size={0}>
+          <Button
+            type="text"
+            icon={<UpOutlined />}
+            disabled={index === 0}
+            onClick={() => moveItem(index, -1)}
+          />
+          <Button
+            type="text"
+            icon={<DownOutlined />}
+            disabled={index === items.length - 1}
+            onClick={() => moveItem(index, 1)}
+          />
+        </Space>
       ),
     },
     {

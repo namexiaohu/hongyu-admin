@@ -53,6 +53,9 @@ export type SummitStat = {
   value: string;
 };
 
+/** Same shape as summit stats; shared by market events. */
+export type MarketEventStat = SummitStat;
+
 import {
   type AnyPgColumn,
   boolean,
@@ -1682,6 +1685,76 @@ export const summitTranslations = pgTable(
   (table) => ({
     summitLocaleUnique: uniqueIndex('summits_i18n_summit_locale_unique').on(table.summitId, table.locale),
     summitIdIdx: index('summits_i18n_summit_id_idx').on(table.summitId),
+  }),
+);
+
+/* ───── Market Events (市场活动) ───── */
+
+export const marketEventStatusEnum = pgEnum('market_event_status', [
+  'upcoming',
+  'registering',
+  'completed',
+]);
+
+export const marketEvents = pgTable(
+  'market_events',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    slug: varchar('slug', { length: 64 }).notNull(),
+    status: marketEventStatusEnum('status').notNull().default('upcoming'),
+    startDate: timestamp('start_date', { withTimezone: true }),
+    endDate: timestamp('end_date', { withTimezone: true }),
+    coverImage: text('cover_image').notNull().default(''),
+    /** preset | upload | '' */
+    coverMode: text('cover_mode').notNull().default(''),
+    /** preset id | R2 storage key when mode=upload */
+    coverValue: text('cover_value').notNull().default(''),
+    videoUrl: text('video_url').notNull().default(''),
+    /** @deprecated use backgroundMode + backgroundValue */
+    backgroundImage: text('background_image').notNull().default(''),
+    /** solid | preset | upload | '' */
+    backgroundMode: text('background_mode').notNull().default(''),
+    /** solid token | preset id | R2 storage key when mode=upload */
+    backgroundValue: text('background_value').notNull().default(''),
+    showCoverOnBackground: boolean('show_cover_on_background').notNull().default(true),
+    coverDisplay: jsonb('cover_display').$type<HeroCoverDisplay>().notNull().default({ video: true, cover: true, gallery: false }),
+    heroCopyStyle: text('hero_copy_style'),
+    venueImage: text('venue_image').notNull().default(''),
+    agenda: jsonb('agenda').$type<AgendaGroup[]>().notNull().default([]),
+    sortOrder: integer('sort_order').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    slugUnique: uniqueIndex('market_events_slug_unique').on(table.slug),
+    statusIdx: index('market_events_status_idx').on(table.status),
+    startDateIdx: index('market_events_start_date_idx').on(table.startDate),
+  }),
+);
+
+export const marketEventTranslations = pgTable(
+  'market_events_i18n',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    marketEventId: uuid('market_event_id').notNull().references(() => marketEvents.id, { onDelete: 'cascade' }),
+    locale: varchar('locale', { length: 16 }).notNull(),
+    title: varchar('title', { length: 300 }).notNull().default(''),
+    description: text('description').notNull().default(''),
+    detailDescription: text('detail_description').notNull().default(''),
+    scale: varchar('scale', { length: 200 }).notNull().default(''),
+    duration: varchar('duration', { length: 100 }).notNull().default(''),
+    location: varchar('location', { length: 300 }).notNull().default(''),
+    address: varchar('address', { length: 400 }).notNull().default(''),
+    transportation: text('transportation').notNull().default(''),
+    stats: jsonb('stats').$type<MarketEventStat[]>().notNull().default([]),
+    speakers: jsonb('speakers').$type<SpeakerItem[]>().notNull().default([]),
+    sponsors: jsonb('sponsors').$type<SponsorItem[]>().notNull().default([]),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    marketEventLocaleUnique: uniqueIndex('market_events_i18n_market_event_locale_unique').on(table.marketEventId, table.locale),
+    marketEventIdIdx: index('market_events_i18n_market_event_id_idx').on(table.marketEventId),
   }),
 );
 

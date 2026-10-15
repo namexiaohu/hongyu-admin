@@ -429,6 +429,12 @@ export function getDefaultWebsiteNavColumns(): NavColumn[] {
           name: '行业峰会',
           locales: { en: { name: 'Industry Summit' }, es: { name: 'Cumbre del sector' } },
         },
+        {
+          id: 'nav-education-market-events',
+          href: '/market-events',
+          name: '市场活动',
+          locales: { en: { name: 'Market Events' }, es: { name: 'Eventos de mercado' } },
+        },
       ],
     },
     {
