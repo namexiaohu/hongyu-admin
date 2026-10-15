@@ -1892,6 +1892,7 @@ export const homepageConfigs = pgTable('homepage_configs', {
     { key: 'global', enabled: true },
     { key: 'insights', enabled: true },
     { key: 'education', enabled: true },
+    { key: 'partnership', enabled: true },
   ]),
   insightsArticleCount: integer('insights_article_count').notNull().default(5),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

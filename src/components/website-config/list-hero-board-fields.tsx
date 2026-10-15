@@ -59,6 +59,8 @@ export function listHeroBoardToFormValues(board: AdminListHeroBoard): ListHeroBo
 }
 
 export function listHeroBoardFromFormValues(values: ListHeroBoardFormValues) {
+  const backgroundMode = values.background?.mode ?? '';
+  const backgroundValue = values.background?.value ?? '';
   return {
     coverMode: values.cover?.mode ?? '',
     coverValue: values.cover?.value ?? '',
@@ -67,8 +69,10 @@ export function listHeroBoardFromFormValues(values: ListHeroBoardFormValues) {
     coverDisplay: listHeroCoverDisplayFromCheckedValues(values.coverDisplay),
     heroCopyStyle: values.heroCopyStyle,
     backgroundFitMode: values.backgroundFitMode,
-    backgroundMode: values.background?.mode ?? '',
-    backgroundValue: values.background?.value ?? '',
+    backgroundMode,
+    backgroundValue,
+    // Explicitly clear legacy image when switching away from upload.
+    backgroundImage: backgroundMode === 'upload' ? backgroundValue : '',
   };
 }
 

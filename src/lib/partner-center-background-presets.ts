@@ -171,9 +171,10 @@ export function resolveAdminBackgroundPreview(input: {
     legacyBackgroundImage: legacyKey ? input.toPublicUrl(legacyKey) : '',
     fallbackSolidWhenEmpty: false,
   });
+  const resolvedMode = (mode || display.mode || '') as PartnerCenterBackgroundMode;
   return {
-    mode: (mode || display.mode || '') as PartnerCenterBackgroundMode,
-    value,
+    mode: resolvedMode,
+    value: value || (resolvedMode === 'upload' ? legacyKey : ''),
     previewUrl: display.imageUrl,
   };
 }

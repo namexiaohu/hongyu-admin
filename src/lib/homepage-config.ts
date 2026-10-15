@@ -20,6 +20,7 @@ export const HOMEPAGE_SECTION_KEYS = [
   'global',
   'insights',
   'education',
+  'partnership',
 ] as const;
 
 export type HomepageSectionKey = (typeof HOMEPAGE_SECTION_KEYS)[number];
@@ -38,6 +39,7 @@ export const HOMEPAGE_SECTION_LABELS: Record<HomepageSectionKey, string> = {
   global: '全球布局',
   insights: '洞察与资讯',
   education: '持续教育',
+  partnership: '合作伙伴',
 };
 
 export const DEFAULT_HOMEPAGE_INSIGHTS_ARTICLE_COUNT = 5;

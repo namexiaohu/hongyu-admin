@@ -147,7 +147,13 @@ function normalizeBoardWrite(input: ListHeroBoardPutInput | undefined, current: 
       : current.backgroundFitMode,
     backgroundMode: bg.backgroundMode,
     backgroundValue: bg.backgroundValue,
-    backgroundImage: input?.backgroundImage !== undefined ? (input.backgroundImage ?? '') : bg.backgroundImage || current.backgroundImage,
+    // Non-upload modes must clear legacy backgroundImage, otherwise storefront
+    // still prefers the old upload and solid/preset never show.
+    backgroundImage: input?.backgroundImage !== undefined
+      ? (input.backgroundImage ?? '')
+      : bg.backgroundMode === 'upload'
+        ? (bg.backgroundImage || current.backgroundImage)
+        : bg.backgroundImage,
   };
 }
 

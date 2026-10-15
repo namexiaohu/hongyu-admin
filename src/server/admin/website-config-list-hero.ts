@@ -20,8 +20,15 @@ export function mapAdminListHeroBoards(input: ListHeroBoardsRecord | undefined):
   for (const key of boardKeys) {
     const row = boards[key];
     const previews = resolveAdminRowMediaPreviews(row, resolveOssAssetUrl);
+    // Promote legacy backgroundImage (mode empty) so admin shows upload, not empty/solid.
+    const backgroundMode = (row.backgroundMode || previews.background.mode || '') as AdminListHeroBoard['backgroundMode'];
+    const backgroundValue = row.backgroundValue
+      || (backgroundMode === 'upload' ? (row.backgroundImage || previews.background.value) : '')
+      || '';
     result[key] = {
       ...row,
+      backgroundMode,
+      backgroundValue,
       coverPreviewUrl: previews.cover.previewUrl,
       backgroundPreviewUrl: previews.background.previewUrl,
     } satisfies AdminListHeroBoard;
