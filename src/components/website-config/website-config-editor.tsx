@@ -153,12 +153,6 @@ export function WebsiteConfigEditor({ initialConfig, activeLanguages }: Props) {
         />
       ))}
 
-      <PrivacyPreferenceFields
-        value={privacyPreference}
-        onChange={setPrivacyPreference}
-        activeLanguages={activeLanguages}
-      />
-
       <div className="content-editor-shared-section">
         <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
           商务合作区
@@ -170,6 +164,12 @@ export function WebsiteConfigEditor({ initialConfig, activeLanguages }: Props) {
           摘要点
         </Checkbox>
       </div>
+
+      <PrivacyPreferenceFields
+        value={privacyPreference}
+        onChange={setPrivacyPreference}
+        activeLanguages={activeLanguages}
+      />
     </Space>
   );
 }
