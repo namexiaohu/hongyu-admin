@@ -92,7 +92,7 @@ import type {
   HomepageSolutionItem,
   HomepageStatItem,
 } from '@/lib/homepage-config';
-import type { NavColumn, PrivacyPreferenceConfig } from '@/lib/website-config';
+import type { NavColumn, PartnershipPageConfig, PrivacyPreferenceConfig } from '@/lib/website-config';
 import type { ListHeroBoardsRecord } from '@/lib/list-hero-board';
 import type { HeroCoverDisplay } from '@/lib/hero-cover-display';
 import type {
@@ -140,6 +140,7 @@ export const inquiryStatusEnum = pgEnum('inquiry_status', ['new', 'contacted', '
 export const inquiryQueueKindEnum = pgEnum('inquiry_queue_kind', ['new_inquiry', 'customer_replied']);
 export const inquirySalesStatusEnum = pgEnum('inquiry_sales_status', ['unset', 'following', 'negotiating', 'won', 'lost']);
 export const inquiryMessageSenderTypeEnum = pgEnum('inquiry_message_sender_type', ['customer', 'admin']);
+export const complaintStatusEnum = pgEnum('complaint_status', ['new', 'contacted', 'closed']);
 export const contentStatusEnum = pgEnum('content_status', ['active', 'inactive']);
 export const cmsStatusEnum = pgEnum('cms_status', ['draft', 'published', 'archived']);
 export const newsletterStatusEnum = pgEnum('newsletter_status', ['subscribed', 'unsubscribed']);
@@ -1147,6 +1148,43 @@ export const inquiryProfiles = pgTable(
   }),
 );
 
+export const complaints = pgTable(
+  'complaints',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    fullName: varchar('full_name', { length: 150 }),
+    contact: varchar('contact', { length: 320 }),
+    message: text('message').notNull(),
+    status: complaintStatusEnum('status').notNull().default('new'),
+    awaitingAdmin: boolean('awaiting_admin').notNull().default(true),
+    resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+    lastMessageAt: timestamp('last_message_at', { withTimezone: true }),
+    sourcePageUrl: text('source_page_url'),
+    internalNote: text('internal_note'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    awaitingAdminIdx: index('complaints_awaiting_admin_idx').on(table.awaitingAdmin),
+    createdAtIdx: index('complaints_created_at_idx').on(table.createdAt),
+  }),
+);
+
+export const complaintMessages = pgTable(
+  'complaint_messages',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    complaintId: uuid('complaint_id').notNull().references(() => complaints.id, { onDelete: 'cascade' }),
+    senderType: inquiryMessageSenderTypeEnum('sender_type').notNull(),
+    adminId: uuid('admin_id').references(() => admins.id, { onDelete: 'set null' }),
+    body: text('body').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    complaintCreatedIdx: index('complaint_messages_complaint_created_idx').on(table.complaintId, table.createdAt),
+  }),
+);
+
 export const wishlists = pgTable(
   'wishlists',
   {
@@ -1935,6 +1973,7 @@ export const websiteConfigs = pgTable('website_configs', {
   footerNavColumns: jsonb('footer_nav_columns').$type<NavColumn[]>().notNull().default([]),
   listHeroBoards: jsonb('list_hero_boards').$type<ListHeroBoardsRecord>().notNull().default({} as ListHeroBoardsRecord),
   privacyPreference: jsonb('privacy_preference').$type<PrivacyPreferenceConfig>().notNull().default({ locales: {} }),
+  partnership: jsonb('partnership').$type<PartnershipPageConfig>().notNull().default({ showSummaryPoints: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

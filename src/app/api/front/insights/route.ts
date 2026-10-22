@@ -12,6 +12,8 @@ export async function GET(request: NextRequest) {
   const pageSize = Number.parseInt(searchParams.get('pageSize') ?? '6', 10);
   const reserveFeaturedParam = searchParams.get('reserveFeatured');
   const reserveFeatured = reserveFeaturedParam === '1' || reserveFeaturedParam === 'true';
+  const includePinnedParam = searchParams.get('includePinned');
+  const includePinned = includePinnedParam === '1' || includePinnedParam === 'true';
 
   const payload = await getStorefrontInsightsList({
     boardKey,
@@ -19,6 +21,7 @@ export async function GET(request: NextRequest) {
     page: Number.isFinite(page) ? page : 1,
     pageSize: Number.isFinite(pageSize) ? pageSize : 6,
     reserveFeatured,
+    includePinned,
   });
 
   return NextResponse.json(payload, { headers: frontCorsHeaders() });

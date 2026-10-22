@@ -124,6 +124,7 @@ export const solutionBlockSchema = z.object({
   heroCopyStyle: heroCopyStyleOptionalSchema,
   carouselFitMode: heroBackgroundFitModeOptionalSchema,
   href: z.string().optional(),
+  enabled: z.boolean().optional(),
   productIds: z.array(z.string().trim().min(1)).optional().default([]),
   locales: z.record(localeCopySchema).default({}),
   items: z.array(blockItemSchema).default([]),

@@ -38,6 +38,7 @@ export type BrandNarrativePageData = {
     gallery: Array<{ url: string; alt: string }>;
   };
   stats?: Array<{ value: string; label: string; suffix?: string }> | null;
+  entries: Array<{ id: string; title: string; href: string }>;
   sections: Array<Record<string, unknown>>;
 };
 
@@ -266,6 +267,18 @@ function mapCourseSection(block: BrandNarrativeBlockDraft, locale: string) {
   };
 }
 
+function mapEntries(blocks: BrandNarrativeBlockDraft[], locale: string) {
+  const entries: BrandNarrativePageData['entries'] = [];
+  for (const block of blocks) {
+    if (block.enabled === false || block.type !== 'entry') continue;
+    const title = text(pickLocaleCopy(block.locales, locale).largeTitle);
+    const href = text(block.href);
+    if (!title || !href) continue;
+    entries.push({ id: block.id, title, href });
+  }
+  return entries;
+}
+
 function mapBlocksToSections(
   blocks: BrandNarrativeBlockDraft[],
   locale: string,
@@ -274,6 +287,7 @@ function mapBlocksToSections(
   const sections: Array<Record<string, unknown>> = [];
 
   for (const block of blocks) {
+    if (block.enabled === false || block.type === 'entry') continue;
     const copy = pickLocaleCopy(block.locales, locale);
 
     if (block.type === 'split') {
@@ -379,6 +393,7 @@ function mapPageData(
         .filter((item) => item.url),
     },
     stats: stats.length ? stats.map((item) => ({ label: item.label, value: item.value })) : null,
+    entries: mapEntries(blocks, sectionLocale),
     sections: mapBlocksToSections(blocks, sectionLocale, row.slug),
   };
 }

@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import { DeleteOutlined, DownOutlined, EditOutlined, PlusOutlined, UpOutlined } from '@ant-design/icons';
-import { Button, Empty, Form, Modal, Select, Space, Typography } from 'antd';
+import { Button, Empty, Form, Modal, Select, Space, Tag, Typography } from 'antd';
 import { useState } from 'react';
 
 import {
@@ -75,7 +75,10 @@ export function SolutionBlockList({ blocks, onChange, onEdit }: SolutionBlockLis
                 background: '#fff',
               }}
             >
-              <Typography.Text>{getSolutionBlockLabel(block)}</Typography.Text>
+              <Space size={8}>
+                <Typography.Text>{getSolutionBlockLabel(block)}</Typography.Text>
+                {block.enabled === false ? <Tag>停用</Tag> : null}
+              </Space>
               <Space size={4}>
                 <Button
                   type="text"

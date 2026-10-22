@@ -15,7 +15,7 @@ import type { HeroBackgroundFitMode } from '@/lib/hero-background-fit';
 import { defaultHeroBackgroundFitMode } from '@/lib/hero-background-fit';
 import type { HeroCopyStyle } from '@/lib/hero-copy-style';
 
-export const brandNarrativeBlockTypes = ['split', 'summary', 'timeline', 'course', 'cta'] as const;
+export const brandNarrativeBlockTypes = ['split', 'summary', 'timeline', 'course', 'cta', 'entry'] as const;
 export type BrandNarrativeBlockType = (typeof brandNarrativeBlockTypes)[number];
 
 export const brandNarrativeSplitLayouts = contentBlockSplitLayouts;
@@ -59,6 +59,8 @@ export type BrandNarrativeBlockDraft = {
   carouselImages?: BrandNarrativeCarouselSlide[];
   videoUrl?: string;
   href?: string;
+  /** 缺省视为启用 */
+  enabled?: boolean;
   locales: Record<string, BrandNarrativeBlockLocaleCopy>;
   items: BrandNarrativeBlockItemDraft[];
 };
@@ -69,6 +71,7 @@ export const brandNarrativeBlockTypeLabels: Record<BrandNarrativeBlockType, stri
   timeline: '时间节点',
   course: '课程',
   cta: '合作咨询',
+  entry: '入口',
 };
 
 export const brandNarrativeSplitLayoutLabels: Record<BrandNarrativeSplitLayout, string> = {
@@ -209,6 +212,7 @@ export function createBrandNarrativeBlock(type: BrandNarrativeBlockType): BrandN
   const block: BrandNarrativeBlockDraft = {
     id: createBrandNarrativeBlockId(),
     type,
+    enabled: true,
     locales: {},
     items: [],
   };
@@ -222,7 +226,7 @@ export function createBrandNarrativeBlock(type: BrandNarrativeBlockType): BrandN
   if (type === 'summary') {
     block.layout = 'single-row';
   }
-  if (type === 'cta') {
+  if (type === 'cta' || type === 'entry') {
     block.href = '';
   }
   return block;

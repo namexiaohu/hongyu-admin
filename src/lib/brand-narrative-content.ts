@@ -122,6 +122,7 @@ export const brandNarrativeBlockSchema = z.object({
   heroCopyStyle: heroCopyStyleOptionalSchema,
   carouselFitMode: heroBackgroundFitModeOptionalSchema,
   href: z.string().optional(),
+  enabled: z.boolean().optional(),
   locales: z.record(localeCopySchema).default({}),
   items: z.array(blockItemSchema).default([]),
 });

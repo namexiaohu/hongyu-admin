@@ -14,7 +14,7 @@ import type { HeroBackgroundFitMode } from '@/lib/hero-background-fit';
 import { defaultHeroBackgroundFitMode } from '@/lib/hero-background-fit';
 import type { HeroCopyStyle } from '@/lib/hero-copy-style';
 
-export const solutionBlockTypes = ['split', 'summary', 'timeline', 'course', 'specifications', 'relatedProducts'] as const;
+export const solutionBlockTypes = ['split', 'summary', 'timeline', 'course', 'specifications', 'relatedProducts', 'entry'] as const;
 export type SolutionBlockType = (typeof solutionBlockTypes)[number];
 
 export const solutionSplitLayouts = contentBlockSplitLayouts;
@@ -58,6 +58,8 @@ export type SolutionBlockDraft = {
   carouselImages?: SolutionCarouselSlide[];
   videoUrl?: string;
   href?: string;
+  /** 缺省视为启用 */
+  enabled?: boolean;
   productIds?: string[];
   locales: Record<string, SolutionBlockLocaleCopy>;
   items: SolutionBlockItemDraft[];
@@ -70,6 +72,7 @@ export const solutionBlockTypeLabels: Record<SolutionBlockType, string> = {
   course: '课程',
   specifications: '产品参数',
   relatedProducts: '关联产品',
+  entry: '入口',
 };
 
 export const solutionSplitLayoutLabels: Record<SolutionSplitLayout, string> = {
@@ -210,6 +213,7 @@ export function createSolutionBlock(type: SolutionBlockType): SolutionBlockDraft
   const block: SolutionBlockDraft = {
     id: createSolutionBlockId(),
     type,
+    enabled: true,
     locales: {},
     items: [],
   };
@@ -225,6 +229,9 @@ export function createSolutionBlock(type: SolutionBlockType): SolutionBlockDraft
   }
   if (type === 'relatedProducts') {
     block.productIds = [];
+  }
+  if (type === 'entry') {
+    block.href = '';
   }
   return block;
 }

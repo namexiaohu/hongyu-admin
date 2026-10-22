@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  AlertOutlined,
   AppstoreOutlined,
   BankOutlined,
   BarsOutlined,
@@ -58,6 +59,7 @@ const iconByKey: Record<string, React.ReactNode> = {
   'order-management': <OrderedListOutlined />,
   '/admin/orders': <OrderedListOutlined />,
   '/admin/inquiries': <CommentOutlined />,
+  '/admin/complaints': <AlertOutlined />,
   '/admin/customers': <TeamOutlined />,
   'exclusive-content': <FileTextOutlined />,
   'content-management': <BarsOutlined />,

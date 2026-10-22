@@ -73,6 +73,7 @@ export type StorefrontSolutionDetail = {
     gallery: Array<{ url: string; alt: string }>;
   };
   stats: Array<{ value: string; label: string; suffix?: string }> | null;
+  entries: Array<{ id: string; title: string; href: string }>;
   materials: StorefrontSolutionMaterial[];
   productParams: SolutionProductParam[];
   sections: StorefrontSolutionSection[];
@@ -282,6 +283,18 @@ async function mapRelatedProductsSection(
   };
 }
 
+function mapEntries(blocks: SolutionBlockDraft[], locale: string) {
+  const entries: StorefrontSolutionDetail['entries'] = [];
+  for (const block of blocks) {
+    if (block.enabled === false || block.type !== 'entry') continue;
+    const title = text(pickLocaleCopy(block.locales, locale).largeTitle);
+    const href = text(block.href);
+    if (!title || !href) continue;
+    entries.push({ id: block.id, title, href });
+  }
+  return entries;
+}
+
 async function mapBlocksToSections(
   blocks: SolutionBlockDraft[],
   locale: string,
@@ -290,6 +303,7 @@ async function mapBlocksToSections(
   const sections: StorefrontSolutionSection[] = [];
 
   for (const block of blocks) {
+    if (block.enabled === false || block.type === 'entry') continue;
     const copy = pickLocaleCopy(block.locales, locale);
 
     if (block.type === 'split') {
@@ -450,6 +464,7 @@ export async function getStorefrontSolutionBySlug(
         .filter((item) => item.url),
     },
     stats: mapStats(translation.stats),
+    entries: mapEntries(blocks, requestedLocale),
     materials: mapMaterials(row.materials as SolutionMaterial[]),
     productParams,
     sections: await mapBlocksToSections(blocks, requestedLocale, productParams),

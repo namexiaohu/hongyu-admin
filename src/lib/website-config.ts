@@ -55,6 +55,10 @@ export type PrivacyPreferenceConfig = {
   locales: Record<string, PrivacyPreferenceLocaleCopy>;
 };
 
+export type PartnershipPageConfig = {
+  showSummaryPoints: boolean;
+};
+
 export type StorefrontPrivacyPreference = {
   title: string;
   summary: string;
@@ -67,6 +71,7 @@ export type AdminWebsiteConfig = {
   footerNavColumns: NavColumn[];
   listHeroBoards: AdminListHeroBoardsRecord;
   privacyPreference: PrivacyPreferenceConfig;
+  partnership: PartnershipPageConfig;
   createdAt: string;
   updatedAt: string;
 };
@@ -90,6 +95,7 @@ export type StorefrontWebsiteConfig = {
   footerNavColumns: StorefrontNavColumn[];
   listHeroBoards: StorefrontListHeroBoardsRecord;
   privacyPreference: StorefrontPrivacyPreference | null;
+  partnership: PartnershipPageConfig;
 };
 
 const navItemLocaleSchema = z.object({
@@ -127,11 +133,16 @@ const privacyPreferenceConfigSchema = z.object({
   locales: z.record(z.string(), privacyPreferenceLocaleSchema).optional().default({}),
 });
 
+const partnershipPageConfigSchema = z.object({
+  showSummaryPoints: z.boolean().optional().default(true),
+});
+
 export const adminWebsiteConfigPutSchema = z.object({
   headerNavColumns: z.array(navColumnSchema).optional(),
   footerNavColumns: z.array(navColumnSchema).optional(),
   listHeroBoards: listHeroBoardsPutSchema.optional(),
   privacyPreference: privacyPreferenceConfigSchema.optional(),
+  partnership: partnershipPageConfigSchema.optional(),
 });
 
 export type AdminWebsiteConfigPutInput = z.infer<typeof adminWebsiteConfigPutSchema>;
@@ -533,6 +544,17 @@ export function resolveStorefrontPrivacyPreference(
   return pickPrivacyPreferenceLocale(config, locale);
 }
 
+export function defaultPartnershipPageConfig(): PartnershipPageConfig {
+  return { showSummaryPoints: true };
+}
+
+export function compactPartnershipPageConfig(value: unknown): PartnershipPageConfig {
+  if (!value || typeof value !== 'object') return defaultPartnershipPageConfig();
+  const showSummaryPoints = (value as { showSummaryPoints?: unknown }).showSummaryPoints;
+  if (typeof showSummaryPoints !== 'boolean') return defaultPartnershipPageConfig();
+  return { showSummaryPoints };
+}
+
 export function hasPrivacyPreferenceLocaleContent(
   config: PrivacyPreferenceConfig | null | undefined,
   locale: string,
@@ -546,4 +568,5 @@ export const EMPTY_STOREFRONT_WEBSITE_CONFIG: StorefrontWebsiteConfig = {
   footerNavColumns: [],
   listHeroBoards: resolveStorefrontListHeroBoards(createEmptyListHeroBoards()),
   privacyPreference: null,
+  partnership: defaultPartnershipPageConfig(),
 };

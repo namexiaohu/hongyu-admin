@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { and, asc, desc, eq, inArray, ne, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, ne, notInArray, sql } from 'drizzle-orm';
 
 import { resolveBlogCategorySlug } from '@/lib/blog-categories';
 import { type EditorialContentPayload } from '@/lib/editorial-content';
@@ -24,7 +24,8 @@ import {
   type StorefrontBlogAuthor,
 } from '@/server/storefront/editorial-content';
 
-export const INSIGHT_BOARD_KEYS = ['case', 'paper', 'experience'] as const;
+export const INSIGHT_BOARD_KEYS = ['case', 'paper', 'experience', 'market'] as const;
+export const PINNED_INSIGHT_BOARD_KEY = 'pinned';
 export type InsightBoardKey = (typeof INSIGHT_BOARD_KEYS)[number];
 
 type TranslationRow = typeof editorialContentTranslations.$inferSelect;
@@ -100,6 +101,15 @@ function pickBoardName(rows: Array<{ locale: string; name: string }>, locale: st
   return english?.name ?? rows[0]?.name ?? '';
 }
 
+const BOARD_NAME_KEYS = [...INSIGHT_BOARD_KEYS, PINNED_INSIGHT_BOARD_KEY] as const;
+
+function pinnedContentIds() {
+  return db
+    .select({ contentId: editorialContentBoards.contentId })
+    .from(editorialContentBoards)
+    .where(eq(editorialContentBoards.boardKey, PINNED_INSIGHT_BOARD_KEY));
+}
+
 async function loadBoardNameMap(locale: string) {
   const rows = await db
     .select({
@@ -112,10 +122,10 @@ async function loadBoardNameMap(locale: string) {
       editorialCoverageBoardTranslations,
       eq(editorialCoverageBoardTranslations.boardId, editorialCoverageBoards.id),
     )
-    .where(inArray(editorialCoverageBoards.boardKey, [...INSIGHT_BOARD_KEYS]));
+    .where(inArray(editorialCoverageBoards.boardKey, [...BOARD_NAME_KEYS]));
 
   const map = new Map<string, string>();
-  for (const boardKey of INSIGHT_BOARD_KEYS) {
+  for (const boardKey of BOARD_NAME_KEYS) {
     const translations = rows.filter((row) => row.boardKey === boardKey);
     map.set(boardKey, pickBoardName(translations, locale) || boardKey);
   }
@@ -131,6 +141,7 @@ async function loadInsightRows(boardKey?: string | null) {
     eq(editorialContents.status, 'published'),
     eq(editorialContents.contentModule, 'editorial'),
     inArray(editorialContentBoards.boardKey, [...INSIGHT_BOARD_KEYS]),
+    notInArray(editorialContents.id, pinnedContentIds()),
   ];
 
   if (boardKey?.trim()) {
@@ -148,6 +159,32 @@ async function loadInsightRows(boardKey?: string | null) {
     .innerJoin(editorialContentTranslations, eq(editorialContentTranslations.contentId, editorialContents.id))
     .where(and(...conditions))
     .orderBy(desc(editorialContents.createdAt), asc(editorialContentTranslations.title));
+}
+
+function publishedTime(content: ContentRow) {
+  return content.publishedAt?.getTime() || content.createdAt?.getTime() || 0;
+}
+
+async function loadPinnedInsightItems(locale: string, boardNames: Map<string, string>) {
+  const rows = await db
+    .select({
+      content: editorialContents,
+      translation: editorialContentTranslations,
+      boardKey: editorialContentBoards.boardKey,
+    })
+    .from(editorialContents)
+    .innerJoin(editorialContentBoards, eq(editorialContentBoards.contentId, editorialContents.id))
+    .innerJoin(editorialContentTranslations, eq(editorialContentTranslations.contentId, editorialContents.id))
+    .where(and(
+      eq(editorialContents.status, 'published'),
+      eq(editorialContents.contentModule, 'editorial'),
+      eq(editorialContentBoards.boardKey, PINNED_INSIGHT_BOARD_KEY),
+    ));
+
+  const boardName = boardNameFromMap(boardNames, PINNED_INSIGHT_BOARD_KEY);
+  return groupInsightRows(rows, locale)
+    .sort((left, right) => publishedTime(right.content) - publishedTime(left.content))
+    .map(({ content, picked, boardKey }) => mapListItem(content, picked, boardKey, boardName));
 }
 
 function groupInsightRows(
@@ -265,6 +302,8 @@ export async function getStorefrontInsightsList(input: {
   pageSize?: number;
   /** When true, page 1 includes an extra item for the featured card. */
   reserveFeatured?: boolean;
+  /** Homepage news: pinned-board items first, then the regular insights list. */
+  includePinned?: boolean;
 }) {
   const locale = editorialLocale(input.locale);
   const page = Math.max(1, input.page ?? 1);
@@ -278,9 +317,15 @@ export async function getStorefrontInsightsList(input: {
   ]);
 
   const grouped = groupInsightRows(rows, locale);
-  const items = grouped.map(({ content, picked, boardKey: key }) =>
+  let items = grouped.map(({ content, picked, boardKey: key }) =>
     mapListItem(content, picked, key, boardNameFromMap(boardNames, key)),
   );
+
+  if (input.includePinned && !boardKey) {
+    const pinned = await loadPinnedInsightItems(locale, boardNames);
+    const pinnedIds = new Set(pinned.map((item) => item.id));
+    items = [...pinned, ...items.filter((item) => !pinnedIds.has(item.id))];
+  }
 
   const total = items.length;
   const { offset, limit } = insightsListPageWindow(page, pageSize, reserveFeatured);
@@ -352,6 +397,7 @@ export async function getStorefrontRandomInsights(input: {
       eq(editorialContents.status, 'published'),
       eq(editorialContents.contentModule, 'editorial'),
       inArray(editorialContentBoards.boardKey, [...INSIGHT_BOARD_KEYS]),
+      notInArray(editorialContents.id, pinnedContentIds()),
       excludeClause,
     ))
     .orderBy(sql`random()`)
@@ -369,16 +415,13 @@ export async function getStorefrontRandomInsights(input: {
 }
 
 async function loadPrimaryBoardKey(contentId: string) {
-  const [row] = await db
+  const rows = await db
     .select({ boardKey: editorialContentBoards.boardKey })
     .from(editorialContentBoards)
-    .where(and(
-      eq(editorialContentBoards.contentId, contentId),
-      inArray(editorialContentBoards.boardKey, [...INSIGHT_BOARD_KEYS]),
-    ))
-    .orderBy(asc(editorialContentBoards.boardKey))
-    .limit(1);
-  return row?.boardKey ?? 'case';
+    .where(eq(editorialContentBoards.contentId, contentId));
+  const keys = rows.map((row) => row.boardKey);
+  if (keys.includes(PINNED_INSIGHT_BOARD_KEY)) return PINNED_INSIGHT_BOARD_KEY;
+  return keys.find((key) => (INSIGHT_BOARD_KEYS as readonly string[]).includes(key)) ?? 'case';
 }
 
 export async function getStorefrontInsightDetailBySlug(slugInput: string, localeInput?: string | null) {
@@ -441,6 +484,7 @@ export async function getStorefrontInsightDetailBySlug(slugInput: string, locale
       eq(editorialContents.contentModule, 'editorial'),
       eq(editorialContentBoards.boardKey, boardKey),
       ne(editorialContents.id, contentId),
+      ...(boardKey === PINNED_INSIGHT_BOARD_KEY ? [] : [notInArray(editorialContents.id, pinnedContentIds())]),
     ))
     .orderBy(desc(editorialContents.createdAt))
     .limit(20);

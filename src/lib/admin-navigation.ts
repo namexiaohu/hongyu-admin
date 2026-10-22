@@ -23,6 +23,7 @@ export const adminNavItems: AdminNavItem[] = [
     title: '订单管理',
     children: [
       { key: '/admin/inquiries', title: '询盘管理', href: '/admin/inquiries' },
+      { key: '/admin/complaints', title: '投诉建议', href: '/admin/complaints' },
       { key: '/admin/customers', title: '客户管理', href: '/admin/customers' },
     ],
   },

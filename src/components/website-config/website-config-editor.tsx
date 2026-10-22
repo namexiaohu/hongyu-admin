@@ -1,6 +1,6 @@
 'use client';
 
-import { Space, message } from 'antd';
+import { Checkbox, Space, Typography, message } from 'antd';
 import { useEffect, useState, useTransition } from 'react';
 
 import {
@@ -13,9 +13,12 @@ import { CommercePageHeader } from '@/components/commerce/commerce-page-header';
 import {
   type AdminWebsiteConfig,
   type NavColumn,
+  type PartnershipPageConfig,
   type PrivacyPreferenceConfig,
   compactNavColumns,
+  compactPartnershipPageConfig,
   compactPrivacyPreferenceConfig,
+  defaultPartnershipPageConfig,
   emptyPrivacyPreferenceConfig,
 } from '@/lib/website-config';
 import {
@@ -41,6 +44,9 @@ export function WebsiteConfigEditor({ initialConfig, activeLanguages }: Props) {
   const [privacyPreference, setPrivacyPreference] = useState<PrivacyPreferenceConfig>(
     () => compactPrivacyPreferenceConfig(initialConfig.privacyPreference ?? emptyPrivacyPreferenceConfig()),
   );
+  const [partnership, setPartnership] = useState<PartnershipPageConfig>(
+    () => compactPartnershipPageConfig(initialConfig.partnership ?? defaultPartnershipPageConfig()),
+  );
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -49,6 +55,7 @@ export function WebsiteConfigEditor({ initialConfig, activeLanguages }: Props) {
     setFooterNavColumns(compactNavColumns(initialConfig.footerNavColumns));
     setListHeroBoards(initialConfig.listHeroBoards);
     setPrivacyPreference(compactPrivacyPreferenceConfig(initialConfig.privacyPreference ?? emptyPrivacyPreferenceConfig()));
+    setPartnership(compactPartnershipPageConfig(initialConfig.partnership ?? defaultPartnershipPageConfig()));
   }, [initialConfig]);
 
   function updateListHeroBoard(key: ListHeroBoardKey, patch: ReturnType<typeof listHeroBoardFromFormValues>) {
@@ -88,6 +95,7 @@ export function WebsiteConfigEditor({ initialConfig, activeLanguages }: Props) {
               }),
             ),
             privacyPreference: compactPrivacyPreferenceConfig(privacyPreference),
+            partnership: compactPartnershipPageConfig(partnership),
           }),
         });
         if (!response.ok) {
@@ -99,6 +107,7 @@ export function WebsiteConfigEditor({ initialConfig, activeLanguages }: Props) {
         setFooterNavColumns(compactNavColumns(updated.footerNavColumns));
         setListHeroBoards(updated.listHeroBoards);
         setPrivacyPreference(compactPrivacyPreferenceConfig(updated.privacyPreference ?? emptyPrivacyPreferenceConfig()));
+        setPartnership(compactPartnershipPageConfig(updated.partnership ?? defaultPartnershipPageConfig()));
         setStatusMessage('网站配置已保存');
         message.success('网站配置已保存');
       } catch (error) {
@@ -113,7 +122,7 @@ export function WebsiteConfigEditor({ initialConfig, activeLanguages }: Props) {
     <Space orientation="vertical" size="large" style={{ width: '100%' }}>
       <CommercePageHeader
         title="网站配置"
-        description="维护头部/底部导航栏目与条目、列表页看板媒体，以及隐私偏好弹窗文案，保存后前台同步生效。"
+        description="维护头部/底部导航栏目与条目、列表页看板媒体、隐私偏好弹窗文案，以及商务合作页显示项，保存后前台同步生效。"
         statusMessage={statusMessage}
         isPending={isPending}
         onSave={handleSave}
@@ -149,6 +158,18 @@ export function WebsiteConfigEditor({ initialConfig, activeLanguages }: Props) {
         onChange={setPrivacyPreference}
         activeLanguages={activeLanguages}
       />
+
+      <div className="content-editor-shared-section">
+        <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
+          商务合作区
+        </Typography.Text>
+        <Checkbox
+          checked={partnership.showSummaryPoints}
+          onChange={(event) => setPartnership({ showSummaryPoints: event.target.checked })}
+        >
+          摘要点
+        </Checkbox>
+      </div>
     </Space>
   );
 }

@@ -34,11 +34,18 @@ export function AdminEditorialBoardsClient({
 
   const boards = dashboard.coverage;
 
-  const summary = useMemo(() => ({
-    boards: boards.length,
-    customBoards: boards.filter((item) => item.custom).length,
-    documents: entries.length,
-  }), [boards, entries.length]);
+  const summary = useMemo(() => {
+    const boardKeys = new Set(boards.map((board) => board.key));
+    const documents = entries.filter((entry) => {
+      const keys = entry.boardKeys?.length ? entry.boardKeys : [entry.boardKey];
+      return keys.some((key) => boardKeys.has(key));
+    }).length;
+    return {
+      boards: boards.length,
+      customBoards: boards.filter((item) => item.custom).length,
+      documents,
+    };
+  }, [boards, entries]);
 
   const summaryStats = useMemo(() => [
     { label: '看板总数', value: summary.boards },

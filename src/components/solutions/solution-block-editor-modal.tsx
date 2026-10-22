@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Form, Input, Modal, Select, Space, Tabs, Tooltip, Typography } from 'antd';
+import { Button, Form, Input, Modal, Select, Space, Switch, Tabs, Tooltip, Typography } from 'antd';
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 
 import { ContentTranslateButton } from '@/components/admin/content-translate-button';
@@ -239,6 +239,30 @@ export function SolutionBlockEditorModal({
             )}
             <div className="content-editor-shared-section">
               <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
+                <div>
+                  <div style={{ marginBottom: 8 }}>状态</div>
+                  <Switch
+                    checked={block.enabled !== false}
+                    checkedChildren="启用"
+                    unCheckedChildren="停用"
+                    disabled={disabled}
+                    onChange={(enabled) => patchShared({ enabled })}
+                  />
+                </div>
+                {block.type === 'entry' ? (
+                  <div>
+                    <div style={{ marginBottom: 8 }}>链接</div>
+                    <Input
+                      placeholder="/solutions 或 https://..."
+                      value={block.href ?? ''}
+                      disabled={disabled}
+                      onChange={(event) => patchShared({ href: event.target.value })}
+                    />
+                    <div style={{ marginTop: 4, color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>
+                      支持站内路径或完整网址。
+                    </div>
+                  </div>
+                ) : null}
                 {block.type === 'split' ? (
                   <>
                     <div>
@@ -384,15 +408,23 @@ export function SolutionBlockEditorModal({
                       onTranslated={handleTranslated}
                     />
                   </div>
-                  <Form.Item name="smallTitle" label="小标题">
-                    <Input />
-                  </Form.Item>
-                  <Form.Item name="largeTitle" label="标题">
-                    <Input />
-                  </Form.Item>
-                  <Form.Item name="description" label="描述">
-                    <Input.TextArea rows={4} />
-                  </Form.Item>
+                  {block.type === 'entry' ? (
+                    <Form.Item name="largeTitle" label="标题">
+                      <Input />
+                    </Form.Item>
+                  ) : (
+                    <>
+                      <Form.Item name="smallTitle" label="小标题">
+                        <Input />
+                      </Form.Item>
+                      <Form.Item name="largeTitle" label="标题">
+                        <Input />
+                      </Form.Item>
+                      <Form.Item name="description" label="描述">
+                        <Input.TextArea rows={4} />
+                      </Form.Item>
+                    </>
+                  )}
                 </div>
               </div>
             </Form>

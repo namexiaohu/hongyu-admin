@@ -8,7 +8,9 @@ import {
   adminWebsiteConfigPutSchema,
   cloneNavColumns,
   compactNavColumns,
+  compactPartnershipPageConfig,
   compactPrivacyPreferenceConfig,
+  defaultPartnershipPageConfig,
   emptyPrivacyPreferenceConfig,
   getDefaultWebsiteNavColumns,
   resolveAdminFooterNavColumns,
@@ -34,6 +36,7 @@ function mapConfig(row: typeof websiteConfigs.$inferSelect): AdminWebsiteConfig 
     footerNavColumns: resolveAdminFooterNavColumns(headerNavColumns, row.footerNavColumns),
     listHeroBoards: mapAdminListHeroBoards(row.listHeroBoards),
     privacyPreference: compactPrivacyPreferenceConfig(row.privacyPreference),
+    partnership: compactPartnershipPageConfig(row.partnership),
     createdAt: toIso(row.createdAt),
     updatedAt: toIso(row.updatedAt),
   };
@@ -51,6 +54,7 @@ async function ensureWebsiteConfigRow() {
       footerNavColumns: cloneNavColumns(defaultHeader),
       listHeroBoards: createEmptyListHeroBoards(),
       privacyPreference: emptyPrivacyPreferenceConfig(),
+      partnership: defaultPartnershipPageConfig(),
     })
     .returning();
 
@@ -76,6 +80,7 @@ export async function updateAdminWebsiteConfig(input: AdminWebsiteConfigPutInput
     footerNavColumns?: ReturnType<typeof compactNavColumns>;
     listHeroBoards?: typeof nextBoards;
     privacyPreference?: ReturnType<typeof compactPrivacyPreferenceConfig>;
+    partnership?: ReturnType<typeof compactPartnershipPageConfig>;
     updatedAt: Date;
   } = { updatedAt: new Date() };
 
@@ -90,6 +95,9 @@ export async function updateAdminWebsiteConfig(input: AdminWebsiteConfigPutInput
   }
   if (parsed.privacyPreference !== undefined) {
     patch.privacyPreference = compactPrivacyPreferenceConfig(parsed.privacyPreference);
+  }
+  if (parsed.partnership !== undefined) {
+    patch.partnership = compactPartnershipPageConfig(parsed.partnership);
   }
 
   const [updated] = await db

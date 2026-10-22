@@ -4,6 +4,7 @@ import {
   EMPTY_STOREFRONT_WEBSITE_CONFIG,
   type StorefrontWebsiteConfig,
   compactNavColumns,
+  compactPartnershipPageConfig,
   compactPrivacyPreferenceConfig,
   resolveAdminFooterNavColumns,
   resolveStorefrontNavColumns,
@@ -40,6 +41,7 @@ export async function getStorefrontWebsiteConfig(locale: string): Promise<Storef
       compactPrivacyPreferenceConfig(row.privacyPreference),
       resolvedLocale,
     ),
+    partnership: compactPartnershipPageConfig(row.partnership),
   };
 }
 

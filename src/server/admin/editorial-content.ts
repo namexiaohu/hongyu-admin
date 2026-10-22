@@ -549,12 +549,20 @@ export async function getAdminEditorialContentListPaginated(
 }
 
 export async function getAdminEditorialContentList(search?: string): Promise<AdminEditorialContentListItem[]> {
-  const result = await getAdminEditorialContentListPaginated({
-    keyword: search,
-    page: 1,
-    pageSize: 10000,
-  });
-  return result.items;
+  const pageSize = 100;
+  const items: AdminEditorialContentListItem[] = [];
+  let page = 1;
+
+  for (;;) {
+    const result = await getAdminEditorialContentListPaginated({
+      keyword: search,
+      page,
+      pageSize,
+    });
+    items.push(...result.items);
+    if (page * pageSize >= result.total) return items;
+    page += 1;
+  }
 }
 
 /** @deprecated 使用 getAdminEditorialContentList */
