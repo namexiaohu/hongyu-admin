@@ -4,7 +4,7 @@ import { PlusOutlined } from '@ant-design/icons';
 import { Button, Card, Empty, Input, Space, Table, Tabs, Tag, Typography, message } from 'antd';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { AdminListPagination } from '@/components/admin/admin-list-pagination';
 import { AdminPageHeaderStats } from '@/components/admin/admin-page-header-stats';
@@ -136,6 +136,7 @@ export function BoardContentListClient({
   );
   const initialMountRef = useRef(true);
   const hydratedPageSizeRef = useRef(false);
+  const listRequestIdRef = useRef(0);
 
   const resolvedInitialBoard = resolveEnabledBoardKey(initialDashboard.coverage, initialQuery.board)
     || boards[0]?.key
@@ -147,9 +148,11 @@ export function BoardContentListClient({
   const [activeBoardKey, setActiveBoardKey] = useState(resolvedInitialBoard);
   const [contentModalOpen, setContentModalOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<AdminEditorialContentListItem | null>(null);
-  const [isListLoading, startListTransition] = useTransition();
+  const [isListLoading, setIsListLoading] = useState(false);
   const [pendingEntryId, setPendingEntryId] = useState<string | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
+  const queryBoardRef = useRef(query.board);
+  queryBoardRef.current = query.board;
 
   const hasBoards = boards.length > 0;
   const activeBoard = boards.find((board) => board.key === activeBoardKey);
@@ -167,23 +170,40 @@ export function BoardContentListClient({
     }
   }, [searchParams, initialQuery, replaceUrl, resolvedInitialBoard]);
 
-  const reloadList = useCallback((nextQuery: AdminListQuery) => {
-    startListTransition(async () => {
-      try {
-        const result = await fetchBoardContentList({
-          contentModule,
-          boardKey: nextQuery.board,
-          keyword: nextQuery.keyword,
-          page: nextQuery.page,
-          pageSize: nextQuery.pageSize,
-          knownBoardKeys,
-        });
-        setListState(result);
-        setQuery(nextQuery);
-      } catch {
-        void messageApi.error('加载内容列表失败');
+  const reloadList = useCallback(async (nextQuery: AdminListQuery, options?: { clear?: boolean }) => {
+    const requestId = listRequestIdRef.current + 1;
+    listRequestIdRef.current = requestId;
+
+    if (options?.clear) {
+      setListState({
+        items: [],
+        total: 0,
+        page: nextQuery.page,
+        pageSize: nextQuery.pageSize,
+      });
+    }
+
+    setIsListLoading(true);
+    try {
+      const result = await fetchBoardContentList({
+        contentModule,
+        boardKey: nextQuery.board,
+        keyword: nextQuery.keyword,
+        page: nextQuery.page,
+        pageSize: nextQuery.pageSize,
+        knownBoardKeys,
+      });
+      if (requestId !== listRequestIdRef.current) return;
+      setListState(result);
+      setQuery(nextQuery);
+    } catch {
+      if (requestId !== listRequestIdRef.current) return;
+      void messageApi.error('加载内容列表失败');
+    } finally {
+      if (requestId === listRequestIdRef.current) {
+        setIsListLoading(false);
       }
-    });
+    }
   }, [contentModule, knownBoardKeys, messageApi]);
 
   useEffect(() => {
@@ -203,6 +223,7 @@ export function BoardContentListClient({
       || boards[0]?.key
       || UNASSIGNED_BOARD_KEY;
     const normalizedQuery: AdminListQuery = { ...urlQuery, board: nextBoard };
+    const boardChanged = normalizedQuery.board !== queryBoardRef.current;
 
     if (searchParams.get('page_size')) {
       writeStoredPageSize(normalizedQuery.pageSize);
@@ -210,7 +231,7 @@ export function BoardContentListClient({
 
     setSearchInput(normalizedQuery.keyword);
     setActiveBoardKey(normalizedQuery.board);
-    reloadList(normalizedQuery);
+    void reloadList(normalizedQuery, { clear: boardChanged });
   }, [searchParams, boards, reloadList, initialDashboard.coverage]);
 
   const summary = useMemo(() => ({
@@ -396,6 +417,7 @@ export function BoardContentListClient({
         ) : null}
         <Table
           rowKey="id"
+          loading={isListLoading}
           pagination={false}
           tableLayout="fixed"
           style={{ width: '100%' }}
@@ -464,7 +486,17 @@ export function BoardContentListClient({
         ) : (
           <Tabs
             activeKey={activeBoardKey}
-            onChange={(nextBoard) => applyQueryChange({ board: nextBoard, page: 1 })}
+            onChange={(nextBoard) => {
+              if (nextBoard === activeBoardKey) return;
+              setListState({
+                items: [],
+                total: 0,
+                page: 1,
+                pageSize: query.pageSize,
+              });
+              setIsListLoading(true);
+              applyQueryChange({ board: nextBoard, page: 1 });
+            }}
             items={tabItems}
           />
         )}

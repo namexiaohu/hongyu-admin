@@ -1293,6 +1293,9 @@ export const editorialContents = pgTable(
     coverMode: text('cover_mode').notNull().default(''),
     /** preset id | R2 storage key when mode=upload */
     coverValue: text('cover_value').notNull().default(''),
+    /** When true, storefront cards link to bodyLinkUrl instead of the article detail page. */
+    bodyLinkEnabled: boolean('body_link_enabled').notNull().default(false),
+    bodyLinkUrl: text('body_link_url').notNull().default(''),
     status: cmsStatusEnum('status').notNull().default('draft'),
     publishedAt: timestamp('published_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

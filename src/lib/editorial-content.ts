@@ -68,6 +68,8 @@ export type AdminEditorialContentListItem = {
   coverMode: '' | 'preset' | 'upload';
   coverValue: string;
   coverPreviewUrl: string;
+  bodyLinkEnabled: boolean;
+  bodyLinkUrl: string;
   status: EditorialEntryStatus;
   title: string;
   slug: string;
@@ -100,6 +102,8 @@ export type AdminEditorialContentTranslation = {
   coverMode: '' | 'preset' | 'upload';
   coverValue: string;
   coverPreviewUrl: string;
+  bodyLinkEnabled: boolean;
+  bodyLinkUrl: string;
   payload: EditorialContentPayload;
   createdAt: string;
   updatedAt: string;

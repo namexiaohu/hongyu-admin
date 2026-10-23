@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Col, Empty, Form, Input, Modal, Row, Space, Tabs, Tag, Typography, Alert, Popconfirm, AutoComplete, message } from 'antd';
+import { Button, Checkbox, Col, Empty, Form, Input, Modal, Row, Space, Tabs, Tag, Typography, Alert, Popconfirm, AutoComplete, message } from 'antd';
 import type { FormInstance } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import Link from 'next/link';
@@ -158,11 +158,11 @@ function mergeActiveFormIntoDrafts(
   };
 }
 
-function validateDraft(locale: string, draft: LocaleDraft) {
+function validateDraft(locale: string, draft: LocaleDraft, bodyLinkEnabled = false) {
   if (!draft.title.trim()) {
     return { ok: false as const, locale, message: '请输入标题', section: 'content' as const };
   }
-  if (!hasMeaningfulHtmlBody(draft.body)) {
+  if (!bodyLinkEnabled && !hasMeaningfulHtmlBody(draft.body)) {
     return { ok: false as const, locale, message: '请输入正文', section: 'content' as const };
   }
   return validateSourceThenAutoSlug({
@@ -181,6 +181,8 @@ function buildEntryPayload(draft: LocaleDraft, locale: string, status: Editorial
   boardKeys: string[];
   coverMode: '' | 'preset' | 'upload';
   coverValue: string;
+  bodyLinkEnabled: boolean;
+  bodyLinkUrl: string;
   publishedAt?: string | null;
 }) {
   const publishedAt = options.publishedAt !== undefined
@@ -201,6 +203,8 @@ function buildEntryPayload(draft: LocaleDraft, locale: string, status: Editorial
     boardKeys: isOther ? [OTHER_BOARD_KEY] : options.boardKeys,
     coverMode: options.coverMode,
     coverValue: options.coverValue,
+    bodyLinkEnabled: options.bodyLinkEnabled,
+    bodyLinkUrl: options.bodyLinkUrl.trim(),
     title: draft.title.trim(),
     slug: draft.slug.trim(),
     summary: draft.summary.trim() || null,
@@ -210,7 +214,9 @@ function buildEntryPayload(draft: LocaleDraft, locale: string, status: Editorial
     seoDescription: draft.seoDescription.trim() || null,
     publishedAt,
     payload: {
-      body: draft.body.trim(),
+      body: options.bodyLinkEnabled && !hasMeaningfulHtmlBody(draft.body)
+        ? defaultEditorialContentBody
+        : draft.body.trim(),
       coverStyle: draft.coverStyle,
       authorName: draft.authorName.trim() || null,
       authorTitle: draft.authorTitle.trim() || null,
@@ -279,6 +285,8 @@ export function ContentEditorModal({
   const [contentId, setContentId] = useState('');
   const [boardKeys, setBoardKeys] = useState<string[]>([boardKey]);
   const [cover, setCover] = useState<CoverOptionValue>({ mode: '', value: '', previewUrl: '' });
+  const [bodyLinkEnabled, setBodyLinkEnabled] = useState(false);
+  const [bodyLinkUrl, setBodyLinkUrl] = useState('');
   const [drafts, setDrafts] = useState<Record<string, LocaleDraft>>({});
   const [activeLocale, setActiveLocale] = useState('');
   const [sectionTab, setSectionTab] = useState<SectionTabKey>('content');
@@ -336,6 +344,8 @@ export function ContentEditorModal({
       value: editingEntry?.coverValue ?? '',
       previewUrl: editingEntry?.coverPreviewUrl ?? '',
     });
+    setBodyLinkEnabled(editingEntry?.bodyLinkEnabled === true);
+    setBodyLinkUrl(editingEntry?.bodyLinkUrl ?? '');
     setSectionTab('content');
     setScheduleOpen(false);
 
@@ -388,6 +398,8 @@ export function ContentEditorModal({
             value: payload.item.coverValue ?? '',
             previewUrl: payload.item.coverPreviewUrl ?? '',
           });
+          setBodyLinkEnabled(payload.item.bodyLinkEnabled === true);
+          setBodyLinkUrl(payload.item.bodyLinkUrl ?? '');
         }
 
         const mergedDrafts = { ...seedDrafts };
@@ -521,11 +533,16 @@ export function ContentEditorModal({
     }
 
     const mergedDrafts = mergeActiveFormIntoDrafts(drafts, activeLocale, form);
+    const linkMode = contentModule === 'editorial' && bodyLinkEnabled;
+    if (linkMode && !bodyLinkUrl.trim()) {
+      void messageApi.error('请填写正文链接');
+      return;
+    }
     const gate = runDefaultLocaleSaveGate({
       defaultLocale,
       mergedDrafts,
       createEmptyDraft,
-      validateDraft,
+      validateDraft: (locale, draft) => validateDraft(locale, draft, linkMode),
     });
     if (!gate.ok) {
       focusValidationIssue(
@@ -555,7 +572,7 @@ export function ContentEditorModal({
     }
 
     for (const target of targets) {
-      const validation = validateDraft(target.locale, target.draft);
+      const validation = validateDraft(target.locale, target.draft, linkMode);
       if (!validation.ok) {
         focusValidationIssue(validation.locale, validation.section, workingDrafts);
         const language = activeLanguages.find((item) => item.code === validation.locale);
@@ -594,6 +611,8 @@ export function ContentEditorModal({
               boardKeys: hideBoardSelect ? [OTHER_BOARD_KEY] : boardKeys,
               coverMode: cover.mode ?? '',
               coverValue: cover.value?.trim() ?? '',
+              bodyLinkEnabled: linkMode,
+              bodyLinkUrl,
               publishedAt: options?.publishedAt,
             })),
           },
@@ -747,27 +766,29 @@ export function ContentEditorModal({
                 <Input.TextArea rows={3} />
               </Form.Item>
             </Col>
-            <Col span={24}>
-              <Form.Item
-                label="正文"
-                name="body"
-                required
-                rules={[{
-                  validator: async (_, value: string) => {
-                    if (!hasMeaningfulHtmlBody(value)) {
-                      throw new Error('请输入正文内容');
-                    }
-                  },
-                }]}
-              >
-                <RichTextEditor
-                  key={`${activeLocale}-${editorRevision}`}
-                  minHeight={520}
-                  maxHeight={720}
-                  disabled={isReadOnly}
-                />
-              </Form.Item>
-            </Col>
+            {contentModule === 'editorial' && bodyLinkEnabled ? null : (
+              <Col span={24}>
+                <Form.Item
+                  label="正文"
+                  name="body"
+                  required
+                  rules={[{
+                    validator: async (_, value: string) => {
+                      if (!hasMeaningfulHtmlBody(value)) {
+                        throw new Error('请输入正文内容');
+                      }
+                    },
+                  }]}
+                >
+                  <RichTextEditor
+                    key={`${activeLocale}-${editorRevision}`}
+                    minHeight={520}
+                    maxHeight={720}
+                    disabled={isReadOnly}
+                  />
+                </Form.Item>
+              </Col>
+            )}
           </Row>
         </div>
         <div style={{ display: sectionTab === 'author' ? 'block' : 'none' }}>
@@ -868,13 +889,39 @@ export function ContentEditorModal({
             ) : null}
 
             <div className="content-editor-shared-section">
-              <Form.Item label="封面图（各语言共用）" layout="vertical" style={{ marginBottom: 0 }}>
-                <CoverOptionField
-                  value={cover}
-                  onChange={setCover}
-                  disabled={isReadOnly}
-                />
-              </Form.Item>
+              <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
+                <Form.Item label="封面图（各语言共用）" layout="vertical" style={{ marginBottom: 0 }}>
+                  <CoverOptionField
+                    value={cover}
+                    onChange={setCover}
+                    disabled={isReadOnly}
+                  />
+                </Form.Item>
+                {contentModule === 'editorial' ? (
+                  <div>
+                    <Checkbox
+                      checked={bodyLinkEnabled}
+                      disabled={isReadOnly}
+                      onChange={(event) => setBodyLinkEnabled(event.target.checked)}
+                    >
+                      正文链接
+                    </Checkbox>
+                    {bodyLinkEnabled ? (
+                      <Form.Item label="链接" required style={{ marginTop: 12, marginBottom: 0 }}>
+                        <Input
+                          placeholder="/solutions 或 https://..."
+                          value={bodyLinkUrl}
+                          disabled={isReadOnly}
+                          onChange={(event) => setBodyLinkUrl(event.target.value)}
+                        />
+                        <div style={{ marginTop: 4, color: 'rgba(0,0,0,0.45)', fontSize: 12 }}>
+                          勾选后前台卡片直接跳转到此地址，不再打开内容详情页。
+                        </div>
+                      </Form.Item>
+                    ) : null}
+                  </div>
+                ) : null}
+              </Space>
             </div>
 
             <div className="content-editor-layout">

@@ -30,7 +30,7 @@ import { getDefaultSiteLanguageCode } from '@/server/admin/site-locale';
 import { resolveCoverFieldsForWrite } from '@/server/admin/cover-images';
 
 const payloadSchema = z.object({
-  body: z.string().trim().refine(hasMeaningfulHtmlBody, { message: 'Body is required' }),
+  body: z.string().trim().default(''),
   coverStyle: z.number().int().min(1).max(10).nullable().optional().transform((value) => value ?? null),
   tags: z.array(z.string().trim().min(1)).default([]),
   relatedProductSlugs: z.array(z.string().trim().min(1)).default([]),
@@ -57,17 +57,52 @@ const adminEditorialContentTranslationBaseSchema = z.object({
   coverImage: z.string().trim().optional(),
   coverMode: z.enum(['preset', 'upload', '']).optional(),
   coverValue: z.string().trim().optional(),
+  bodyLinkEnabled: z.boolean().optional(),
+  bodyLinkUrl: z.string().trim().optional(),
   payload: payloadSchema,
 });
 
-export const adminEditorialContentTranslationSchema = adminEditorialContentTranslationBaseSchema.superRefine((data, ctx) => {
-  if (data.contentModule === 'other') return;
-  if (!data.boardKeys?.length && !data.boardKey) {
-    ctx.addIssue({ code: 'custom', message: 'boardKey or boardKeys is required', path: ['boardKey'] });
+function refineBodyLinkFields(
+  data: {
+    contentModule?: EditorialContentModule;
+    boardKey?: string;
+    boardKeys?: string[];
+    bodyLinkEnabled?: boolean;
+    bodyLinkUrl?: string;
+    payload?: { body?: string };
+  },
+  ctx: z.RefinementCtx,
+) {
+  if (data.contentModule !== 'other') {
+    if (!data.boardKeys?.length && !data.boardKey) {
+      ctx.addIssue({ code: 'custom', message: 'boardKey or boardKeys is required', path: ['boardKey'] });
+    }
+  }
+
+  const linkEnabled = data.bodyLinkEnabled === true;
+  if (linkEnabled) {
+    if (!data.bodyLinkUrl?.trim()) {
+      ctx.addIssue({ code: 'custom', message: '链接不能为空', path: ['bodyLinkUrl'] });
+    }
+    return;
+  }
+
+  if (data.payload && !hasMeaningfulHtmlBody(data.payload.body ?? '')) {
+    ctx.addIssue({ code: 'custom', message: 'Body is required', path: ['payload', 'body'] });
+  }
+}
+
+export const adminEditorialContentTranslationSchema = adminEditorialContentTranslationBaseSchema.superRefine(refineBodyLinkFields);
+
+export const adminEditorialContentTranslationPatchSchema = adminEditorialContentTranslationBaseSchema.partial().superRefine((data, ctx) => {
+  if (data.bodyLinkEnabled === undefined && data.bodyLinkUrl === undefined && data.payload === undefined) return;
+  if (data.bodyLinkEnabled === true && data.bodyLinkUrl !== undefined && !data.bodyLinkUrl.trim()) {
+    ctx.addIssue({ code: 'custom', message: '链接不能为空', path: ['bodyLinkUrl'] });
+  }
+  if (data.bodyLinkEnabled === false && data.payload && !hasMeaningfulHtmlBody(data.payload.body ?? '')) {
+    ctx.addIssue({ code: 'custom', message: 'Body is required', path: ['payload', 'body'] });
   }
 });
-
-export const adminEditorialContentTranslationPatchSchema = adminEditorialContentTranslationBaseSchema.partial();
 
 export const adminEditorialContentPatchSchema = z.object({
   boardKey: z.string().trim().min(1).optional(),
@@ -77,6 +112,12 @@ export const adminEditorialContentPatchSchema = z.object({
   coverImage: z.string().trim().optional(),
   coverMode: z.enum(['preset', 'upload', '']).optional(),
   coverValue: z.string().trim().optional(),
+  bodyLinkEnabled: z.boolean().optional(),
+  bodyLinkUrl: z.string().trim().optional(),
+}).superRefine((data, ctx) => {
+  if (data.bodyLinkEnabled === true && data.bodyLinkUrl !== undefined && !data.bodyLinkUrl.trim()) {
+    ctx.addIssue({ code: 'custom', message: '链接不能为空', path: ['bodyLinkUrl'] });
+  }
 });
 
 /** @deprecated */
@@ -229,9 +270,20 @@ function mergePayload(payload: Partial<EditorialContentPayload> & Pick<Editorial
   });
 }
 
+function normalizeBodyLinkUrl(value: string | null | undefined) {
+  return value?.trim() ?? '';
+}
+
 function sanitizeTranslationInput(input: TranslationCreateInput) {
   const normalizedTitle = input.title.trim();
-  const normalizedPayload = mergePayload(input.payload);
+  const bodyLinkEnabled = input.bodyLinkEnabled === true;
+  const bodyLinkUrl = normalizeBodyLinkUrl(input.bodyLinkUrl);
+  const normalizedPayload = mergePayload({
+    ...input.payload,
+    body: bodyLinkEnabled && !hasMeaningfulHtmlBody(input.payload.body)
+      ? ''
+      : input.payload.body,
+  });
   const contentModule = input.contentModule
     ?? (input.boardKey || input.boardKeys?.length
       ? resolveContentModuleByBoard(input.boardKey ?? input.boardKeys![0]!)
@@ -239,7 +291,7 @@ function sanitizeTranslationInput(input: TranslationCreateInput) {
   const boardKeys = contentModule === 'other' ? [OTHER_BOARD_KEY] : resolveBoardKeys(input);
   const boardKey = contentModule === 'other' ? OTHER_BOARD_KEY : (boardKeys[0] ?? 'content');
   let normalizedSummary = normalizeText(input.summary);
-  if ((contentModule === 'editorial' || contentModule === 'other') && !normalizedSummary) {
+  if ((contentModule === 'editorial' || contentModule === 'other') && !normalizedSummary && !bodyLinkEnabled) {
     normalizedSummary = normalizeText(extractSummaryFromHtmlBody(normalizedPayload.body));
   }
   const normalizedSlug = resolveSlugForSave({
@@ -264,6 +316,8 @@ function sanitizeTranslationInput(input: TranslationCreateInput) {
     coverImage: normalizeCoverImage(input.coverImage),
     coverMode: input.coverMode ?? '',
     coverValue: input.coverValue ?? '',
+    bodyLinkEnabled,
+    bodyLinkUrl: bodyLinkEnabled ? bodyLinkUrl : normalizeBodyLinkUrl(input.bodyLinkUrl),
     payload: normalizedPayload,
   };
 }
@@ -305,6 +359,8 @@ function normalizeTranslationRow(
       legacyCoverImageKey: content.coverImage ?? '',
       toPublicUrl: resolveOssAssetUrl,
     }).previewUrl,
+    bodyLinkEnabled: content.bodyLinkEnabled === true,
+    bodyLinkUrl: content.bodyLinkUrl ?? '',
     payload: mergePayload(payload.data),
     createdAt: translation.createdAt.toISOString(),
     updatedAt: Math.max(content.updatedAt.getTime(), translation.updatedAt.getTime()) === translation.updatedAt.getTime()
@@ -342,6 +398,8 @@ function toListItem(
       legacyCoverImageKey: content.coverImage ?? '',
       toPublicUrl: resolveOssAssetUrl,
     }).previewUrl,
+    bodyLinkEnabled: content.bodyLinkEnabled === true,
+    bodyLinkUrl: content.bodyLinkUrl ?? '',
     status: content.status,
     title: primary.title,
     slug: primary.slug,
@@ -734,6 +792,8 @@ export async function createAdminEditorialContentTranslation(input: TranslationC
         coverImage: cover.coverImage,
         coverMode: cover.coverMode,
         coverValue: cover.coverValue,
+        bodyLinkEnabled: next.bodyLinkEnabled,
+        bodyLinkUrl: next.bodyLinkUrl,
         status: next.status,
         publishedAt: next.publishedAt ? new Date(next.publishedAt) : null,
       })
@@ -760,6 +820,8 @@ export async function createAdminEditorialContentTranslation(input: TranslationC
         coverImage: cover.coverImage,
         coverMode: cover.coverMode,
         coverValue: cover.coverValue,
+        bodyLinkEnabled: next.bodyLinkEnabled,
+        bodyLinkUrl: next.bodyLinkUrl,
         status: next.status,
         publishedAt: next.publishedAt ? new Date(next.publishedAt) : null,
         updatedAt: new Date(),
@@ -828,6 +890,8 @@ export async function updateAdminEditorialContentTranslation(translationId: stri
     coverImage: input.coverImage === undefined ? current.coverImage : input.coverImage,
     coverMode: input.coverMode === undefined ? current.coverMode : input.coverMode,
     coverValue: input.coverValue === undefined ? current.coverValue : input.coverValue,
+    bodyLinkEnabled: input.bodyLinkEnabled === undefined ? current.bodyLinkEnabled : input.bodyLinkEnabled,
+    bodyLinkUrl: input.bodyLinkUrl === undefined ? current.bodyLinkUrl : input.bodyLinkUrl,
     payload: input.payload ?? current.payload,
   });
 
@@ -844,6 +908,8 @@ export async function updateAdminEditorialContentTranslation(translationId: stri
       coverImage: cover.coverImage,
       coverMode: cover.coverMode,
       coverValue: cover.coverValue,
+      bodyLinkEnabled: merged.bodyLinkEnabled,
+      bodyLinkUrl: merged.bodyLinkUrl,
       status: merged.status,
       publishedAt: merged.publishedAt ? new Date(merged.publishedAt) : null,
       updatedAt: new Date(),
@@ -925,11 +991,20 @@ export async function updateAdminEditorialContent(contentId: string, input: Cont
     coverPatch.coverImage = normalizeCoverImage(input.coverImage);
   }
 
+  const nextBodyLinkEnabled = input.bodyLinkEnabled === undefined
+    ? current.bodyLinkEnabled
+    : input.bodyLinkEnabled;
+  const nextBodyLinkUrl = input.bodyLinkUrl === undefined
+    ? current.bodyLinkUrl
+    : normalizeBodyLinkUrl(input.bodyLinkUrl);
+
   const [updated] = await db
     .update(editorialContents)
     .set({
       boardKey: input.boardKey ? normalizeBoardKey(input.boardKey) : current.boardKey,
       ...coverPatch,
+      bodyLinkEnabled: nextBodyLinkEnabled,
+      bodyLinkUrl: nextBodyLinkUrl,
       status: nextStatus,
       publishedAt: nextStatus === 'published'
         ? new Date(nextPublishedAt ?? new Date().toISOString())

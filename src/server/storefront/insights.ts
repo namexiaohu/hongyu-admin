@@ -39,6 +39,8 @@ export type StorefrontInsightListItem = {
   boardKey: string;
   boardName: string;
   coverImage: string | null;
+  bodyLinkEnabled: boolean;
+  bodyLinkUrl: string;
   author: StorefrontBlogAuthor;
   createdAt: string | null;
   publishedAt: string | null;
@@ -57,6 +59,8 @@ export type StorefrontInsightRelatedItem = {
   boardKey: string;
   boardName: string;
   coverImage: string | null;
+  bodyLinkEnabled: boolean;
+  bodyLinkUrl: string;
   createdAt: string | null;
 };
 
@@ -72,6 +76,8 @@ export type StorefrontInsightDetail = {
   categorySlug: string | null;
   coverStyle: number | null;
   coverImage: string | null;
+  bodyLinkEnabled: boolean;
+  bodyLinkUrl: string;
   author: StorefrontBlogAuthor;
   seo: {
     title: string | null;
@@ -235,6 +241,8 @@ function mapListItem(
       legacyCoverImageKey: content.coverImage,
       toPublicUrl: resolveOssAssetUrl,
     }) || null,
+    bodyLinkEnabled: content.bodyLinkEnabled === true,
+    bodyLinkUrl: (content.bodyLinkUrl ?? '').trim(),
     author: buildAuthor(payload),
     createdAt: content.createdAt?.toISOString() ?? null,
     publishedAt: content.publishedAt?.toISOString() ?? null,
@@ -259,6 +267,8 @@ function mapRelatedItem(
       legacyCoverImageKey: content.coverImage,
       toPublicUrl: resolveOssAssetUrl,
     }) || null,
+    bodyLinkEnabled: content.bodyLinkEnabled === true,
+    bodyLinkUrl: (content.bodyLinkUrl ?? '').trim(),
     createdAt: content.createdAt?.toISOString() ?? null,
   };
 }
@@ -513,6 +523,8 @@ export async function getStorefrontInsightDetailBySlug(slugInput: string, locale
       legacyCoverImageKey: content.coverImage,
       toPublicUrl: resolveOssAssetUrl,
     }) || null,
+    bodyLinkEnabled: content.bodyLinkEnabled === true,
+    bodyLinkUrl: (content.bodyLinkUrl ?? '').trim(),
     author: buildAuthor(payload),
     seo: {
       title: picked.seoTitle,
