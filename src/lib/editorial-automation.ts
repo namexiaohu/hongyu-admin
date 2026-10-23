@@ -140,6 +140,13 @@ export const defaultEditorialAutomationConfig: EditorialAutomationConfig = {
   },
   coverageBoards: [
     {
+      key: 'home-top',
+      title: '首页置顶',
+      contentType: 'content',
+      note: '首页资讯列表置顶展示；不在 /insights 分类列表中单独出现。',
+      sourceMode: 'admin-managed',
+    },
+    {
       key: 'blog',
       title: '工程博客',
       contentType: 'content',

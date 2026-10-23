@@ -3,6 +3,7 @@ import 'server-only';
 import { and, asc, desc, eq, inArray, ne, notInArray, sql } from 'drizzle-orm';
 
 import { resolveBlogCategorySlug } from '@/lib/blog-categories';
+import { HOME_TOP_BOARD_KEY } from '@/lib/editorial-boards';
 import { type EditorialContentPayload } from '@/lib/editorial-content';
 import { resolveOssAssetUrl, rewriteHtmlOssAssets } from '@/lib/oss-asset-url';
 import { resolveStorefrontCoverUrl } from '@/lib/cover-presets';
@@ -25,7 +26,9 @@ import {
 } from '@/server/storefront/editorial-content';
 
 export const INSIGHT_BOARD_KEYS = ['case', 'paper', 'experience', 'market'] as const;
-export const PINNED_INSIGHT_BOARD_KEY = 'pinned';
+
+/** Homepage news pin board (系统内置「首页置顶」). */
+export const PINNED_INSIGHT_BOARD_KEY = HOME_TOP_BOARD_KEY;
 export type InsightBoardKey = (typeof INSIGHT_BOARD_KEYS)[number];
 
 type TranslationRow = typeof editorialContentTranslations.$inferSelect;

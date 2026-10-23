@@ -17,6 +17,9 @@ export type AdminEditorialCoverageBoardDetail = {
   translations: AdminEditorialCoverageBoardTranslation[];
 };
 
+/** 首页资讯置顶看板（系统内置，列表固定第一） */
+export const HOME_TOP_BOARD_KEY = 'home-top';
+
 /** 系统内置看板的固定顺序（与 defaultEditorialAutomationConfig.coverageBoards 一致） */
 export const SYSTEM_BOARD_KEY_ORDER = defaultEditorialAutomationConfig.coverageBoards.map((board) => board.key);
 
@@ -28,6 +31,9 @@ export function isSystemBoardKey(key: string) {
 
 export function sortCoverageBoards<T extends { key: string; createdAt?: string | null }>(boards: T[]): T[] {
   return [...boards].sort((left, right) => {
+    if (left.key === HOME_TOP_BOARD_KEY && right.key !== HOME_TOP_BOARD_KEY) return -1;
+    if (right.key === HOME_TOP_BOARD_KEY && left.key !== HOME_TOP_BOARD_KEY) return 1;
+
     const leftSystem = systemBoardOrder.get(left.key);
     const rightSystem = systemBoardOrder.get(right.key);
     const leftIsSystem = leftSystem !== undefined;
