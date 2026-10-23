@@ -539,6 +539,8 @@ export type AdminEditorialContentListQuery = {
 export type AdminEditorialContentListPage = {
   items: AdminEditorialContentListItem[];
   total: number;
+  /** Published count for the same filter as `total` (not just the current page). */
+  publishedTotal: number;
   page: number;
   pageSize: AdminListPageSize;
 };
@@ -566,26 +568,26 @@ export async function getAdminEditorialContentListPaginated(
   });
 
   if (!conditions) {
-    return { items: [], total: 0, page, pageSize };
+    return { items: [], total: 0, publishedTotal: 0, page, pageSize };
   }
 
   const whereClause = and(...conditions);
+  const publishedWhere = and(...conditions, eq(editorialContents.status, 'published'));
 
-  const [totalRow] = await db
-    .select({ value: count() })
-    .from(editorialContents)
-    .where(whereClause);
+  const [[totalRow], [publishedRow], contentRows] = await Promise.all([
+    db.select({ value: count() }).from(editorialContents).where(whereClause),
+    db.select({ value: count() }).from(editorialContents).where(publishedWhere),
+    db
+      .select()
+      .from(editorialContents)
+      .where(whereClause)
+      .orderBy(desc(editorialContents.updatedAt))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize),
+  ]);
 
   const total = Number(totalRow?.value ?? 0);
-  const offset = (page - 1) * pageSize;
-
-  const contentRows = await db
-    .select()
-    .from(editorialContents)
-    .where(whereClause)
-    .orderBy(desc(editorialContents.updatedAt))
-    .limit(pageSize)
-    .offset(offset);
+  const publishedTotal = Number(publishedRow?.value ?? 0);
 
   const [translationMap, boardKeysMap, displayLocale] = await Promise.all([
     loadTranslationsByContentIds(contentRows.map((row) => row.id)),
@@ -603,7 +605,7 @@ export async function getAdminEditorialContentListPaginated(
     .filter((item): item is AdminEditorialContentListItem => Boolean(item))
     .sort(sortListItems);
 
-  return { items, total, page, pageSize };
+  return { items, total, publishedTotal, page, pageSize };
 }
 
 export async function getAdminEditorialContentList(search?: string): Promise<AdminEditorialContentListItem[]> {

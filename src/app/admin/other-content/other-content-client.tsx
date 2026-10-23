@@ -48,6 +48,7 @@ const entryStatusColors: Record<EditorialEntryStatus, string> = {
 type ListState = {
   items: AdminEditorialContentListItem[];
   total: number;
+  publishedTotal: number;
   page: number;
   pageSize: AdminListPageSize;
 };
@@ -70,12 +71,13 @@ async function fetchOtherContentList(options: {
 
   const payload = (await response.json()) as {
     items: AdminEditorialContentListItem[];
-    meta: { total: number; page: number; pageSize: number };
+    meta: { total: number; publishedTotal?: number; page: number; pageSize: number };
   };
 
   return {
     items: payload.items,
     total: payload.meta.total,
+    publishedTotal: payload.meta.publishedTotal ?? 0,
     page: payload.meta.page,
     pageSize: payload.meta.pageSize as AdminListPageSize,
   };
@@ -143,7 +145,7 @@ export function AdminOtherContentClient({
 
   const summaryStats = useMemo(() => [
     { label: '内容总量', value: listState.total },
-    { label: '已发布', value: listState.items.filter((item) => item.status === 'published').length },
+    { label: '已发布', value: listState.publishedTotal },
     { label: '当前页', value: listState.items.length },
   ], [listState]);
 

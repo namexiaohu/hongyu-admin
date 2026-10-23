@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
     items: result.items,
     meta: {
       total: result.total,
+      publishedTotal: result.publishedTotal,
       page: result.page,
       pageSize: result.pageSize,
     },

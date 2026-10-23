@@ -52,6 +52,7 @@ const entryStatusColors: Record<EditorialEntryStatus, string> = {
 export type BoardContentListState = {
   items: AdminEditorialContentListItem[];
   total: number;
+  publishedTotal: number;
   page: number;
   pageSize: AdminListPageSize;
 };
@@ -101,12 +102,13 @@ async function fetchBoardContentList(options: {
 
   const payload = (await response.json()) as {
     items: AdminEditorialContentListItem[];
-    meta: { total: number; page: number; pageSize: number };
+    meta: { total: number; publishedTotal?: number; page: number; pageSize: number };
   };
 
   return {
     items: payload.items,
     total: payload.meta.total,
+    publishedTotal: payload.meta.publishedTotal ?? 0,
     page: payload.meta.page,
     pageSize: payload.meta.pageSize as AdminListPageSize,
   };
@@ -178,6 +180,7 @@ export function BoardContentListClient({
       setListState({
         items: [],
         total: 0,
+        publishedTotal: 0,
         page: nextQuery.page,
         pageSize: nextQuery.pageSize,
       });
@@ -235,9 +238,10 @@ export function BoardContentListClient({
   }, [searchParams, boards, reloadList, initialDashboard.coverage]);
 
   const summary = useMemo(() => ({
+    /** Current board (+ keyword) total, not all boards. */
     documents: listState.total,
-    published: listState.items.filter((item) => item.status === 'published').length,
-    currentBoardCount: listState.items.length,
+    published: listState.publishedTotal,
+    currentPageCount: listState.items.length,
   }), [listState]);
 
   const modalBoardKey = editingEntry?.boardKey
@@ -249,7 +253,7 @@ export function BoardContentListClient({
   const summaryStats = useMemo(() => [
     { label: '内容总量', value: summary.documents },
     { label: '已发布', value: summary.published },
-    { label: hasBoards ? '当前页' : '看板', value: hasBoards ? summary.currentBoardCount : 0 },
+    { label: hasBoards ? '当前页' : '看板', value: hasBoards ? summary.currentPageCount : 0 },
   ], [hasBoards, summary]);
 
   function applyQueryChange(patch: Partial<AdminListQuery>) {
@@ -491,6 +495,7 @@ export function BoardContentListClient({
               setListState({
                 items: [],
                 total: 0,
+                publishedTotal: 0,
                 page: 1,
                 pageSize: query.pageSize,
               });
